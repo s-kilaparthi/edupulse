@@ -1,0 +1,26 @@
+You are helping build EduPulse — a B2B EdTech SaaS platform for Indian coaching institutes.
+
+PROJECT STRUCTURE:
+- /frontend — React 19 + Tailwind CSS 4 + Vite 8
+- /backend — Python FastAPI + Supabase (PostgreSQL)
+- /backend/omr/ — OpenCV OMR scanning module (Week 5-6)
+
+TECH STACK:
+- Frontend: React, Tailwind, Vite, Recharts
+- Backend: FastAPI, Python 3.12, Supabase client, python-dotenv
+- Database: PostgreSQL via Supabase
+- Auth: Supabase Auth (3 roles: admin, teacher, student)
+- Storage: Supabase Storage for OMR scan images
+
+DATABASE TABLES:
+institutes, users, subjects, topics, exams, questions, omr_results, topic_scores
+
+CODING RULES:
+- Always use async/await in FastAPI routes
+- Always use Supabase client — never raw SQL
+- Always handle errors with try/except
+- React components use functional style with hooks only
+- Never hardcode API URLs — use import.meta.env.VITE_API_URL
+- Never commit .env files
+
+CURRENT BUILD: Week 1 Day 2 — Tailwind done, creating database tables next
