@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { supabase } from './supabase'
+import AppLayout from './components/AppLayout'
+import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
+import Subjects from './pages/Subjects'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -30,9 +34,26 @@ export default function App() {
     )
   }
 
-  if (session) {
-    return <Dashboard session={session} />
-  }
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/login"
+          element={session ? <Navigate to="/dashboard" replace /> : <Login />}
+        />
 
-  return <Login />
+        <Route element={<ProtectedRoute session={session} />}>
+          <Route element={<AppLayout session={session} />}>
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/subjects" element={<Subjects />} />
+          </Route>
+        </Route>
+
+        <Route
+          path="*"
+          element={<Navigate to={session ? '/dashboard' : '/login'} replace />}
+        />
+      </Routes>
+    </BrowserRouter>
+  )
 }

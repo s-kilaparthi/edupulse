@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 export default function Login() {
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -21,6 +23,8 @@ export default function Login() {
 
     if (signInError) {
       setError(signInError.message)
+    } else {
+      navigate('/dashboard', { replace: true })
     }
   }
 
