@@ -6,6 +6,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Subjects from './pages/Subjects'
+import Exams from './pages/Exams'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -46,6 +47,7 @@ export default function App() {
           <Route element={<AppLayout session={session} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/subjects" element={<Subjects />} />
+            <Route path="/exams" element={<Exams />} />
           </Route>
         </Route>
 
