@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EduPulse OMR Answer Sheet</title>
+  <style>
+    @page {
+      size: 210mm 297mm;
+      margin: 0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html,
+    body {
+      width: 210mm;
+      height: 297mm;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      color: #000;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+
+    .sheet {
+      position: relative;
+      width: 210mm;
+      height: 297mm;
+      background: #fff;
+      overflow: hidden;
+      page-break-after: avoid;
+    }
+
+    /* Corner fiducial markers — 18×18mm, 10mm from edges */
+    .corner-marker {
+      position: absolute;
+      width: 18mm;
+      height: 18mm;
+      background: #000;
+    }
+
+    .corner-tl {
+      top: 10mm;
+      left: 10mm;
+    }
+
+    .corner-tr {
+      top: 10mm;
+      right: 10mm;
+    }
+
+    .corner-bl {
+      bottom: 10mm;
+      left: 10mm;
+    }
+
+    .corner-br {
+      bottom: 10mm;
+      right: 10mm;
+    }
+
+    /* Safe content area inside corner markers */
+    .content {
+      position: absolute;
+      top: 28mm;
+      left: 28mm;
+      right: 28mm;
+      bottom: 43mm; /* 10mm edge + 18mm marker + 15mm white gap */
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 6mm;
+      flex-shrink: 0;
+    }
+
+    .header h1 {
+      font-size: 18pt;
+      font-weight: bold;
+      letter-spacing: 0.5mm;
+      margin-bottom: 5mm;
+    }
+
+    .header-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 3mm;
+      font-size: 11pt;
+      text-align: left;
+      max-width: 140mm;
+      margin: 0 auto;
+    }
+
+    .header-fields .field {
+      border-bottom: 0.3mm solid #000;
+      padding-bottom: 1mm;
+      line-height: 1.4;
+    }
+
+    .questions-grid {
+      display: flex;
+      flex: 1;
+      gap: 12mm;
+      margin-top: 4mm;
+    }
+
+    .questions-column {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .question-row {
+      display: flex;
+      align-items: center;
+      height: 12mm;
+      min-height: 12mm;
+    }
+
+    .q-num {
+      width: 11mm;
+      font-size: 9pt;
+      font-weight: bold;
+      flex-shrink: 0;
+    }
+
+    .bubbles {
+      display: flex;
+      align-items: center;
+      gap: 3mm;
+    }
+
+    .bubble-cell {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 11mm;
+    }
+
+    /* 11mm diameter circle, black outline, white fill, letter inside */
+    .bubble {
+      width: 11mm;
+      height: 11mm;
+      border: 0.4mm solid #000;
+      border-radius: 50%;
+      background: #fff;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      color: #999;
+      line-height: 1;
+    }
+
+    @media print {
+      html,
+      body {
+        width: 210mm;
+        height: 297mm;
+      }
+
+      .sheet {
+        width: 210mm;
+        height: 297mm;
+      }
+
+      .corner-marker {
+        background: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+
+    @media screen {
+      body {
+        margin: 10mm auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="sheet">
+    <div class="corner-marker corner-tl" aria-hidden="true"></div>
+    <div class="corner-marker corner-tr" aria-hidden="true"></div>
+    <div class="corner-marker corner-bl" aria-hidden="true"></div>
+    <div class="corner-marker corner-br" aria-hidden="true"></div>
+
+    <div class="content">
+      <header class="header">
+        <h1>EduPulse</h1>
+        <div class="header-fields">
+          <div class="field">Roll No: _________________________</div>
+          <div class="field">Exam: ____________________________</div>
+          <div class="field">Date: ____________________________</div>
+        </div>
+      </header>
+
+      <div class="questions-grid">
+        <div class="questions-column" id="col-left"></div>
+        <div class="questions-column" id="col-right"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function createQuestionRow(num) {
+      const row = document.createElement('div')
+      row.className = 'question-row'
+
+      const qNum = document.createElement('span')
+      qNum.className = 'q-num'
+      qNum.textContent = 'Q' + num
+
+      const bubbles = document.createElement('div')
+      bubbles.className = 'bubbles'
+
+      ;['A', 'B', 'C', 'D'].forEach((label) => {
+        const cell = document.createElement('div')
+        cell.className = 'bubble-cell'
+
+        const bubble = document.createElement('div')
+        bubble.className = 'bubble'
+        bubble.textContent = label
+        bubble.setAttribute('aria-label', 'Q' + num + ' ' + label)
+
+        cell.appendChild(bubble)
+        bubbles.appendChild(cell)
+      })
+
+      row.appendChild(qNum)
+      row.appendChild(bubbles)
+      return row
+    }
+
+    const colLeft = document.getElementById('col-left')
+    const colRight = document.getElementById('col-right')
+
+    for (let i = 1; i <= 15; i++) {
+      colLeft.appendChild(createQuestionRow(i))
+    }
+    for (let i = 16; i <= 30; i++) {
+      colRight.appendChild(createQuestionRow(i))
+    }
+  </script>
+</body>
+</html>
