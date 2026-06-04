@@ -7,6 +7,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Subjects from './pages/Subjects'
 import Exams from './pages/Exams'
+import Students from './pages/Students'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/subjects" element={<Subjects />} />
             <Route path="/exams" element={<Exams />} />
+            <Route path="/students" element={<Students />} />
           </Route>
         </Route>
 
