@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from './supabase'
 import Login from './pages/Login'
+import Dashboard from './pages/Dashboard'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -30,11 +31,7 @@ export default function App() {
   }
 
   if (session) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div>Logged in as {session.user.email}</div>
-      </div>
-    )
+    return <Dashboard session={session} />
   }
 
   return <Login />
