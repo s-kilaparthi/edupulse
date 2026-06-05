@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard'
 import Subjects from './pages/Subjects'
 import Exams from './pages/Exams'
 import Students from './pages/Students'
+import Scan from './pages/Scan'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -18,13 +19,9 @@ export default function App() {
       setSession(session)
       setLoading(false)
     })
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session)
     })
-
     return () => subscription.unsubscribe()
   }, [])
 
@@ -43,16 +40,15 @@ export default function App() {
           path="/login"
           element={session ? <Navigate to="/dashboard" replace /> : <Login />}
         />
-
         <Route element={<ProtectedRoute session={session} />}>
           <Route element={<AppLayout session={session} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/subjects" element={<Subjects />} />
             <Route path="/exams" element={<Exams />} />
             <Route path="/students" element={<Students />} />
+            <Route path="/scan" element={<Scan />} />
           </Route>
         </Route>
-
         <Route
           path="*"
           element={<Navigate to={session ? '/dashboard' : '/login'} replace />}
