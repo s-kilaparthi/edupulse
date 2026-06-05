@@ -160,7 +160,7 @@ def _save_debug_images(warped_color: np.ndarray, warped_gray: np.ndarray) -> Non
     cv2.imwrite(WARPED_DEBUG_PATH, warped_color)
 
     debug_img = warped_color.copy()
-    for q_num in range(1, 31):
+    for q_num in range(1, 51):
         for label, roi in BUBBLE_COORDS[q_num].items():
             cx, cy = roi_center(roi)
             radius = max(8, (roi[2] - roi[0]) // 2)
@@ -197,7 +197,7 @@ def _decode_answers(gray: np.ndarray) -> tuple[dict[str, str], list[str], float]
     ambiguous: list[str] = []
     confidences: list[float] = []
 
-    for q_num in range(1, 31):
+    for q_num in range(1, 51):
         key = str(q_num)
         bubbles = BUBBLE_COORDS[q_num]
         counts = {label: _dark_pixel_count(gray, roi) for label, roi in bubbles.items()}
