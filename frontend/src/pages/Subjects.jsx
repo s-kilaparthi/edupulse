@@ -105,47 +105,16 @@ export default function Subjects() {
     setSelectedTopics([])
 
     try {
-      const base64 = await new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = () => resolve(reader.result.split(',')[1])
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-      })
+      const form = new FormData()
+      form.append('file', file)
 
       const response = await fetch(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + import.meta.env.VITE_GEMINI_API_KEY,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [
-                {
-                  inline_data: {
-                    mime_type: 'application/pdf',
-                    data: base64,
-                  },
-                },
-                {
-                  text: `You are an educational content analyzer. 
-                Extract all the main topics and subtopics from this textbook chapter or study material.
-                Return ONLY a JSON array of topic names, nothing else.
-                Each topic should be concise (2-5 words).
-                Maximum 20 topics.
-                Example: ["Kinematics", "Laws of Motion", "Work and Energy", "Thermal Properties"]
-                Return only the JSON array, no explanation.`,
-                },
-              ],
-            }],
-          }),
-        }
+        `${import.meta.env.VITE_API_URL}/extract-topics`,
+        { method: 'POST', body: form }
       )
 
       const data = await response.json()
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]'
-      const clean = text.replace(/```json|```/g, '').trim()
-      const topics = JSON.parse(clean)
-
+      const topics = data.topics ?? []
       setSuggestedTopics(topics)
       setSelectedTopics(topics)
     } catch (err) {
