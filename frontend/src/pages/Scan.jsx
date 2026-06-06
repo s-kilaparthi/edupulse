@@ -58,7 +58,11 @@ export default function Scan() {
   const [answers, setAnswers] = useState({})
   const [ambiguousSet, setAmbiguousSet] = useState(new Set())
   const [sessionRecords, setSessionRecords] = useState([])
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraStream, setCameraStream] = useState(null)
   const fileRef = useRef(null)
+  const videoRef = useRef(null)
+  const canvasRef = useRef(null)
 
   const selectedExam = useMemo(
     () => exams.find((e) => e.id === examId),
@@ -110,6 +114,35 @@ export default function Scan() {
     }
   }, [rollNumber, students])
 
+  function closeCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach((track) => track.stop())
+    }
+    setCameraStream(null)
+    setCameraOpen(false)
+  }
+
+  async function openCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
+          focusMode: 'continuous',
+          advanced: [{ focusMode: 'continuous' }],
+        },
+      })
+      setCameraStream(stream)
+      setCameraOpen(true)
+      setTimeout(() => {
+        if (videoRef.current) videoRef.current.srcObject = stream
+      }, 100)
+    } catch (err) {
+      setScanError('Camera access denied. Please use file upload instead.')
+    }
+  }
+
   const resetStudentFields = useCallback(() => {
     setRollNumber('')
     setStudentId('')
@@ -120,7 +153,8 @@ export default function Scan() {
     setScanError('')
     setSavedFlash(false)
     if (fileRef.current) fileRef.current.value = ''
-  }, [])
+    closeCamera()
+  }, [cameraStream])
 
   const handleStudentSelect = (id) => {
     setStudentId(id)
@@ -131,8 +165,7 @@ export default function Scan() {
     }
   }
 
-  const handleFile = async (e) => {
-    const file = e.target.files?.[0]
+  async function processFile(file) {
     if (!file || !selectedExam || !studentId) {
       setScanError('Select exam and student before uploading.')
       return
@@ -168,6 +201,25 @@ export default function Scan() {
     }
   }
 
+  async function capturePhoto() {
+    if (!videoRef.current || !canvasRef.current) return
+    const video = videoRef.current
+    const canvas = canvasRef.current
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    canvas.getContext('2d').drawImage(video, 0, 0)
+
+    canvas.toBlob(async (blob) => {
+      closeCamera()
+      const file = new File([blob], 'omr_capture.jpg', { type: 'image/jpeg' })
+      await processFile(file)
+    }, 'image/jpeg', 0.95)
+  }
+
+  const handleFile = async (e) => {
+    await processFile(e.target.files?.[0])
+  }
+
   const setManualAnswer = (qNum, value) => {
     setAnswers((prev) => ({ ...prev, [qNum]: value }))
     setAmbiguousSet((prev) => {
@@ -185,12 +237,12 @@ export default function Scan() {
     try {
       const { data: questions, error: qErr } = await supabase
         .from('questions')
-        .select('id, question_number, correct_answer, topic_id')
+        .select('id, question_number, correct_answer, topic_id, topics(subject_id)')
         .eq('exam_id', selectedExam.id)
         .order('question_number')
 
       if (qErr) throw qErr
-
+      console.log('questions fetched:', JSON.stringify(questions))
       const omrRows = (questions ?? []).map((q) => {
         const given = answers[q.question_number] ?? ''
         const correct = String(q.correct_answer ?? '').toUpperCase()
@@ -203,13 +255,16 @@ export default function Scan() {
         }
       })
 
-      const { error: insertErr } = await supabase.from('omr_results').insert(omrRows)
+      const { error: insertErr } = await supabase
+        .from('omr_results')
+        .upsert(omrRows, { onConflict: 'exam_id,student_id,question_id' })
       if (insertErr) throw insertErr
 
       const topicMap = {}
       for (const q of questions ?? []) {
         const tid = q.topic_id
-        if (!topicMap[tid]) topicMap[tid] = { score: 0, total: 0 }
+        const sid = q.topics?.subject_id ?? null
+        if (!topicMap[tid]) topicMap[tid] = { score: 0, total: 0,  subject_id: sid }
         topicMap[tid].total += 1
         const given = answers[q.question_number] ?? ''
         if (given === String(q.correct_answer ?? '').toUpperCase()) {
@@ -217,16 +272,19 @@ export default function Scan() {
         }
       }
 
-      const topicRows = Object.entries(topicMap).map(([topic_id, { score, total }]) => ({
+      const topicRows = Object.entries(topicMap).map(([topic_id, { score, total, subject_id }]) => ({
         exam_id: selectedExam.id,
         student_id: studentId,
         topic_id,
+        subject_id: subject_id ?? null,
         score,
         total,
         percentage: total > 0 ? Math.round((score / total) * 100) : 0,
       }))
 
-      const { error: topicErr } = await supabase.from('topic_scores').insert(topicRows)
+      const { error: topicErr } = await supabase
+        .from('topic_scores')
+        .upsert(topicRows, { onConflict: 'exam_id,student_id,topic_id' })
       if (topicErr) throw topicErr
 
       const correctCount = omrRows.filter((r) => r.is_correct).length
@@ -363,14 +421,54 @@ export default function Scan() {
             className="hidden"
             onChange={handleFile}
           />
-          <button
-            type="button"
-            disabled={!studentId || scanning}
-            onClick={() => fileRef.current?.click()}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
-          >
-            Upload OMR Photo
-          </button>
+          <div className="flex gap-3">
+            <button
+              type="button"
+              disabled={!studentId || scanning}
+              onClick={openCamera}
+              className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+            >
+              📷 Use Camera
+            </button>
+            <button
+              type="button"
+              disabled={!studentId || scanning}
+              onClick={() => fileRef.current?.click()}
+              className="flex-1 border border-gray-300 py-2.5 rounded-lg font-medium disabled:opacity-40"
+            >
+              Upload Photo
+            </button>
+          </div>
+
+          {cameraOpen && (
+            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: 'black', flexShrink: 0 }}>
+                <button onClick={closeCamera} style={{ color: 'white', fontSize: '14px', backgroundColor: '#374151', padding: '6px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
+                  Cancel
+                </button>
+                <p style={{ color: 'white', fontSize: '14px', margin: 0 }}>Point at OMR sheet</p>
+                <div style={{ width: '64px' }} />
+              </div>
+
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                style={{ width: '100%', height: 0, flexGrow: 1, objectFit: 'cover', display: 'block' }}
+              />
+
+              <div style={{ backgroundColor: 'black', padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
+                <button
+                  onClick={capturePhoto}
+                  style={{ width: '72px', height: '72px', borderRadius: '50%', backgroundColor: 'white', border: '4px solid #9ca3af', cursor: 'pointer', flexShrink: 0 }}
+                />
+                <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0 }}>Tap to capture</p>
+              </div>
+
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+            </div>
+          )}
 
           {scanning && <Spinner />}
           {savedFlash && (

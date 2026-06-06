@@ -9,6 +9,9 @@ import Subjects from './pages/Subjects'
 import Exams from './pages/Exams'
 import Students from './pages/Students'
 import Scan from './pages/Scan'
+import Results from './pages/Results'
+import Admin from './pages/Admin'
+import Announcements from './pages/Announcements'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -47,6 +50,9 @@ export default function App() {
             <Route path="/exams" element={<Exams />} />
             <Route path="/students" element={<Students />} />
             <Route path="/scan" element={<Scan />} />
+            <Route path="/results" element={<Results />} />
+            <Route path="/announcements" element={<Announcements />} />
+            <Route path="/admin" element={<Admin />} />
           </Route>
         </Route>
         <Route

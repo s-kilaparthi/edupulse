@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -8,11 +9,30 @@ const NAV_ITEMS = [
   { label: 'Scan', to: '/scan' },
   { label: 'Students', to: '/students' },
   { label: 'Results', to: '/results' },
+  { label: 'Announcements', to: '/announcements' },
 ]
 
 export default function AppLayout({ session }) {
   const { pathname } = useLocation()
   const email = session.user.email
+  const [userRole, setUserRole] = useState('student')
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    supabase
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => {
+        if (data?.role) setUserRole(data.role)
+      })
+  }, [session])
+
+  const navItems = [
+    ...NAV_ITEMS,
+    ...(userRole === 'admin' ? [{ label: 'Admin', to: '/admin' }] : []),
+  ]
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -42,7 +62,7 @@ export default function AppLayout({ session }) {
       <div className="flex flex-1 min-h-0">
         <aside className="w-52 bg-white border-r border-gray-200 shrink-0 py-4">
           <nav className="flex flex-col gap-0.5 px-3">
-            {NAV_ITEMS.map(({ label, to }) => (
+            {navItems.map(({ label, to }) => (
               <Link
                 key={label}
                 to={to}
