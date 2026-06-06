@@ -416,6 +416,10 @@ export default function Scan() {
             📷 Take Photo / Upload OMR
           </button>
 
+          <p className="text-xs text-gray-500 text-center mt-2">
+            💡 Tip: Place the OMR sheet on a dark surface for best scanning accuracy
+          </p>
+
           {scanning && <Spinner />}
           {savedFlash && (
             <p className="text-center text-green-700 font-semibold">Saved! ✓</p>
