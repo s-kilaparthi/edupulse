@@ -58,11 +58,7 @@ export default function Scan() {
   const [answers, setAnswers] = useState({})
   const [ambiguousSet, setAmbiguousSet] = useState(new Set())
   const [sessionRecords, setSessionRecords] = useState([])
-  const [cameraOpen, setCameraOpen] = useState(false)
-  const [cameraStream, setCameraStream] = useState(null)
   const fileRef = useRef(null)
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
 
   const selectedExam = useMemo(
     () => exams.find((e) => e.id === examId),
@@ -114,35 +110,6 @@ export default function Scan() {
     }
   }, [rollNumber, students])
 
-  function closeCamera() {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach((track) => track.stop())
-    }
-    setCameraStream(null)
-    setCameraOpen(false)
-  }
-
-  async function openCamera() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 3840 },
-          height: { ideal: 2160 },
-          focusMode: 'continuous',
-          advanced: [{ focusMode: 'continuous' }],
-        },
-      })
-      setCameraStream(stream)
-      setCameraOpen(true)
-      setTimeout(() => {
-        if (videoRef.current) videoRef.current.srcObject = stream
-      }, 100)
-    } catch (err) {
-      setScanError('Camera access denied. Please use file upload instead.')
-    }
-  }
-
   const resetStudentFields = useCallback(() => {
     setRollNumber('')
     setStudentId('')
@@ -153,8 +120,7 @@ export default function Scan() {
     setScanError('')
     setSavedFlash(false)
     if (fileRef.current) fileRef.current.value = ''
-    closeCamera()
-  }, [cameraStream])
+  }, [])
 
   const handleStudentSelect = (id) => {
     setStudentId(id)
@@ -199,21 +165,6 @@ export default function Scan() {
     } finally {
       setScanning(false)
     }
-  }
-
-  async function capturePhoto() {
-    if (!videoRef.current || !canvasRef.current) return
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-    canvas.getContext('2d').drawImage(video, 0, 0)
-
-    canvas.toBlob(async (blob) => {
-      closeCamera()
-      const file = new File([blob], 'omr_capture.jpg', { type: 'image/jpeg' })
-      await processFile(file)
-    }, 'image/jpeg', 0.95)
   }
 
   const handleFile = async (e) => {
@@ -421,54 +372,14 @@ export default function Scan() {
             className="hidden"
             onChange={handleFile}
           />
-          <div className="flex gap-3">
-            <button
-              type="button"
-              disabled={!studentId || scanning}
-              onClick={openCamera}
-              className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
-            >
-              📷 Use Camera
-            </button>
-            <button
-              type="button"
-              disabled={!studentId || scanning}
-              onClick={() => fileRef.current?.click()}
-              className="flex-1 border border-gray-300 py-2.5 rounded-lg font-medium disabled:opacity-40"
-            >
-              Upload Photo
-            </button>
-          </div>
-
-          {cameraOpen && (
-            <div style={{ position: 'fixed', inset: 0, backgroundColor: 'black', zIndex: 9999, display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', backgroundColor: 'black', flexShrink: 0 }}>
-                <button onClick={closeCamera} style={{ color: 'white', fontSize: '14px', backgroundColor: '#374151', padding: '6px 12px', borderRadius: '8px', border: 'none', cursor: 'pointer' }}>
-                  Cancel
-                </button>
-                <p style={{ color: 'white', fontSize: '14px', margin: 0 }}>Point at OMR sheet</p>
-                <div style={{ width: '64px' }} />
-              </div>
-
-              <video
-                ref={videoRef}
-                autoPlay
-                playsInline
-                muted
-                style={{ width: '100%', height: 0, flexGrow: 1, objectFit: 'cover', display: 'block' }}
-              />
-
-              <div style={{ backgroundColor: 'black', padding: '32px 16px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', flexShrink: 0 }}>
-                <button
-                  onClick={capturePhoto}
-                  style={{ width: '72px', height: '72px', borderRadius: '50%', backgroundColor: 'white', border: '4px solid #9ca3af', cursor: 'pointer', flexShrink: 0 }}
-                />
-                <p style={{ color: '#9ca3af', fontSize: '12px', margin: 0 }}>Tap to capture</p>
-              </div>
-
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
-            </div>
-          )}
+          <button
+            type="button"
+            disabled={!studentId || scanning}
+            onClick={() => fileRef.current?.click()}
+            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+          >
+            📷 Take Photo / Upload OMR
+          </button>
 
           {scanning && <Spinner />}
           {savedFlash && (
