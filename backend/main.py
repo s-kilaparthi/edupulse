@@ -56,31 +56,44 @@ async def extract_topics(file: UploadFile = File(...)):
         if not gemini_key:
             raise HTTPException(status_code=500, detail="Gemini API key not configured")
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}',
-                json={
-                    "contents": [{
-                        "parts": [
-                            {
-                                "inline_data": {
-                                    "mime_type": "application/pdf",
-                                    "data": pdf_base64
-                                }
-                            },
-                            {
-                                "text": "You are an educational content analyzer. Extract all the main topics and subtopics from this textbook chapter. Return ONLY a JSON array of topic names, nothing else. Each topic should be concise (2-5 words). Maximum 20 topics. Example: [\"Kinematics\", \"Laws of Motion\"] Return only the JSON array, no explanation."
-                            }
-                        ]
-                    }]
-                }
-            )
+        models_to_try = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash-lite',
+            'gemini-2.0-flash-001',
+        ]
 
-        data = response.json()
-        if 'error' in data:
-            raise ValueError(f"Gemini API error: {data['error'].get('message', str(data['error']))}")
-        if 'candidates' not in data or not data['candidates']:
-            raise ValueError(f"Gemini returned no candidates. Response: {str(data)[:200]}")
+        request_body = {
+            "contents": [{
+                "parts": [
+                    {
+                        "inline_data": {
+                            "mime_type": "application/pdf",
+                            "data": pdf_base64
+                        }
+                    },
+                    {
+                        "text": "You are an educational content analyzer. Extract all the main topics and subtopics from this textbook chapter. Return ONLY a JSON array of topic names, nothing else. Each topic should be concise (2-5 words). Maximum 20 topics. Example: [\"Kinematics\", \"Laws of Motion\"] Return only the JSON array, no explanation."
+                    }
+                ]
+            }]
+        }
+
+        data = None
+        last_error = None
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            for model in models_to_try:
+                response = await client.post(
+                    f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}',
+                    json=request_body
+                )
+                data = response.json()
+                if 'candidates' in data:
+                    break
+                last_error = data.get('error', {}).get('message', 'Unknown error')
+
+        if not data or 'candidates' not in data:
+            raise ValueError(f"All Gemini models unavailable: {last_error}")
+
         text = data['candidates'][0]['content']['parts'][0]['text']
         clean = text.replace('```json', '').replace('```', '').strip()
 
