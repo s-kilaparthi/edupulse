@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../supabase'
 
 export default function Subjects() {
@@ -10,6 +10,13 @@ export default function Subjects() {
   const [expandedSubjectId, setExpandedSubjectId] = useState(null)
   const [topicInput, setTopicInput] = useState('')
   const [topicSaving, setTopicSaving] = useState(false)
+  const [extractingId, setExtractingId] = useState(null)
+  const [extractedSubjectId, setExtractedSubjectId] = useState(null)
+  const [suggestedTopics, setSuggestedTopics] = useState([])
+  const [selectedTopics, setSelectedTopics] = useState([])
+  const [extractError, setExtractError] = useState(null)
+  const [savingTopics, setSavingTopics] = useState(false)
+  const pdfRef = useRef(null)
 
   async function fetchSubjects() {
     setError(null)
@@ -87,6 +94,99 @@ export default function Subjects() {
     setTopicInput('')
   }
 
+  async function handlePdfUpload(e, subjectId) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setExtractingId(subjectId)
+    setExtractedSubjectId(subjectId)
+    setExtractError(null)
+    setSuggestedTopics([])
+    setSelectedTopics([])
+
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result.split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + import.meta.env.VITE_GEMINI_API_KEY,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                {
+                  inline_data: {
+                    mime_type: 'application/pdf',
+                    data: base64,
+                  },
+                },
+                {
+                  text: `You are an educational content analyzer. 
+                Extract all the main topics and subtopics from this textbook chapter or study material.
+                Return ONLY a JSON array of topic names, nothing else.
+                Each topic should be concise (2-5 words).
+                Maximum 20 topics.
+                Example: ["Kinematics", "Laws of Motion", "Work and Energy", "Thermal Properties"]
+                Return only the JSON array, no explanation.`,
+                },
+              ],
+            }],
+          }),
+        }
+      )
+
+      const data = await response.json()
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text ?? '[]'
+      const clean = text.replace(/```json|```/g, '').trim()
+      const topics = JSON.parse(clean)
+
+      setSuggestedTopics(topics)
+      setSelectedTopics(topics)
+    } catch (err) {
+      setExtractError('Failed to extract topics. Try a smaller PDF.')
+    } finally {
+      setExtractingId(null)
+      if (pdfRef.current) pdfRef.current.value = ''
+    }
+  }
+
+  async function handleSaveSuggestedTopics(subjectId) {
+    if (selectedTopics.length === 0) return
+    setSavingTopics(true)
+
+    const rows = selectedTopics.map((name, i) => ({
+      name,
+      subject_id: subjectId,
+      order_index: i,
+    }))
+
+    const { error } = await supabase.from('topics').insert(rows)
+
+    if (error) {
+      setExtractError(error.message)
+    } else {
+      setSuggestedTopics([])
+      setSelectedTopics([])
+      setExtractedSubjectId(null)
+      setExpandedSubjectId(subjectId)
+      setLoading(true)
+      await fetchSubjects()
+    }
+    setSavingTopics(false)
+  }
+
+  function toggleTopicSelection(topic) {
+    setSelectedTopics((prev) =>
+      prev.includes(topic) ? prev.filter((t) => t !== topic) : [...prev, topic]
+    )
+  }
+
   async function handleAddTopic(subjectId) {
     const name = topicInput.trim()
     if (!name) return
@@ -158,13 +258,26 @@ export default function Subjects() {
             >
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <span className="font-medium text-gray-900">{subject.name}</span>
-                <button
-                  type="button"
-                  onClick={() => toggleTopics(subject.id)}
-                  className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
-                >
-                  {expandedSubjectId === subject.id ? 'Hide Topics' : 'Add Topics'}
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      pdfRef.current.dataset.subjectId = subject.id
+                      pdfRef.current.click()
+                    }}
+                    disabled={extractingId === subject.id}
+                    className="text-sm font-medium text-purple-600 hover:text-purple-700 shrink-0 disabled:opacity-40"
+                  >
+                    {extractingId === subject.id ? 'Extracting…' : '📄 Extract from PDF'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleTopics(subject.id)}
+                    className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
+                  >
+                    {expandedSubjectId === subject.id ? 'Hide Topics' : 'Add Topics'}
+                  </button>
+                </div>
               </div>
 
               {subject.topics?.length > 0 && (
@@ -178,6 +291,53 @@ export default function Subjects() {
                     </li>
                   ))}
                 </ul>
+              )}
+
+              {suggestedTopics.length > 0 && extractedSubjectId === subject.id && (
+                <div className="mt-4 pt-4 border-t border-purple-100 bg-purple-50 rounded-lg p-4">
+                  <p className="text-sm font-semibold text-purple-900 mb-3">
+                    Gemini extracted {suggestedTopics.length} topics — select which to add:
+                  </p>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {suggestedTopics.map((topic) => (
+                      <button
+                        key={topic}
+                        type="button"
+                        onClick={() => toggleTopicSelection(topic)}
+                        className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                          selectedTopics.includes(topic)
+                            ? 'bg-purple-600 text-white border-purple-600'
+                            : 'bg-white text-gray-600 border-gray-300'
+                        }`}
+                      >
+                        {topic}
+                      </button>
+                    ))}
+                  </div>
+                  {extractError && <p className="text-xs text-red-600 mb-2">{extractError}</p>}
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleSaveSuggestedTopics(subject.id)}
+                      disabled={savingTopics || selectedTopics.length === 0}
+                      className="text-sm font-medium bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                    >
+                      {savingTopics ? 'Saving…' : `Add ${selectedTopics.length} topics`}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuggestedTopics([])
+                        setSelectedTopics([])
+                        setExtractedSubjectId(null)
+                        setExtractError(null)
+                      }}
+                      className="text-sm font-medium text-gray-500 px-4 py-2 rounded-lg hover:text-gray-700"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
 
               {expandedSubjectId === subject.id && (
@@ -209,6 +369,17 @@ export default function Subjects() {
           ))}
         </ul>
       )}
+
+      <input
+        ref={pdfRef}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        onChange={(e) => {
+          const subjectId = pdfRef.current?.dataset?.subjectId
+          if (subjectId) handlePdfUpload(e, subjectId)
+        }}
+      />
     </>
   )
 }
