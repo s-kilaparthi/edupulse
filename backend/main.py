@@ -91,3 +91,15 @@ async def extract_topics(file: UploadFile = File(...)):
         import traceback
         print("Extract topics error:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/gemini-models")
+async def list_gemini_models():
+    import httpx
+    import os
+    gemini_key = os.environ.get('GEMINI_API_KEY', '')
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(
+            f'https://generativelanguage.googleapis.com/v1beta/models?key={gemini_key}'
+        )
+    return response.json()
