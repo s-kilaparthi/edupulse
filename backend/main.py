@@ -84,4 +84,6 @@ async def extract_topics(file: UploadFile = File(...)):
         return {"topics": topics}
 
     except Exception as e:
+        import traceback
+        print("Extract topics error:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
