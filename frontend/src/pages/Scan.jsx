@@ -131,6 +131,39 @@ export default function Scan() {
     }
   }
 
+  function resizeImage(file, maxSize) {
+    return new Promise((resolve) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const { width, height } = img
+        const longest = Math.max(width, height)
+
+        if (longest <= maxSize) {
+          resolve(file)
+          return
+        }
+
+        const scale = maxSize / longest
+        const newWidth = Math.round(width * scale)
+        const newHeight = Math.round(height * scale)
+
+        const canvas = document.createElement('canvas')
+        canvas.width = newWidth
+        canvas.height = newHeight
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, newWidth, newHeight)
+
+        canvas.toBlob((blob) => {
+          const resized = new File([blob], file.name, { type: 'image/jpeg' })
+          resolve(resized)
+        }, 'image/jpeg', 0.92)
+      }
+      img.src = url
+    })
+  }
+
   async function processFile(file) {
     if (!file || !selectedExam || !studentId) {
       setScanError('Select exam and student before uploading.')
@@ -139,8 +172,10 @@ export default function Scan() {
     setScanError('')
     setScanning(true)
     try {
+      const resizedFile = await resizeImage(file, 1600)
+
       const form = new FormData()
-      form.append('file', file)
+      form.append('file', resizedFile)
 
       const res = await fetch(`${API_URL}/scan-omr`, { method: 'POST', body: form })
       if (!res.ok) {
