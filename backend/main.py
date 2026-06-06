@@ -58,7 +58,7 @@ async def extract_topics(file: UploadFile = File(...)):
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
-                f'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={gemini_key}',
+                f'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={gemini_key}',
                 json={
                     "contents": [{
                         "parts": [
