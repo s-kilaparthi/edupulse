@@ -77,6 +77,10 @@ async def extract_topics(file: UploadFile = File(...)):
             )
 
         data = response.json()
+        if 'error' in data:
+            raise ValueError(f"Gemini API error: {data['error'].get('message', str(data['error']))}")
+        if 'candidates' not in data or not data['candidates']:
+            raise ValueError(f"Gemini returned no candidates. Response: {str(data)[:200]}")
         text = data['candidates'][0]['content']['parts'][0]['text']
         clean = text.replace('```json', '').replace('```', '').strip()
 
