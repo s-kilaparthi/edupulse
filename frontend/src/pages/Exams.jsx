@@ -36,6 +36,7 @@ export default function Exams() {
   const [scope, setScope] = useState('class')
   const [selectedClassIds, setSelectedClassIds] = useState([])
   const [classes, setClasses] = useState([])
+  const [teacherClassIds, setTeacherClassIds] = useState([])
   const [userRole, setUserRole] = useState(null)
   const [instituteId, setInstituteId] = useState(null)
 
@@ -108,6 +109,17 @@ export default function Exams() {
         if (classData) setClasses(classData)
       }
 
+      if (role === 'teacher') {
+        const { data: tcData } = await supabase
+          .from('class_teachers')
+          .select('class_id, classes(id, name)')
+          .eq('teacher_id', user.id)
+
+        setTeacherClassIds(tcData?.map((tc) => tc.class_id) ?? [])
+      } else {
+        setTeacherClassIds([])
+      }
+
       await fetchExams()
     } catch (err) {
       setError(err.message)
@@ -147,7 +159,9 @@ export default function Exams() {
       setError('Please fill in all exam fields.')
       return
     }
-    if ((scope === 'class' || scope === 'multiple') && selectedClassIds.length === 0) {
+    const examScope = userRole === 'teacher' ? 'class' : scope
+
+    if ((examScope === 'class' || examScope === 'multiple') && selectedClassIds.length === 0) {
       setError('Please select at least one class.')
       return
     }
@@ -172,7 +186,7 @@ export default function Exams() {
       const user = await getAuthUser()
       const { data: newExam, error: examErr } = await supabase
         .from('exams')
-        .insert({ name, exam_date: examDate, total_questions: total, created_by: user.id, scope })
+        .insert({ name, exam_date: examDate, total_questions: total, created_by: user.id, scope: examScope })
         .select('id')
         .single()
       if (examErr) throw new Error(examErr.message)
@@ -186,7 +200,7 @@ export default function Exams() {
       const { error: esError } = await supabase.from('exam_subjects').insert(examSubjectRows)
       if (esError) throw new Error(esError.message)
 
-      if (scope !== 'institute') {
+      if (examScope !== 'institute') {
         const examClassRows = selectedClassIds.map((classId) => ({
           exam_id: newExam.id,
           class_id: classId,
@@ -375,6 +389,10 @@ async function openQuestionsPanel(exam) {
   const allNums = activeExam ? getAllQuestionNums() : []
   const unassignedCount = activeExam ? getUnassignedCount() : 0
   const missingAnswerCount = activeExam ? getMissingAnswerCount() : 0
+  const availableClasses =
+    userRole === 'admin'
+      ? classes
+      : classes.filter((c) => teacherClassIds.includes(c.id))
 
   return (
     <>
@@ -398,41 +416,45 @@ async function openQuestionsPanel(exam) {
             />
           </div>
 
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Exam Scope
-            </label>
-            <div className="flex gap-3">
-              {['class', 'multiple', 'institute'].map((s) => (
-                <label
-                  key={s}
-                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
-                    scope === s
-                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-300 text-gray-700'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="scope"
-                    value={s}
-                    checked={scope === s}
-                    onChange={() => { setScope(s); setSelectedClassIds([]) }}
-                    className="hidden"
-                  />
-                  {s === 'class' ? 'Single Class' : s === 'multiple' ? 'Multiple Classes' : 'Whole Institute'}
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {(scope === 'class' || scope === 'multiple') && (
+          {userRole === 'admin' && (
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Class{scope === 'multiple' ? 'es' : ''}
+                Exam Scope
+              </label>
+              <div className="flex gap-3">
+                {['class', 'multiple', 'institute'].map((s) => (
+                  <label
+                    key={s}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                      scope === s
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                        : 'border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="scope"
+                      value={s}
+                      checked={scope === s}
+                      onChange={() => { setScope(s); setSelectedClassIds([]) }}
+                      className="hidden"
+                    />
+                    {s === 'class' ? 'Single Class' : s === 'multiple' ? 'Multiple Classes' : 'Whole Institute'}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(userRole === 'teacher' || scope === 'class' || scope === 'multiple') && (
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {userRole === 'teacher'
+                  ? 'Select Class'
+                  : `Select Class${scope === 'multiple' ? 'es' : ''}`}
               </label>
               <div className="flex flex-wrap gap-2">
-                {classes.map((c) => (
+                {availableClasses.map((c) => (
                   <label
                     key={c.id}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
@@ -447,7 +469,7 @@ async function openQuestionsPanel(exam) {
                       onChange={() => setSelectedClassIds((prev) =>
                         prev.includes(c.id)
                           ? prev.filter((id) => id !== c.id)
-                          : scope === 'class'
+                          : userRole === 'teacher' || scope === 'class'
                             ? [c.id]
                             : [...prev, c.id]
                       )}
@@ -457,8 +479,12 @@ async function openQuestionsPanel(exam) {
                   </label>
                 ))}
               </div>
-              {classes.length === 0 && (
-                <p className="text-xs text-gray-400">No classes found. Create classes first.</p>
+              {availableClasses.length === 0 && (
+                <p className="text-xs text-gray-400">
+                  {userRole === 'teacher'
+                    ? 'No assigned classes found.'
+                    : 'No classes found. Create classes first.'}
+                </p>
               )}
             </div>
           )}
