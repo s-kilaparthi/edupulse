@@ -47,6 +47,9 @@ export default function Scan() {
   const [exams, setExams] = useState([])
   const [examId, setExamId] = useState('')
   const [students, setStudents] = useState([])
+  const [classes, setClasses] = useState([])
+  const [selectedClassId, setSelectedClassId] = useState('')
+  const [filteredStudents, setFilteredStudents] = useState([])
   const [rollNumber, setRollNumber] = useState('')
   const [studentId, setStudentId] = useState('')
   const [studentName, setStudentName] = useState('')
@@ -67,25 +70,51 @@ export default function Scan() {
 
   const questionCount = selectedExam?.total_questions ?? DEFAULT_QUESTION_COUNT
 
+  const availableClasses = useMemo(() => {
+    if (!selectedExam) return classes
+    if (selectedExam.scope === 'institute') return classes
+    const examClassIds = (selectedExam.exam_classes ?? []).map((ec) => ec.class_id)
+    return classes.filter((c) => examClassIds.includes(c.id))
+  }, [selectedExam, classes])
+
   const selectedStudent = useMemo(
     () => students.find((s) => s.id === studentId),
     [students, studentId]
   )
 
   useEffect(() => {
-    supabase
-      .from('exams')
-      .select('id, name, total_questions')
-      .order('name')
-      .then(({ data, error }) => {
-        if (!error && data) setExams(data)
-      })
+    async function loadExamsAndClasses() {
+      const { data, error } = await supabase
+        .from('exams')
+        .select('id, name, total_questions, scope, exam_classes(class_id, classes(name))')
+        .order('name')
+      if (!error && data) setExams(data)
+
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('institute_id')
+        .eq('id', user.id)
+        .single()
+
+      if (userData?.institute_id) {
+        const { data: classData } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('institute_id', userData.institute_id)
+          .order('name')
+        if (classData) setClasses(classData)
+      }
+    }
+    loadExamsAndClasses()
   }, [])
 
   useEffect(() => {
     supabase
       .from('users')
-      .select('id, name, roll_number')
+      .select('id, name, roll_number, class_id')
       .eq('role', 'student')
       .order('roll_number')
       .then(({ data, error }) => {
@@ -94,11 +123,24 @@ export default function Scan() {
   }, [])
 
   useEffect(() => {
+    setSelectedClassId('')
+    setFilteredStudents([])
+  }, [examId])
+
+  useEffect(() => {
+    if (!selectedClassId) {
+      setFilteredStudents(students)
+      return
+    }
+    setFilteredStudents(students.filter((s) => s.class_id === selectedClassId))
+  }, [selectedClassId, students])
+
+  useEffect(() => {
     if (!rollNumber.trim()) {
       setStudentName('')
       return
     }
-    const match = students.find(
+    const match = filteredStudents.find(
       (s) => String(s.roll_number).toLowerCase() === rollNumber.trim().toLowerCase()
     )
     if (match) {
@@ -108,7 +150,7 @@ export default function Scan() {
       setStudentId('')
       setStudentName('')
     }
-  }, [rollNumber, students])
+  }, [rollNumber, filteredStudents])
 
   const resetStudentFields = useCallback(() => {
     setRollNumber('')
@@ -124,7 +166,7 @@ export default function Scan() {
 
   const handleStudentSelect = (id) => {
     setStudentId(id)
-    const s = students.find((x) => x.id === id)
+    const s = filteredStudents.find((x) => x.id === id)
     if (s) {
       setRollNumber(String(s.roll_number ?? ''))
       setStudentName(s.name ?? '')
@@ -371,6 +413,25 @@ export default function Scan() {
           </p>
 
           <div>
+            <label className="block text-sm text-gray-600 mb-1">Select Class</label>
+            <select
+              className="w-full border border-gray-300 rounded-lg px-3 py-2"
+              value={selectedClassId}
+              onChange={(e) => {
+                setSelectedClassId(e.target.value)
+                setRollNumber('')
+                setStudentId('')
+                setStudentName('')
+              }}
+            >
+              <option value="">Choose class…</option>
+              {availableClasses.map((c) => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
             <label className="block text-sm text-gray-600 mb-1">Enter Roll Number</label>
             <input
               className="w-full border border-gray-300 rounded-lg px-3 py-2"
@@ -391,7 +452,7 @@ export default function Scan() {
               onChange={(e) => handleStudentSelect(e.target.value)}
             >
               <option value="">Choose student…</option>
-              {students.map((s) => (
+              {filteredStudents.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.roll_number} — {s.name}
                 </option>

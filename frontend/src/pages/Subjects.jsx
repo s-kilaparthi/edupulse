@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 export default function Subjects() {
+  const { session } = useOutletContext()
+  const [userRole, setUserRole] = useState('teacher')
+  const [instituteId, setInstituteId] = useState(null)
+
   const [subjects, setSubjects] = useState([])
   const [subjectName, setSubjectName] = useState('')
   const [loading, setLoading] = useState(true)
@@ -18,27 +23,37 @@ export default function Subjects() {
   const [savingTopics, setSavingTopics] = useState(false)
   const pdfRef = useRef(null)
 
+  useEffect(() => {
+    if (!session?.user?.id) return
+    supabase
+      .from('users')
+      .select('role, institute_id')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setUserRole(data.role)
+          setInstituteId(data.institute_id)
+        }
+      })
+  }, [session])
+
   async function fetchSubjects() {
     setError(null)
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError || !user) {
-      setError(userError?.message ?? 'Not authenticated')
-      setSubjects([])
-      setLoading(false)
-      return
-    }
-
-    const { data, error: fetchError } = await supabase
+    let query = supabase
       .from('subjects')
       .select('id, name, topics(id, name)')
-      .eq('teacher_id', user.id)
       .order('name')
 
+    if (userRole === 'admin') {
+      query = query.eq('institute_id', instituteId)
+    } else {
+      query = query.eq('teacher_id', user.id)
+    }
+
+    const { data, error: fetchError } = await query
     if (fetchError) {
       setError(fetchError.message)
       setSubjects([])
@@ -49,8 +64,10 @@ export default function Subjects() {
   }
 
   useEffect(() => {
+    if (!userRole) return
+    if (userRole === 'admin' && !instituteId) return
     fetchSubjects()
-  }, [])
+  }, [userRole, instituteId])
 
   async function handleCreateSubject(e) {
     e.preventDefault()

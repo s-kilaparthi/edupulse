@@ -33,6 +33,11 @@ export default function Exams() {
   const [examDate, setExamDate] = useState('')
   const [totalQuestions, setTotalQuestions] = useState('')
   const [selectedSubjects, setSelectedSubjects] = useState([])
+  const [scope, setScope] = useState('class')
+  const [selectedClassIds, setSelectedClassIds] = useState([])
+  const [classes, setClasses] = useState([])
+  const [userRole, setUserRole] = useState(null)
+  const [instituteId, setInstituteId] = useState(null)
 
   // Add questions panel
   const [activeExam, setActiveExam] = useState(null)
@@ -53,11 +58,18 @@ export default function Exams() {
 
   async function fetchSubjects() {
     const user = await getAuthUser()
-    const { data, error: fetchError } = await supabase
+    let query = supabase
       .from('subjects')
       .select('id, name')
-      .eq('teacher_id', user.id)
       .order('name')
+
+    if (userRole === 'admin') {
+      query = query.eq('institute_id', instituteId)
+    } else {
+      query = query.eq('teacher_id', user.id)
+    }
+
+    const { data, error: fetchError } = await query
     if (fetchError) throw new Error(fetchError.message)
     setSubjects(data ?? [])
   }
@@ -65,7 +77,7 @@ export default function Exams() {
   async function fetchExams() {
     const { data, error: fetchError } = await supabase
       .from('exams')
-      .select('id, name, exam_date, total_questions, exam_subjects(subject_id, question_from, question_to, subjects(name))')
+      .select('id, name, exam_date, total_questions, scope, exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
       .order('exam_date', { ascending: false })
     if (fetchError) throw new Error(fetchError.message)
     setExams(data ?? [])
@@ -75,7 +87,28 @@ export default function Exams() {
     setError(null)
     setLoading(true)
     try {
-      await Promise.all([fetchSubjects(), fetchExams()])
+      const user = await getAuthUser()
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role, institute_id')
+        .eq('id', user.id)
+        .single()
+
+      const role = userData?.role ?? 'teacher'
+      const instId = userData?.institute_id ?? null
+      setUserRole(role)
+      setInstituteId(instId)
+
+      if (instId) {
+        const { data: classData } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('institute_id', instId)
+          .order('name')
+        if (classData) setClasses(classData)
+      }
+
+      await fetchExams()
     } catch (err) {
       setError(err.message)
     }
@@ -83,6 +116,13 @@ export default function Exams() {
   }
 
   useEffect(() => { loadPageData() }, [])
+
+  useEffect(() => {
+    if (!userRole) return
+    if (userRole === 'admin' && !instituteId) return
+
+    fetchSubjects().catch((err) => setError(err.message))
+  }, [userRole, instituteId])
 
   function toggleSubject(subject) {
     setSelectedSubjects((prev) => {
@@ -107,6 +147,10 @@ export default function Exams() {
       setError('Please fill in all exam fields.')
       return
     }
+    if ((scope === 'class' || scope === 'multiple') && selectedClassIds.length === 0) {
+      setError('Please select at least one class.')
+      return
+    }
     if (selectedSubjects.length === 0) {
       setError('Please select at least one subject.')
       return
@@ -128,7 +172,7 @@ export default function Exams() {
       const user = await getAuthUser()
       const { data: newExam, error: examErr } = await supabase
         .from('exams')
-        .insert({ name, exam_date: examDate, total_questions: total, created_by: user.id })
+        .insert({ name, exam_date: examDate, total_questions: total, created_by: user.id, scope })
         .select('id')
         .single()
       if (examErr) throw new Error(examErr.message)
@@ -142,10 +186,21 @@ export default function Exams() {
       const { error: esError } = await supabase.from('exam_subjects').insert(examSubjectRows)
       if (esError) throw new Error(esError.message)
 
+      if (scope !== 'institute') {
+        const examClassRows = selectedClassIds.map((classId) => ({
+          exam_id: newExam.id,
+          class_id: classId,
+        }))
+        const { error: ecError } = await supabase.from('exam_classes').insert(examClassRows)
+        if (ecError) throw new Error(ecError.message)
+      }
+
       setExamName('')
       setExamDate('')
       setTotalQuestions('')
       setSelectedSubjects([])
+      setScope('class')
+      setSelectedClassIds([])
       setSuccessMessage(`Exam "${name}" created successfully.`)
       await fetchExams()
     } catch (err) {
@@ -344,11 +399,76 @@ async function openQuestionsPanel(exam) {
           </div>
 
           <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Exam Scope
+            </label>
+            <div className="flex gap-3">
+              {['class', 'multiple', 'institute'].map((s) => (
+                <label
+                  key={s}
+                  className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                    scope === s
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                      : 'border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="scope"
+                    value={s}
+                    checked={scope === s}
+                    onChange={() => { setScope(s); setSelectedClassIds([]) }}
+                    className="hidden"
+                  />
+                  {s === 'class' ? 'Single Class' : s === 'multiple' ? 'Multiple Classes' : 'Whole Institute'}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {(scope === 'class' || scope === 'multiple') && (
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Class{scope === 'multiple' ? 'es' : ''}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {classes.map((c) => (
+                  <label
+                    key={c.id}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                      selectedClassIds.includes(c.id)
+                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                        : 'border-gray-300 text-gray-700'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedClassIds.includes(c.id)}
+                      onChange={() => setSelectedClassIds((prev) =>
+                        prev.includes(c.id)
+                          ? prev.filter((id) => id !== c.id)
+                          : scope === 'class'
+                            ? [c.id]
+                            : [...prev, c.id]
+                      )}
+                      className="hidden"
+                    />
+                    {c.name}
+                  </label>
+                ))}
+              </div>
+              {classes.length === 0 && (
+                <p className="text-xs text-gray-400">No classes found. Create classes first.</p>
+              )}
+            </div>
+          )}
+
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">Subjects & Question Ranges</label>
             {subjects.length === 0 ? (
               <p className="text-sm text-gray-400">No subjects found. Add subjects on the Subjects page first.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="flex flex-wrap gap-2">
                 {subjects.map((s) => {
                   const selected = selectedSubjects.find((ss) => ss.subject_id === s.id)
                   return (
@@ -463,6 +583,10 @@ async function openQuestionsPanel(exam) {
                           return name ? name + range : null
                         }).filter(Boolean).join(', ') || 'No subjects'}{' '}
                         · {formatDate(exam.exam_date)} · {exam.total_questions} questions
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {exam.scope === 'institute' ? 'Whole Institute' :
+                          exam.exam_classes?.map((ec) => ec.classes?.name).filter(Boolean).join(', ') || 'No class'}
                       </p>
                     </div>
                     <button
