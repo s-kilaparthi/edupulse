@@ -2,12 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
-const INSTITUTE_ID = '8535a900-49f5-405a-9d25-05c20dcba910'
-
 export default function Announcements() {
   const { session } = useOutletContext()
   const [userRole, setUserRole] = useState('student')
   const [userName, setUserName] = useState('')
+  const [instituteId, setInstituteId] = useState(null)
   const [userSubjects, setUserSubjects] = useState([])
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
 
@@ -26,24 +25,27 @@ export default function Announcements() {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role, name')
+      .select('role, name, institute_id')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
-        if (data?.role) setUserRole(data.role)
-        if (data?.name) setUserName(data.name)
+        if (data) {
+          setUserRole(data.role)
+          setUserName(data.name)
+          setInstituteId(data.institute_id)
+        }
       })
   }, [session])
 
   useEffect(() => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id || !instituteId) return
     if (userRole !== 'teacher' && userRole !== 'admin') return
 
     if (userRole === 'admin') {
       supabase
         .from('subjects')
         .select('id, name')
-        .eq('institute_id', INSTITUTE_ID)
+        .eq('institute_id', instituteId)
         .order('name')
         .then(({ data }) => {
           if (data) setSubjects(data)
@@ -58,22 +60,22 @@ export default function Announcements() {
           if (data) setSubjects(data)
         })
     }
-  }, [userRole, session])
+  }, [userRole, session, instituteId])
 
   useEffect(() => {
-    if (isTeacher) return
+    if (isTeacher || !instituteId) return
 
     supabase
       .from('subjects')
       .select('id')
-      .eq('institute_id', INSTITUTE_ID)
+      .eq('institute_id', instituteId)
       .then(({ data }) => {
         if (data) setUserSubjects(data.map((s) => s.id))
       })
-  }, [isTeacher])
+  }, [isTeacher, instituteId])
 
   const loadAnnouncements = useCallback(async () => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id || !instituteId) return
 
     setLoading(true)
 
@@ -81,7 +83,7 @@ export default function Announcements() {
       const { data } = await supabase
         .from('announcements')
         .select('id, title, body, is_pinned, created_at, subject_id, subjects(name), users(name)')
-        .eq('institute_id', INSTITUTE_ID)
+        .eq('institute_id', instituteId)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
@@ -90,7 +92,7 @@ export default function Announcements() {
       let query = supabase
         .from('announcements')
         .select('id, title, body, is_pinned, created_at, subject_id, subjects(name), users(name)')
-        .eq('institute_id', INSTITUTE_ID)
+        .eq('institute_id', instituteId)
 
       if (userSubjects.length > 0) {
         query = query.or(`subject_id.is.null,subject_id.in.(${userSubjects.join(',')})`)
@@ -106,16 +108,16 @@ export default function Announcements() {
     }
 
     setLoading(false)
-  }, [session, isTeacher, userSubjects])
+  }, [session, isTeacher, userSubjects, instituteId])
 
   useEffect(() => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id || !instituteId) return
     loadAnnouncements()
-  }, [session, isTeacher, userSubjects, loadAnnouncements])
+  }, [session, isTeacher, userSubjects, instituteId, loadAnnouncements])
 
   async function handlePost(e) {
     e.preventDefault()
-    if (!newTitle.trim() || !session?.user?.id) return
+    if (!newTitle.trim() || !session?.user?.id || !instituteId) return
 
     setSaving(true)
     const { error } = await supabase.from('announcements').insert({
@@ -124,7 +126,7 @@ export default function Announcements() {
       subject_id: newSubjectId || null,
       is_pinned: isPinned,
       created_by: session.user.id,
-      institute_id: INSTITUTE_ID,
+      institute_id: instituteId,
     })
 
     if (!error) {

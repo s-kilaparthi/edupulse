@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
-const INSTITUTE_ID = '8535a900-49f5-405a-9d25-05c20dcba910'
-
 function StatCard({ label, value, sub }) {
   return (
     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -61,38 +59,48 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const [userRole, setUserRole] = useState('student')
   const [userName, setUserName] = useState('')
+  const [instituteId, setInstituteId] = useState(null)
+  const [userLoaded, setUserLoaded] = useState(false)
   const [stats, setStats] = useState({})
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!session?.user?.id) return
+    supabase
+      .from('users')
+      .select('role, name, institute_id')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setUserRole(data.role)
+          setUserName(data.name)
+          setInstituteId(data.institute_id)
+        }
+        setUserLoaded(true)
+      })
+  }, [session])
+
+  useEffect(() => {
+    if (!session?.user?.id || !userLoaded) return
 
     async function loadDashboard() {
       setLoading(true)
 
-      const { data: userData } = await supabase
-        .from('users')
-        .select('role, name')
-        .eq('id', session.user.id)
-        .single()
+      if (instituteId) {
+        const { data: announcementData } = await supabase
+          .from('announcements')
+          .select('id, title, body, is_pinned, created_at, subjects(name)')
+          .eq('institute_id', instituteId)
+          .order('is_pinned', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(3)
 
-      const role = userData?.role ?? 'student'
-      const name = userData?.name ?? ''
-      setUserRole(role)
-      setUserName(name)
+        if (announcementData) setRecentAnnouncements(announcementData)
+      }
 
-      const { data: announcementData } = await supabase
-        .from('announcements')
-        .select('id, title, body, is_pinned, created_at, subjects(name)')
-        .eq('institute_id', INSTITUTE_ID)
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(3)
-
-      if (announcementData) setRecentAnnouncements(announcementData)
-
-      if (role === 'student') {
+      if (userRole === 'student') {
         const { data: scoreRows } = await supabase
           .from('topic_scores')
           .select('exam_id, subject_id, score, total, exams(name, exam_date)')
@@ -126,7 +134,7 @@ export default function Dashboard() {
         ).size
 
         setStats({ lastExamName, lastExamScore, lastExamTotal, lastExamPct, subjectsEnrolled })
-      } else if (role === 'teacher') {
+      } else if (userRole === 'teacher') {
         const { count: studentCount } = await supabase
           .from('users')
           .select('*', { count: 'exact', head: true })
@@ -172,7 +180,7 @@ export default function Dashboard() {
     }
 
     loadDashboard()
-  }, [session])
+  }, [session, userLoaded, instituteId, userRole])
 
   if (loading) {
     return (

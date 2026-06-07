@@ -2,11 +2,10 @@ import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
-const INSTITUTE_ID = '8535a900-49f5-405a-9d25-05c20dcba910'
-
 export default function Classes() {
   const { session } = useOutletContext()
   const [role, setRole] = useState(null)
+  const [instituteId, setInstituteId] = useState(null)
   const [loadingRole, setLoadingRole] = useState(true)
 
   const [className, setClassName] = useState('')
@@ -37,21 +36,25 @@ export default function Classes() {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role')
+      .select('role, name, institute_id')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
-        if (data?.role) setRole(data.role)
+        if (data) {
+          setRole(data.role)
+          setInstituteId(data.institute_id)
+        }
       })
       .finally(() => setLoadingRole(false))
   }, [session])
 
   const fetchClasses = useCallback(async () => {
+    if (!instituteId) return
     setError(null)
     const { data: classRows, error: classError } = await supabase
       .from('classes')
       .select('id, name, academic_year')
-      .eq('institute_id', INSTITUTE_ID)
+      .eq('institute_id', instituteId)
       .order('name')
 
     if (classError) {
@@ -75,28 +78,28 @@ export default function Classes() {
     }
     setStudentCounts(counts)
     setLoading(false)
-  }, [])
+  }, [instituteId])
 
   useEffect(() => {
-    if (role !== 'admin') return
+    if (role !== 'admin' || !instituteId) return
     setLoading(true)
     fetchClasses()
-  }, [role, fetchClasses])
+  }, [role, instituteId, fetchClasses])
 
   useEffect(() => {
-    if (role !== 'admin') return
+    if (role !== 'admin' || !instituteId) return
 
     async function loadOptions() {
       const [teachersRes, subjectsRes] = await Promise.all([
         supabase.from('users').select('id, name').eq('role', 'teacher').order('name'),
-        supabase.from('subjects').select('id, name').eq('institute_id', INSTITUTE_ID).order('name'),
+        supabase.from('subjects').select('id, name').eq('institute_id', instituteId).order('name'),
       ])
       if (teachersRes.data) setAllTeachers(teachersRes.data)
       if (subjectsRes.data) setAllSubjects(subjectsRes.data)
     }
 
     loadOptions()
-  }, [role])
+  }, [role, instituteId])
 
   async function loadClassDetails(classId) {
     const [studentsRes, unassignedRes, teachersRes] = await Promise.all([
@@ -128,7 +131,7 @@ export default function Classes() {
 
   async function handleCreateClass(e) {
     e.preventDefault()
-    if (!className.trim()) return
+    if (!className.trim() || !instituteId) return
 
     setSaving(true)
     setError(null)
@@ -136,7 +139,7 @@ export default function Classes() {
     const { error: insertError } = await supabase.from('classes').insert({
       name: className.trim(),
       academic_year: academicYear.trim(),
-      institute_id: INSTITUTE_ID,
+      institute_id: instituteId,
     })
 
     setSaving(false)
