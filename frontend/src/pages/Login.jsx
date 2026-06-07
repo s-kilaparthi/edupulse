@@ -4,15 +4,48 @@ import { supabase } from '../supabase'
 
 export default function Login() {
   const navigate = useNavigate()
+  const [loginMode, setLoginMode] = useState('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [rollNumber, setRollNumber] = useState('')
+  const [instituteCode, setInstituteCode] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e) {
+  async function handleLogin(e) {
     e.preventDefault()
     setError(null)
     setLoading(true)
+
+    if (loginMode === 'student') {
+      const { data: studentData } = await supabase
+        .from('users')
+        .select('email, institute_id')
+        .eq('roll_number', rollNumber.trim())
+        .eq('role', 'student')
+        .single()
+
+      if (!studentData) {
+        setError('Student not found. Check your roll number.')
+        setLoading(false)
+        return
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: studentData.email,
+        password: password,
+      })
+
+      setLoading(false)
+
+      if (signInError) {
+        setError('Invalid roll number or password.')
+        return
+      }
+
+      navigate('/dashboard', { replace: true })
+      return
+    }
 
     const { error: signInError } = await supabase.auth.signInWithPassword({
       email,
@@ -39,22 +72,64 @@ export default function Login() {
           <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-              placeholder="you@example.com"
-            />
-          </div>
+        <div className="flex rounded-lg border border-gray-200 p-1 mb-6">
+          <button
+            type="button"
+            onClick={() => setLoginMode('email')}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              loginMode === 'email'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Teacher / Admin
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoginMode('student')}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              loginMode === 'student'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Student
+          </button>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          {loginMode === 'email' ? (
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email
+              </label>
+              <input
+                id="email"
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                placeholder="you@example.com"
+              />
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="roll-number" className="block text-sm font-medium text-gray-700 mb-1">
+                Roll number
+              </label>
+              <input
+                id="roll-number"
+                type="text"
+                required
+                value={rollNumber}
+                onChange={(e) => setRollNumber(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                placeholder="Your roll number e.g. 007"
+              />
+            </div>
+          )}
 
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
