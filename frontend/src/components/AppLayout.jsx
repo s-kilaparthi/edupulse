@@ -33,18 +33,21 @@ const adminNav = [
 
 export default function AppLayout({ session }) {
   const { pathname } = useLocation()
-  const email = session.user.email
+  const [displayName, setDisplayName] = useState('')
   const [userRole, setUserRole] = useState('student')
 
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role')
+      .select('name, role')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
-        if (data?.role) setUserRole(data.role)
+        if (data) {
+          setDisplayName(data.name || session.user.email)
+          setUserRole(data.role)
+        }
       })
   }, [session])
 
@@ -69,7 +72,7 @@ export default function AppLayout({ session }) {
           <span className="font-semibold text-gray-900">EduPulse</span>
         </Link>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600">{email}</span>
+          <span className="text-sm text-gray-600">{displayName}</span>
           <button
             type="button"
             onClick={handleLogout}
