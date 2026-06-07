@@ -36,6 +36,26 @@ function studentCanSeeAnnouncement(announcement, studentClassId) {
   return false
 }
 
+function teacherCanSeeAnnouncement(announcement, teacherClassIds, teacherSubjectIds, userId) {
+  const ids = announcement.target_ids ?? []
+  switch (announcement.target_type) {
+    case 'everyone':
+    case 'all_teachers':
+      return true
+    case 'class_teachers':
+      return ids.some((id) => teacherClassIds.includes(id))
+    case 'subject_teachers':
+      return ids.some((id) => teacherSubjectIds.includes(id))
+    case 'specific_teacher':
+      return ids.includes(userId)
+    case 'all_students':
+    case 'class_students':
+      return false
+    default:
+      return true
+  }
+}
+
 export default function Announcements() {
   const { session } = useOutletContext()
   const [userRole, setUserRole] = useState('student')
@@ -61,6 +81,9 @@ export default function Announcements() {
   const [targetType, setTargetType] = useState('everyone')
   const [targetIds, setTargetIds] = useState([])
   const [targetSubjectIds, setTargetSubjectIds] = useState([])
+  const [teacherClassIds, setTeacherClassIds] = useState([])
+  const [teacherSubjectIds, setTeacherSubjectIds] = useState([])
+  const [teacherAssignmentsReady, setTeacherAssignmentsReady] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -120,12 +143,31 @@ export default function Announcements() {
     }
   }, [userRole, session, instituteId])
 
+  useEffect(() => {
+    if (userRole !== 'teacher' || !session?.user?.id) {
+      setTeacherClassIds([])
+      setTeacherSubjectIds([])
+      setTeacherAssignmentsReady(false)
+      return
+    }
+
+    supabase
+      .from('class_teachers')
+      .select('class_id, subject_id')
+      .eq('teacher_id', session.user.id)
+      .then(({ data: teacherAssignments }) => {
+        setTeacherClassIds(teacherAssignments?.map((a) => a.class_id) ?? [])
+        setTeacherSubjectIds(teacherAssignments?.map((a) => a.subject_id) ?? [])
+        setTeacherAssignmentsReady(true)
+      })
+  }, [userRole, session])
+
   const loadAnnouncements = useCallback(async () => {
     if (!session?.user?.id || !instituteId) return
 
     setLoading(true)
 
-    if (isTeacher) {
+    if (userRole === 'admin' || userRole === 'teacher') {
       const { data } = await supabase
         .from('announcements')
         .select(SELECT_FIELDS)
@@ -133,7 +175,19 @@ export default function Announcements() {
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
-      setAnnouncements(data ?? [])
+      if (userRole === 'teacher') {
+        const filtered = (data ?? []).filter((a) =>
+          teacherCanSeeAnnouncement(
+            a,
+            teacherClassIds,
+            teacherSubjectIds,
+            session.user.id
+          )
+        )
+        setAnnouncements(filtered)
+      } else {
+        setAnnouncements(data ?? [])
+      }
     } else if (userRole === 'student') {
       const { data } = await supabase
         .from('announcements')
@@ -149,12 +203,29 @@ export default function Announcements() {
     }
 
     setLoading(false)
-  }, [session, isTeacher, userRole, studentClassId, instituteId])
+  }, [
+    session,
+    userRole,
+    studentClassId,
+    instituteId,
+    teacherClassIds,
+    teacherSubjectIds,
+  ])
 
   useEffect(() => {
     if (!session?.user?.id || !instituteId) return
+    if (userRole === 'teacher' && !teacherAssignmentsReady) return
     loadAnnouncements()
-  }, [session, isTeacher, userRole, studentClassId, instituteId, loadAnnouncements])
+  }, [
+    session,
+    userRole,
+    studentClassId,
+    instituteId,
+    teacherClassIds,
+    teacherSubjectIds,
+    teacherAssignmentsReady,
+    loadAnnouncements,
+  ])
 
   async function handlePost(e) {
     e.preventDefault()
