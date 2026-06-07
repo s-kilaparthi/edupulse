@@ -2,12 +2,47 @@ import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
+const SELECT_FIELDS =
+  'id, title, body, is_pinned, created_at, target_type, target_ids, created_by, users(name, role)'
+
+function getTargetLabel(announcement) {
+  switch (announcement.target_type) {
+    case 'everyone':
+      return '🌐 Everyone'
+    case 'all_teachers':
+      return '👩‍🏫 All Teachers'
+    case 'all_students':
+      return '👨‍🎓 All Students'
+    case 'class_students':
+      return '📚 Class Students'
+    case 'class_teachers':
+      return '🏫 Class Teachers'
+    case 'subject_teachers':
+      return '📖 Subject Teachers'
+    case 'specific_teacher':
+      return '👤 Specific Teacher'
+    default:
+      return 'Institute-wide'
+  }
+}
+
+function studentCanSeeAnnouncement(announcement, studentClassId) {
+  const { target_type, target_ids } = announcement
+  if (target_type === 'everyone' || target_type === 'all_students') return true
+  if (target_type === 'class_students' && studentClassId) {
+    return (target_ids ?? []).includes(studentClassId)
+  }
+  if (!target_type) return true
+  return false
+}
+
 export default function Announcements() {
   const { session } = useOutletContext()
   const [userRole, setUserRole] = useState('student')
   const [userName, setUserName] = useState('')
   const [instituteId, setInstituteId] = useState(null)
   const [studentClassId, setStudentClassId] = useState(null)
+  const isAdmin = userRole === 'admin'
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
 
   const [announcements, setAnnouncements] = useState([])
@@ -15,11 +50,17 @@ export default function Announcements() {
 
   const [newTitle, setNewTitle] = useState('')
   const [newBody, setNewBody] = useState('')
-  const [newSubjectId, setNewSubjectId] = useState('')
   const [isPinned, setIsPinned] = useState(false)
   const [subjects, setSubjects] = useState([])
+  const [classes, setClasses] = useState([])
+  const [teachers, setTeachers] = useState([])
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [error, setError] = useState(null)
+
+  const [targetType, setTargetType] = useState('everyone')
+  const [targetIds, setTargetIds] = useState([])
+  const [targetSubjectIds, setTargetSubjectIds] = useState([])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -45,14 +86,28 @@ export default function Announcements() {
     if (userRole !== 'teacher' && userRole !== 'admin') return
 
     if (userRole === 'admin') {
-      supabase
-        .from('subjects')
-        .select('id, name')
-        .eq('institute_id', instituteId)
-        .order('name')
-        .then(({ data }) => {
-          if (data) setSubjects(data)
-        })
+      Promise.all([
+        supabase
+          .from('subjects')
+          .select('id, name')
+          .eq('institute_id', instituteId)
+          .order('name'),
+        supabase
+          .from('classes')
+          .select('id, name')
+          .eq('institute_id', instituteId)
+          .order('name'),
+        supabase
+          .from('users')
+          .select('id, name')
+          .eq('role', 'teacher')
+          .eq('institute_id', instituteId)
+          .order('name'),
+      ]).then(([subjectsRes, classesRes, teachersRes]) => {
+        if (subjectsRes.data) setSubjects(subjectsRes.data)
+        if (classesRes.data) setClasses(classesRes.data)
+        if (teachersRes.data) setTeachers(teachersRes.data)
+      })
     } else if (userRole === 'teacher') {
       supabase
         .from('subjects')
@@ -70,35 +125,27 @@ export default function Announcements() {
 
     setLoading(true)
 
-    const selectFields =
-      'id, title, body, is_pinned, created_at, class_id, subject_id, subjects(name), classes(name), created_by, users(name, role)'
-
     if (isTeacher) {
       const { data } = await supabase
         .from('announcements')
-        .select(selectFields)
+        .select(SELECT_FIELDS)
         .eq('institute_id', instituteId)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
       setAnnouncements(data ?? [])
     } else if (userRole === 'student') {
-      let query = supabase
+      const { data } = await supabase
         .from('announcements')
-        .select(selectFields)
+        .select(SELECT_FIELDS)
         .eq('institute_id', instituteId)
-
-      if (studentClassId) {
-        query = query.or(`class_id.is.null,class_id.eq.${studentClassId}`)
-      } else {
-        query = query.is('class_id', null)
-      }
-
-      const { data } = await query
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
-      setAnnouncements(data ?? [])
+      const filtered = (data ?? []).filter((a) =>
+        studentCanSeeAnnouncement(a, studentClassId)
+      )
+      setAnnouncements(filtered)
     }
 
     setLoading(false)
@@ -113,23 +160,44 @@ export default function Announcements() {
     e.preventDefault()
     if (!newTitle.trim() || !session?.user?.id || !instituteId) return
 
+    const needsTargets = [
+      'class_students',
+      'class_teachers',
+      'subject_teachers',
+      'specific_teacher',
+    ].includes(targetType)
+
+    if (isAdmin && needsTargets && targetIds.length === 0) {
+      setError('Please select at least one target.')
+      return
+    }
+
     setSaving(true)
-    const { error } = await supabase.from('announcements').insert({
+    setError(null)
+
+    const insertPayload = {
       title: newTitle,
       body: newBody,
-      subject_id: newSubjectId || null,
       is_pinned: isPinned,
       created_by: session.user.id,
       institute_id: instituteId,
-    })
+      target_type: isAdmin ? targetType : 'everyone',
+      target_ids: isAdmin ? targetIds : [],
+    }
 
-    if (!error) {
+    const { error: insertError } = await supabase.from('announcements').insert(insertPayload)
+
+    if (!insertError) {
       setNewTitle('')
       setNewBody('')
-      setNewSubjectId('')
       setIsPinned(false)
+      setTargetType('everyone')
+      setTargetIds([])
+      setTargetSubjectIds([])
       setShowForm(false)
       await loadAnnouncements()
+    } else {
+      setError(insertError.message)
     }
     setSaving(false)
   }
@@ -171,8 +239,7 @@ export default function Announcements() {
         </div>
         <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
           <span>By {item.users?.name}</span>
-          {item.subjects?.name && <span>· {item.subjects.name}</span>}
-          <span>· {item.classes?.name ?? 'Institute-wide'}</span>
+          <span>· {getTargetLabel(item)}</span>
           <span>· {new Date(item.created_at).toLocaleDateString()}</span>
         </div>
       </div>
@@ -205,6 +272,12 @@ export default function Announcements() {
         >
           <h2 className="text-sm font-semibold text-gray-900">Post Announcement</h2>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-red-700 text-sm">{error}</p>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm text-gray-600 mb-1">Title</label>
             <input
@@ -228,19 +301,115 @@ export default function Announcements() {
             />
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Subject</label>
-            <select
-              value={newSubjectId}
-              onChange={(e) => setNewSubjectId(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
-            >
-              <option value="">Institute-wide</option>
-              {subjects.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
+          {isAdmin && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Send To
+              </label>
+
+              <div className="flex flex-wrap gap-2 mb-3">
+                {[
+                  { value: 'everyone', label: '🌐 Everyone' },
+                  { value: 'all_teachers', label: '👩‍🏫 All Teachers' },
+                  { value: 'all_students', label: '👨‍🎓 All Students' },
+                  { value: 'class_students', label: '📚 Specific Classes (Students)' },
+                  { value: 'class_teachers', label: '🏫 Class Teachers' },
+                  { value: 'subject_teachers', label: '📖 Subject Teachers' },
+                  { value: 'specific_teacher', label: '👤 Specific Teacher' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => {
+                      setTargetType(opt.value)
+                      setTargetIds([])
+                      setTargetSubjectIds([])
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      targetType === opt.value
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {(targetType === 'class_students' || targetType === 'class_teachers') && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <p className="w-full text-xs text-gray-500 mb-1">Select classes:</p>
+                  {classes.map((c) => (
+                    <label
+                      key={c.id}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
+                        targetIds.includes(c.id)
+                          ? 'bg-blue-50 border-blue-500 text-blue-700'
+                          : 'bg-white border-gray-300 text-gray-600'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={targetIds.includes(c.id)}
+                        onChange={() =>
+                          setTargetIds((prev) =>
+                            prev.includes(c.id)
+                              ? prev.filter((id) => id !== c.id)
+                              : [...prev, c.id]
+                          )
+                        }
+                        className="hidden"
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {targetType === 'subject_teachers' && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <p className="w-full text-xs text-gray-500 mb-1">Select subjects:</p>
+                  {subjects.map((s) => (
+                    <label
+                      key={s.id}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
+                        targetIds.includes(s.id)
+                          ? 'bg-blue-50 border-blue-500 text-blue-700'
+                          : 'bg-white border-gray-300 text-gray-600'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={targetIds.includes(s.id)}
+                        onChange={() =>
+                          setTargetIds((prev) =>
+                            prev.includes(s.id)
+                              ? prev.filter((id) => id !== s.id)
+                              : [...prev, s.id]
+                          )
+                        }
+                        className="hidden"
+                      />
+                      {s.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {targetType === 'specific_teacher' && (
+                <select
+                  value={targetIds[0] ?? ''}
+                  onChange={(e) => setTargetIds([e.target.value])}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Select teacher...</option>
+                  {teachers.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
 
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
