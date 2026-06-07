@@ -365,41 +365,24 @@ export default function Results() {
   const { session } = useOutletContext()
   const location = useLocation()
   const navigate = useNavigate()
+  const navState = location.state
+  const fromStudentsNav = !!navState?.studentName
   const [userRole, setUserRole] = useState('student')
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
 
   const [exams, setExams] = useState([])
-  const [examId, setExamId] = useState('')
+  const [examId, setExamId] = useState(navState?.examId ?? '')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
   const [activeSubject, setActiveSubject] = useState('')
   const [trendData, setTrendData] = useState([])
   const [loadingTrend, setLoadingTrend] = useState(false)
-  const [activeTab, setActiveTab] = useState('student')
-  const [selectedStudentId, setSelectedStudentId] = useState('')
+  const [activeTab, setActiveTab] = useState(navState?.tab ?? 'student')
+  const [selectedStudentId, setSelectedStudentId] = useState(navState?.studentId ?? '')
   const [students, setStudents] = useState([])
   const [classes, setClasses] = useState([])
-  const [selectedClassId, setSelectedClassId] = useState('')
+  const [selectedClassId, setSelectedClassId] = useState(navState?.classId ?? '')
   const [studentSearch, setStudentSearch] = useState('')
-  const [fromStudentsNav, setFromStudentsNav] = useState(false)
-
-  useEffect(() => {
-    if (location.state?.examId) {
-      setExamId(location.state.examId)
-    }
-    if (location.state?.studentId) {
-      setSelectedStudentId(location.state.studentId)
-    }
-    if (location.state?.classId) {
-      setSelectedClassId(location.state.classId)
-    }
-    if (location.state?.tab) {
-      setActiveTab(location.state.tab)
-    }
-    if (location.state?.studentName) {
-      setFromStudentsNav(true)
-    }
-  }, [location.state])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -481,7 +464,7 @@ export default function Results() {
       .then(({ data }) => {
         if (data && data.length > 0) {
           setExams(data)
-          if (!location.state?.examId) {
+          if (!navState?.examId) {
             setExamId(data[0].id)
           }
         }
@@ -614,10 +597,10 @@ export default function Results() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6">
       <div className="mx-auto flex max-w-4xl flex-col gap-5">
-        {location.state?.studentName && (
+        {navState?.studentName && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between">
             <p className="text-sm text-blue-700 font-medium">
-              Viewing results for: {location.state.studentName}
+              Viewing results for: {navState.studentName}
             </p>
             <button
               type="button"
@@ -639,7 +622,7 @@ export default function Results() {
               className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500">
               {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}
             </select>
-            {isTeacher && activeTab === 'student' && classes.length > 0 && !location.state?.classId && (
+            {isTeacher && activeTab === 'student' && classes.length > 0 && !navState?.classId && (
               <select
                 value={selectedClassId}
                 onChange={(e) => {
@@ -655,7 +638,7 @@ export default function Results() {
                 ))}
               </select>
             )}
-            {isTeacher && activeTab === 'student' && (classes.length === 0 || selectedClassId) && !location.state?.studentId && (
+            {isTeacher && activeTab === 'student' && (classes.length === 0 || selectedClassId) && !navState?.studentId && (
               <div className="relative">
                 <input
                   type="text"
@@ -688,7 +671,7 @@ export default function Results() {
           <ClassHeatmap examId={examId} exams={exams} />
         )}
 
-        {isTeacher && activeTab === 'student' && classes.length > 0 && !selectedClassId && (
+        {isTeacher && activeTab === 'student' && !fromStudentsNav && classes.length > 0 && !selectedClassId && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-gray-500 text-sm">Select a class to view students</p>
           </div>
@@ -729,7 +712,7 @@ export default function Results() {
           <PerformanceTrend trendData={trendData} totalExams={exams.length} />
         )}
 
-        {isTeacher && students.length > 0 && !location.state?.studentId && (
+        {isTeacher && students.length > 0 && !navState?.studentId && (
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-900 mb-3">
               Students — {students.length} in class
