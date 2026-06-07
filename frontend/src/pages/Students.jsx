@@ -11,9 +11,9 @@ export default function Students() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [successMessage, setSuccessMessage] = useState(null)
 
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
+  const [studentName, setStudentName] = useState('')
   const [rollNumber, setRollNumber] = useState('')
 
   const [editingId, setEditingId] = useState(null)
@@ -54,41 +54,56 @@ export default function Students() {
     fetchStudents()
   }, [])
 
-  async function handleAddStudent(e) {
+  async function handleCreateStudent(e) {
     e.preventDefault()
-    const name = fullName.trim()
-    const studentEmail = email.trim()
+    const name = studentName.trim()
     const roll = rollNumber.trim()
-
-    if (!name || !studentEmail || !roll) {
-      setError('Please fill in full name, email, and roll number.')
+    if (!name || !roll) {
+      setError('Please fill in name and roll number.')
       return
     }
 
     setSaving(true)
     setError(null)
+    setSuccessMessage(null)
 
-    const { error: insertError } = await supabase.from('users').insert({
-      id: crypto.randomUUID(),
-      name,
-      email: studentEmail,
-      roll_number: roll,
-      role: 'student',
-      institute_id: null,
-    })
+    try {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('institute_id')
+        .eq('id', session.user.id)
+        .single()
 
-    setSaving(false)
+      const instituteId = userData?.institute_id
+      const autoEmail = `roll${roll}@${instituteId}.edupulse.com`
+      const autoPassword = roll
 
-    if (insertError) {
-      setError(insertError.message)
-      return
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/create-student`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: autoEmail,
+            password: autoPassword,
+            name,
+            roll_number: roll,
+            institute_id: instituteId,
+          }),
+        }
+      )
+
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Failed to create student')
+
+      setStudentName('')
+      setRollNumber('')
+      setSuccessMessage(`Student ${name} added. Login: Roll ${roll}, Password: ${roll}`)
+      await fetchStudents()
+    } catch (err) {
+      setError(err.message)
     }
-
-    setFullName('')
-    setEmail('')
-    setRollNumber('')
-    setLoading(true)
-    await fetchStudents()
+    setSaving(false)
   }
 
   async function handleDeleteStudent(studentId) {
@@ -149,7 +164,7 @@ export default function Students() {
 
       {isAdmin && (
         <form
-          onSubmit={handleAddStudent}
+          onSubmit={handleCreateStudent}
           className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6"
         >
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Add Student</h2>
@@ -161,23 +176,9 @@ export default function Students() {
               <input
                 id="student-name"
                 type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
                 placeholder="Rahul Sharma"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="student-email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                id="student-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="rahul@example.com"
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
               />
             </div>
@@ -207,6 +208,12 @@ export default function Students() {
             </div>
           </div>
         </form>
+      )}
+
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4">
+          <p className="text-green-700 text-sm">{successMessage}</p>
+        </div>
       )}
 
       {error && (

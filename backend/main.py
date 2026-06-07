@@ -3,8 +3,9 @@ import json
 import os
 
 import httpx
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from supabase import create_client
 
 from omr.scanner import scan_omr
 
@@ -103,6 +104,51 @@ async def extract_topics(file: UploadFile = File(...)):
     except Exception as e:
         import traceback
         print("Extract topics error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/create-student")
+async def create_student(request: Request):
+    try:
+        body = await request.json()
+        email = body.get('email')
+        password = body.get('password')
+        name = body.get('name')
+        roll_number = body.get('roll_number')
+        institute_id = body.get('institute_id')
+
+        if not all([email, password, name, roll_number, institute_id]):
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        supabase_admin = create_client(
+            os.environ.get('SUPABASE_URL'),
+            os.environ.get('SUPABASE_SERVICE_KEY')
+        )
+
+        auth_response = supabase_admin.auth.admin.create_user({
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+        })
+
+        user_id = auth_response.user.id
+
+        supabase_admin.from_('users').insert({
+            "id": user_id,
+            "name": name,
+            "roll_number": roll_number,
+            "email": email,
+            "role": "student",
+            "institute_id": institute_id,
+        }).execute()
+
+        return {"success": True, "user_id": user_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Create student error:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 
