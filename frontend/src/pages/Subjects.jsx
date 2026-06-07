@@ -160,6 +160,7 @@ export default function Subjects() {
   function getClassTopics(subject) {
     const classId = isStudent ? studentClassId : selectedClassId
     if (!classId) {
+      if (isAdmin) return subject.topics ?? []
       return subject.topics?.filter((t) => t.class_id === null) ?? []
     }
     return (
@@ -175,7 +176,11 @@ export default function Subjects() {
 
   const displayedSubjects = isTeacher
     ? subjects.filter((s) => classSubjectIds.includes(s.id))
-    : subjects
+    : selectedClassId
+      ? subjects.filter((s) =>
+          s.subject_classes?.some((sc) => sc.class_id === selectedClassId)
+        )
+      : subjects
 
   async function handleCreateSubject(e) {
     e.preventDefault()
@@ -360,7 +365,7 @@ export default function Subjects() {
     setExpandedSubjectId(subjectId)
   }
 
-  const showSubjectList = isStudent || selectedClassId
+  const showSubjectList = isStudent || isAdmin || selectedClassId
 
   return (
     <>
@@ -456,7 +461,7 @@ export default function Subjects() {
         </div>
       )}
 
-      {!isStudent && !selectedClassId && (
+      {isTeacher && !selectedClassId && (
         <p className="text-sm text-gray-500">
           Select a class to view subjects and topics.
         </p>

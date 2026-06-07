@@ -36,7 +36,7 @@ export default function Exams() {
   const [scope, setScope] = useState('class')
   const [selectedClassIds, setSelectedClassIds] = useState([])
   const [classes, setClasses] = useState([])
-  const [teacherClassIds, setTeacherClassIds] = useState([])
+  const [teacherAssignments, setTeacherAssignments] = useState([])
   const [userRole, setUserRole] = useState(null)
   const [instituteId, setInstituteId] = useState(null)
 
@@ -59,18 +59,41 @@ export default function Exams() {
 
   async function fetchSubjects() {
     const user = await getAuthUser()
-    let query = supabase
-      .from('subjects')
-      .select('id, name')
-      .order('name')
 
-    if (userRole === 'admin') {
-      query = query.eq('institute_id', instituteId)
-    } else {
-      query = query.eq('teacher_id', user.id)
+    if (userRole === 'teacher') {
+      const { data: assignments, error: assignError } = await supabase
+        .from('class_teachers')
+        .select('subject_id')
+        .eq('teacher_id', user.id)
+
+      if (assignError) throw new Error(assignError.message)
+
+      const assignedSubjectIds = [
+        ...new Set(assignments?.map((a) => a.subject_id) ?? []),
+      ]
+
+      if (assignedSubjectIds.length === 0) {
+        setSubjects([])
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .in('id', assignedSubjectIds)
+        .order('name')
+
+      if (fetchError) throw new Error(fetchError.message)
+      setSubjects(data ?? [])
+      return
     }
 
-    const { data, error: fetchError } = await query
+    const { data, error: fetchError } = await supabase
+      .from('subjects')
+      .select('id, name')
+      .eq('institute_id', instituteId)
+      .order('name')
+
     if (fetchError) throw new Error(fetchError.message)
     setSubjects(data ?? [])
   }
@@ -112,12 +135,12 @@ export default function Exams() {
       if (role === 'teacher') {
         const { data: tcData } = await supabase
           .from('class_teachers')
-          .select('class_id, classes(id, name)')
+          .select('class_id, subject_id')
           .eq('teacher_id', user.id)
 
-        setTeacherClassIds(tcData?.map((tc) => tc.class_id) ?? [])
+        setTeacherAssignments(tcData ?? [])
       } else {
-        setTeacherClassIds([])
+        setTeacherAssignments([])
       }
 
       await fetchExams()
@@ -139,8 +162,22 @@ export default function Exams() {
   function toggleSubject(subject) {
     setSelectedSubjects((prev) => {
       const exists = prev.find((s) => s.subject_id === subject.id)
-      if (exists) return prev.filter((s) => s.subject_id !== subject.id)
-      return [...prev, { subject_id: subject.id, name: subject.name, question_from: '', question_to: '' }]
+      const next = exists
+        ? prev.filter((s) => s.subject_id !== subject.id)
+        : [...prev, { subject_id: subject.id, name: subject.name, question_from: '', question_to: '' }]
+
+      if (userRole === 'teacher') {
+        const subjectIds = next.map((s) => s.subject_id)
+        setSelectedClassIds((classIds) =>
+          classIds.filter((id) =>
+            teacherAssignments.some(
+              (a) => a.class_id === id && subjectIds.includes(a.subject_id)
+            )
+          )
+        )
+      }
+
+      return next
     })
   }
 
@@ -410,10 +447,19 @@ export default function Exams() {
   const allNums = activeExam ? getAllQuestionNums() : []
   const unassignedCount = activeExam ? getUnassignedCount() : 0
   const missingAnswerCount = activeExam ? getMissingAnswerCount() : 0
+  const selectedSubjectIds = selectedSubjects.map((s) => s.subject_id)
   const availableClasses =
     userRole === 'admin'
       ? classes
-      : classes.filter((c) => teacherClassIds.includes(c.id))
+      : selectedSubjectIds.length > 0
+        ? classes.filter((c) =>
+            teacherAssignments.some(
+              (a) => a.class_id === c.id && selectedSubjectIds.includes(a.subject_id)
+            )
+          )
+        : classes.filter((c) =>
+            teacherAssignments.some((a) => a.class_id === c.id)
+          )
 
   return (
     <>
