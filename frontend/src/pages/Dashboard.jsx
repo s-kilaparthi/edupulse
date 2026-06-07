@@ -167,35 +167,10 @@ export default function Dashboard() {
           .select('*', { count: 'exact', head: true })
           .eq('created_by', session.user.id)
 
-        const { data: teacherExams } = await supabase
-          .from('exams')
-          .select('id')
-          .eq('created_by', session.user.id)
-
-        let lastScanDate = null
-        let lastScanExamName = '—'
-
-        if (teacherExams?.length) {
-          const examIds = teacherExams.map((e) => e.id)
-          const { data: lastScan } = await supabase
-            .from('omr_results')
-            .select('created_at, exams(name)')
-            .in('exam_id', examIds)
-            .order('created_at', { ascending: false })
-            .limit(1)
-
-          if (lastScan?.length) {
-            lastScanDate = lastScan[0].created_at
-            lastScanExamName = lastScan[0].exams?.name ?? '—'
-          }
-        }
-
         setStats({
           myClasses: classIds.length,
           myStudents: studentCount,
           examsCreated: examCount ?? 0,
-          lastScanDate,
-          lastScanExamName,
         })
       } else if (userRole === 'admin' && instituteId) {
         const [studentsRes, teachersRes, examsRes, scoresRes] = await Promise.all([
@@ -300,17 +275,10 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-gray-900 mt-1">Welcome, {userName}!</h1>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <StatCard label="My Classes" value={stats.myClasses ?? 0} />
             <StatCard label="My Students" value={stats.myStudents ?? 0} />
             <StatCard label="Exams Created" value={stats.examsCreated ?? 0} />
-            <StatCard
-              label="Last Scan Date"
-              value={stats.lastScanDate
-                ? new Date(stats.lastScanDate).toLocaleDateString()
-                : '—'}
-              sub={stats.lastScanExamName}
-            />
           </div>
 
           <div className="flex flex-wrap gap-3">

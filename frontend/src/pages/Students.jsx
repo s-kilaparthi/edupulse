@@ -35,6 +35,38 @@ export default function Students() {
 
   async function fetchStudents() {
     setError(null)
+
+    if (userRole === 'teacher') {
+      const { data: tcData } = await supabase
+        .from('class_teachers')
+        .select('class_id')
+        .eq('teacher_id', session.user.id)
+
+      const classIds = tcData?.map((tc) => tc.class_id) ?? []
+
+      if (classIds.length === 0) {
+        setStudents([])
+        setLoading(false)
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('users')
+        .select('id, name, email, roll_number, class_id, classes(name)')
+        .eq('role', 'student')
+        .in('class_id', classIds)
+        .order('roll_number')
+
+      if (fetchError) {
+        setError(fetchError.message)
+        setStudents([])
+      } else {
+        setStudents(data ?? [])
+      }
+      setLoading(false)
+      return
+    }
+
     const { data, error: fetchError } = await supabase
       .from('users')
       .select('id, name, email, roll_number, class_id, classes(name)')
@@ -51,8 +83,10 @@ export default function Students() {
   }
 
   useEffect(() => {
+    if (!session?.user?.id || !userRole) return
+    setLoading(true)
     fetchStudents()
-  }, [])
+  }, [userRole, session])
 
   async function handleCreateStudent(e) {
     e.preventDefault()
