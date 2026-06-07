@@ -152,6 +152,49 @@ async def create_student(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/create-teacher")
+async def create_teacher(request: Request):
+    try:
+        body = await request.json()
+        email = body.get('email')
+        password = body.get('password')
+        name = body.get('name')
+        institute_id = body.get('institute_id')
+
+        if not all([email, password, name, institute_id]):
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        supabase_admin = create_client(
+            os.environ.get('SUPABASE_URL'),
+            os.environ.get('SUPABASE_SERVICE_KEY')
+        )
+
+        auth_response = supabase_admin.auth.admin.create_user({
+            "email": email,
+            "password": password,
+            "email_confirm": True,
+        })
+
+        user_id = auth_response.user.id
+
+        supabase_admin.from_('users').insert({
+            "id": user_id,
+            "name": name,
+            "email": email,
+            "role": "teacher",
+            "institute_id": institute_id,
+        }).execute()
+
+        return {"success": True, "user_id": user_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Create teacher error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/gemini-models")
 async def list_gemini_models():
     import httpx

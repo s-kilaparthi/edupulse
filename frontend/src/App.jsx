@@ -14,6 +14,7 @@ import Results from './pages/Results'
 import Admin from './pages/Admin'
 import Announcements from './pages/Announcements'
 import Classes from './pages/Classes'
+import Teachers from './pages/Teachers'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -54,6 +55,7 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/subjects" element={<Subjects />} />
             <Route path="/classes" element={<Classes />} />
+            <Route path="/teachers" element={<Teachers />} />
             <Route path="/exams" element={<Exams />} />
             <Route path="/students" element={<Students />} />
             <Route path="/scan" element={<Scan />} />

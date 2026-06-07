@@ -22,6 +22,7 @@ const teacherNav = [
 const adminNav = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Classes', to: '/classes' },
+  { label: 'Teachers', to: '/teachers' },
   { label: 'Subjects', to: '/subjects' },
   { label: 'Exams', to: '/exams' },
   { label: 'Scan', to: '/scan' },
