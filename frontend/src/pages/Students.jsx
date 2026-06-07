@@ -360,7 +360,12 @@ export default function Students() {
                         type="button"
                         onClick={() =>
                           navigate('/results', {
-                            state: { studentId: student.id, tab: 'student' },
+                            state: {
+                              studentId: student.id,
+                              studentName: student.name,
+                              classId: student.class_id,
+                              tab: 'student',
+                            },
                           })
                         }
                         className="font-medium text-blue-600 hover:text-blue-800 text-left"

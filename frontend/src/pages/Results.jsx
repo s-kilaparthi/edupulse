@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext, useLocation } from 'react-router-dom'
+import { useNavigate, useOutletContext, useLocation } from 'react-router-dom'
 import { ArrowUp, ArrowDown, Minus, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../supabase'
 
@@ -364,6 +364,7 @@ function ClassHeatmap({ examId, exams }) {
 export default function Results() {
   const { session } = useOutletContext()
   const location = useLocation()
+  const navigate = useNavigate()
   const [userRole, setUserRole] = useState('student')
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
 
@@ -380,19 +381,23 @@ export default function Results() {
   const [classes, setClasses] = useState([])
   const [selectedClassId, setSelectedClassId] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
+  const [fromStudentsNav, setFromStudentsNav] = useState(false)
 
   useEffect(() => {
     if (location.state?.examId) {
       setExamId(location.state.examId)
     }
-    if (location.state?.tab === 'heatmap') {
-      setActiveTab('heatmap')
-    }
-    if (location.state?.tab === 'student') {
-      setActiveTab('student')
-    }
     if (location.state?.studentId) {
       setSelectedStudentId(location.state.studentId)
+    }
+    if (location.state?.classId) {
+      setSelectedClassId(location.state.classId)
+    }
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab)
+    }
+    if (location.state?.studentName) {
+      setFromStudentsNav(true)
     }
   }, [location.state])
 
@@ -457,11 +462,16 @@ export default function Results() {
   }, [examId, isTeacher, session])
 
   useEffect(() => {
+    if (fromStudentsNav) {
+      setStudents([])
+      setStudentSearch('')
+      return
+    }
     setSelectedClassId('')
     setStudents([])
     setSelectedStudentId('')
     setStudentSearch('')
-  }, [examId])
+  }, [examId, fromStudentsNav])
 
   useEffect(() => {
     supabase
@@ -604,6 +614,21 @@ export default function Results() {
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6">
       <div className="mx-auto flex max-w-4xl flex-col gap-5">
+        {location.state?.studentName && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between">
+            <p className="text-sm text-blue-700 font-medium">
+              Viewing results for: {location.state.studentName}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate(-1)}
+              className="text-xs text-blue-600 hover:text-blue-800"
+            >
+              ← Back to Students
+            </button>
+          </div>
+        )}
+
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
@@ -614,7 +639,7 @@ export default function Results() {
               className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500">
               {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}
             </select>
-            {isTeacher && activeTab === 'student' && classes.length > 0 && (
+            {isTeacher && activeTab === 'student' && classes.length > 0 && !location.state?.classId && (
               <select
                 value={selectedClassId}
                 onChange={(e) => {
@@ -630,7 +655,7 @@ export default function Results() {
                 ))}
               </select>
             )}
-            {isTeacher && activeTab === 'student' && (classes.length === 0 || selectedClassId) && (
+            {isTeacher && activeTab === 'student' && (classes.length === 0 || selectedClassId) && !location.state?.studentId && (
               <div className="relative">
                 <input
                   type="text"
@@ -704,7 +729,7 @@ export default function Results() {
           <PerformanceTrend trendData={trendData} totalExams={exams.length} />
         )}
 
-        {isTeacher && students.length > 0 && (
+        {isTeacher && students.length > 0 && !location.state?.studentId && (
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-900 mb-3">
               Students — {students.length} in class
