@@ -36,10 +36,13 @@ export default function Admin() {
 
   const [editExamId, setEditExamId] = useState('')
   const [editStudentId, setEditStudentId] = useState('')
-  const [editStudents, setEditStudents] = useState([])
+  const [searchRoll, setSearchRoll] = useState('')
+  const [foundStudent, setFoundStudent] = useState(null)
+  const [searching, setSearching] = useState(false)
   const [omrResults, setOmrResults] = useState([])
   const [editingMarks, setEditingMarks] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -153,31 +156,11 @@ export default function Admin() {
   }, [role])
 
   useEffect(() => {
-    if (!editExamId) {
-      setEditStudents([])
-      setEditStudentId('')
-      setOmrResults([])
-      return
-    }
-
+    setFoundStudent(null)
     setEditStudentId('')
+    setSearchRoll('')
     setOmrResults([])
-
-    supabase
-      .from('omr_results')
-      .select('student_id, users(id, name, roll_number)')
-      .eq('exam_id', editExamId)
-      .then(({ data }) => {
-        const unique = []
-        const seen = new Set()
-        for (const r of data ?? []) {
-          if (!seen.has(r.student_id)) {
-            seen.add(r.student_id)
-            unique.push(r.users)
-          }
-        }
-        setEditStudents(unique.filter(Boolean))
-      })
+    setSaveMessage('')
   }, [editExamId])
 
   useEffect(() => {
@@ -191,7 +174,7 @@ export default function Admin() {
 
     supabase
       .from('omr_results')
-      .select('id, question_id, answer_given, is_correct, questions(question_number, correct_answer, topics(name))')
+      .select('id, question_id, answer_given, is_correct, questions(question_number, correct_answer, topic_id, topics(name))')
       .eq('exam_id', editExamId)
       .eq('student_id', editStudentId)
       .then(({ data }) => {
@@ -203,68 +186,88 @@ export default function Admin() {
       .finally(() => setEditingMarks(false))
   }, [editExamId, editStudentId])
 
-  async function recalculateTopicScores(examId, studentId) {
-    const { data: results } = await supabase
-      .from('omr_results')
-      .select('is_correct, questions(topic_id, topics(subject_id))')
-      .eq('exam_id', examId)
-      .eq('student_id', studentId)
+  async function handleSearchStudent() {
+    if (!searchRoll.trim()) return
+    setSearching(true)
+    setSaveMessage('')
 
-    const topicMap = {}
-    for (const row of results ?? []) {
-      const tid = row.questions?.topic_id
-      const sid = row.questions?.topics?.subject_id ?? null
-      if (!tid) continue
-      if (!topicMap[tid]) topicMap[tid] = { score: 0, total: 0, subject_id: sid }
-      topicMap[tid].total += 1
-      if (row.is_correct) topicMap[tid].score += 1
+    const { data } = await supabase
+      .from('users')
+      .select('id, name, roll_number')
+      .eq('roll_number', searchRoll.trim())
+      .eq('role', 'student')
+      .single()
+
+    if (data) {
+      setFoundStudent(data)
+      setEditStudentId(data.id)
+    } else {
+      setFoundStudent(null)
+      setEditStudentId('')
+      setOmrResults([])
+      setSaveMessage('Student not found.')
     }
-
-    const topicRows = Object.entries(topicMap).map(([topic_id, { score, total, subject_id }]) => ({
-      exam_id: examId,
-      student_id: studentId,
-      topic_id,
-      subject_id: subject_id ?? null,
-      score,
-      total,
-      percentage: total > 0 ? Math.round((score / total) * 100) : 0,
-    }))
-
-    if (topicRows.length > 0) {
-      await supabase
-        .from('topic_scores')
-        .upsert(topicRows, { onConflict: 'exam_id,student_id,topic_id' })
-    }
+    setSearching(false)
   }
 
-  async function handleAnswerChange(resultId, newAnswer, correctAnswer) {
-    const normalized = String(newAnswer ?? '').toUpperCase()
-    const correct = String(correctAnswer ?? '').toUpperCase()
-    const isCorrect = normalized === correct && normalized !== ''
-
-    const { error } = await supabase
-      .from('omr_results')
-      .update({
-        answer_given: newAnswer || null,
-        is_correct: isCorrect,
-      })
-      .eq('id', resultId)
-
-    if (error) {
-      setSaveMessage('Failed to save. Try again.')
-      return
-    }
-
-    await recalculateTopicScores(editExamId, editStudentId)
-
+  function handleAnswerChange(resultId, newAnswer, correctAnswer) {
     setOmrResults((prev) =>
       prev.map((r) =>
         r.id === resultId
-          ? { ...r, answer_given: newAnswer || null, is_correct: isCorrect }
+          ? {
+              ...r,
+              answer_given: newAnswer,
+              is_correct: newAnswer === correctAnswer,
+              edited: true,
+            }
           : r
       )
     )
-    setSaveMessage('Marks updated successfully.')
+  }
+
+  async function handleSaveMarks() {
+    setSaving(true)
+    try {
+      const edited = omrResults.filter((r) => r.edited)
+      for (const r of edited) {
+        await supabase
+          .from('omr_results')
+          .update({
+            answer_given: r.answer_given,
+            is_correct: r.is_correct,
+          })
+          .eq('id', r.id)
+      }
+
+      const topicMap = {}
+      for (const r of omrResults) {
+        const tid = r.questions?.topic_id
+        if (!tid) continue
+        if (!topicMap[tid]) topicMap[tid] = { score: 0, total: 0 }
+        topicMap[tid].total += 1
+        if (r.is_correct) topicMap[tid].score += 1
+      }
+
+      for (const [topic_id, { score, total }] of Object.entries(topicMap)) {
+        await supabase
+          .from('topic_scores')
+          .update({
+            score,
+            total,
+            percentage: total > 0 ? Math.round((score / total) * 100) : 0,
+          })
+          .eq('exam_id', editExamId)
+          .eq('student_id', editStudentId)
+          .eq('topic_id', topic_id)
+      }
+
+      setOmrResults((prev) => prev.map((r) => ({ ...r, edited: false })))
+      setSaveMessage('Marks saved successfully!')
+      setTimeout(() => setSaveMessage(''), 3000)
+    } catch {
+      setSaveMessage('Error saving marks.')
+    }
+    setSaving(false)
   }
 
   async function toggleTopics(subjectId) {
@@ -423,6 +426,143 @@ export default function Admin() {
         </div>
       </section>
 
+      <section className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Edit Student Marks</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+          <div>
+            <label htmlFor="edit-exam" className="block text-sm text-gray-600 mb-1">
+              Step 1 — Select Exam
+            </label>
+            <select
+              id="edit-exam"
+              value={editExamId}
+              onChange={(e) => setEditExamId(e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+            >
+              <option value="">Choose an exam</option>
+              {recentExams.map((exam) => (
+                <option key={exam.id} value={exam.id}>{exam.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm text-gray-600 mb-1">
+              Step 2 — Search by Roll Number
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={searchRoll}
+                onChange={(e) => setSearchRoll(e.target.value)}
+                placeholder="Enter roll number..."
+                disabled={!editExamId}
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={handleSearchStudent}
+                disabled={!editExamId || searching}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {searching ? 'Searching…' : 'Search'}
+              </button>
+            </div>
+            {foundStudent && (
+              <p className="text-sm text-green-700 font-medium mt-1">
+                Found: {foundStudent.name} (Roll #{foundStudent.roll_number})
+              </p>
+            )}
+          </div>
+        </div>
+
+        {saveMessage && (
+          <div className={`rounded-lg px-3 py-2 mb-4 text-sm ${
+            saveMessage.includes('success')
+              ? 'bg-green-50 text-green-700 border border-green-200'
+              : 'bg-red-50 text-red-700 border border-red-200'
+          }`}>
+            {saveMessage}
+          </div>
+        )}
+
+        {editingMarks && (
+          <p className="text-sm text-gray-500">Loading answers…</p>
+        )}
+
+        {!editingMarks && editExamId && editStudentId && omrResults.length === 0 && (
+          <p className="text-sm text-gray-500">No scan results found for this student.</p>
+        )}
+
+        {!editingMarks && omrResults.length > 0 && (
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Q#</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Topic</th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500">Correct</th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500">Given</th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {omrResults.map((row) => {
+                    const correctAnswer = String(row.questions?.correct_answer ?? '').toUpperCase()
+                    return (
+                      <tr key={row.id} className="border-b border-gray-100">
+                        <td className="px-3 py-2 font-medium text-gray-900">
+                          {row.questions?.question_number ?? '—'}
+                        </td>
+                        <td className="px-3 py-2 text-gray-600">
+                          {row.questions?.topics?.name ?? '—'}
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700">
+                            {correctAnswer || '—'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          <select
+                            value={row.answer_given ?? ''}
+                            onChange={(e) =>
+                              handleAnswerChange(row.id, e.target.value, correctAnswer)
+                            }
+                            className="rounded border border-gray-200 px-2 py-1 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+                          >
+                            <option value="">—</option>
+                            {['A', 'B', 'C', 'D'].map((opt) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="px-3 py-2 text-center">
+                          {row.is_correct ? (
+                            <span className="text-green-600 font-semibold">✓</span>
+                          ) : (
+                            <span className="text-red-500 font-semibold">✗</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveMarks}
+              disabled={saving}
+              className="mt-4 bg-green-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-40"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </>
+        )}
+      </section>
+
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Exams</h2>
         {recentExams.length === 0 ? (
@@ -462,124 +602,6 @@ export default function Admin() {
                 </div>
               )
             })}
-          </div>
-        )}
-      </section>
-
-      <section className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm mt-6">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Edit Student Marks</h2>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div>
-            <label htmlFor="edit-exam" className="block text-sm text-gray-600 mb-1">
-              Step 1 — Select Exam
-            </label>
-            <select
-              id="edit-exam"
-              value={editExamId}
-              onChange={(e) => setEditExamId(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
-            >
-              <option value="">Choose an exam</option>
-              {recentExams.map((exam) => (
-                <option key={exam.id} value={exam.id}>{exam.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label htmlFor="edit-student" className="block text-sm text-gray-600 mb-1">
-              Step 2 — Select Student
-            </label>
-            <select
-              id="edit-student"
-              value={editStudentId}
-              onChange={(e) => setEditStudentId(e.target.value)}
-              disabled={!editExamId}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-50"
-            >
-              <option value="">Choose a student</option>
-              {editStudents.map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.name} (Roll {student.roll_number})
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {saveMessage && (
-          <div className={`rounded-lg px-3 py-2 mb-4 text-sm ${
-            saveMessage.includes('success')
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}>
-            {saveMessage}
-          </div>
-        )}
-
-        {editingMarks && (
-          <p className="text-sm text-gray-500">Loading answers…</p>
-        )}
-
-        {!editingMarks && editExamId && editStudentId && omrResults.length === 0 && (
-          <p className="text-sm text-gray-500">No scan results found for this student.</p>
-        )}
-
-        {!editingMarks && omrResults.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Q#</th>
-                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Topic</th>
-                  <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500">Correct</th>
-                  <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500">Given</th>
-                  <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {omrResults.map((row) => {
-                  const correctAnswer = String(row.questions?.correct_answer ?? '').toUpperCase()
-                  return (
-                    <tr key={row.id} className="border-b border-gray-100">
-                      <td className="px-3 py-2 font-medium text-gray-900">
-                        {row.questions?.question_number ?? '—'}
-                      </td>
-                      <td className="px-3 py-2 text-gray-600">
-                        {row.questions?.topics?.name ?? '—'}
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <span className="inline-block rounded px-2 py-0.5 text-xs font-semibold bg-green-100 text-green-700">
-                          {correctAnswer || '—'}
-                        </span>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        <select
-                          value={row.answer_given ?? ''}
-                          onChange={(e) =>
-                            handleAnswerChange(row.id, e.target.value, correctAnswer)
-                          }
-                          className="rounded border border-gray-200 px-2 py-1 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
-                        >
-                          <option value="">—</option>
-                          {['A', 'B', 'C', 'D'].map((opt) => (
-                            <option key={opt} value={opt}>{opt}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-3 py-2 text-center">
-                        {row.is_correct ? (
-                          <span className="text-green-600 font-semibold">✓</span>
-                        ) : (
-                          <span className="text-red-500 font-semibold">✗</span>
-                        )}
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
           </div>
         )}
       </section>
