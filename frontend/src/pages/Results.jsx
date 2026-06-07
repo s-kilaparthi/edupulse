@@ -385,8 +385,14 @@ export default function Results() {
     if (location.state?.examId) {
       setExamId(location.state.examId)
     }
-    if (location.state?.tab && location.state.tab === 'heatmap') {
+    if (location.state?.tab === 'heatmap') {
       setActiveTab('heatmap')
+    }
+    if (location.state?.tab === 'student') {
+      setActiveTab('student')
+    }
+    if (location.state?.studentId) {
+      setSelectedStudentId(location.state.studentId)
     }
   }, [location.state])
 

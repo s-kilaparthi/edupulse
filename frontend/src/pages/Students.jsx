@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 export default function Students() {
   const { session } = useOutletContext()
+  const navigate = useNavigate()
   const [userRole, setUserRole] = useState('teacher')
   const isAdmin = userRole === 'admin'
+  const isTeacher = userRole === 'teacher'
 
   const [students, setStudents] = useState([])
   const [loading, setLoading] = useState(true)
@@ -20,6 +22,9 @@ export default function Students() {
   const [editName, setEditName] = useState('')
   const [editRoll, setEditRoll] = useState('')
   const [editSaving, setEditSaving] = useState(false)
+
+  const [selectedFilterClass, setSelectedFilterClass] = useState('')
+  const [teacherClasses, setTeacherClasses] = useState([])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -39,10 +44,11 @@ export default function Students() {
     if (userRole === 'teacher') {
       const { data: tcData } = await supabase
         .from('class_teachers')
-        .select('class_id')
+        .select('class_id, classes(id, name)')
         .eq('teacher_id', session.user.id)
 
       const classIds = tcData?.map((tc) => tc.class_id) ?? []
+      setTeacherClasses(tcData?.map((tc) => tc.classes).filter(Boolean) ?? [])
 
       if (classIds.length === 0) {
         setStudents([])
@@ -66,6 +72,8 @@ export default function Students() {
       setLoading(false)
       return
     }
+
+    setTeacherClasses([])
 
     const { data, error: fetchError } = await supabase
       .from('users')
@@ -192,6 +200,10 @@ export default function Students() {
     await fetchStudents()
   }
 
+  const displayedStudents = selectedFilterClass
+    ? students.filter((s) => s.class_id === selectedFilterClass)
+    : students
+
   return (
     <>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Students</h1>
@@ -257,20 +269,50 @@ export default function Students() {
       )}
 
       <section>
+        {isTeacher && teacherClasses.length > 0 && (
+          <div className="flex gap-2 mb-4 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setSelectedFilterClass('')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                selectedFilterClass === ''
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              All Classes
+            </button>
+            {teacherClasses.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setSelectedFilterClass(c.id)}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  selectedFilterClass === c.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {c.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         <p className="text-sm text-gray-600 mb-4">
           Total students:{' '}
-          <span className="font-semibold text-gray-900">{students.length}</span>
+          <span className="font-semibold text-gray-900">{displayedStudents.length}</span>
         </p>
 
         {loading ? (
           <p className="text-gray-500 text-sm">Loading students…</p>
-        ) : students.length === 0 ? (
+        ) : displayedStudents.length === 0 ? (
           <p className="text-gray-500 text-sm">
             {isAdmin ? 'No students yet. Add one above.' : 'No students yet.'}
           </p>
         ) : (
           <ul className="space-y-3">
-            {students.map((student) => (
+            {displayedStudents.map((student) => (
               <li
                 key={student.id}
                 className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
@@ -314,7 +356,17 @@ export default function Students() {
                 ) : (
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-medium text-gray-900">{student.name}</p>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate('/results', {
+                            state: { studentId: student.id, tab: 'student' },
+                          })
+                        }
+                        className="font-medium text-blue-600 hover:text-blue-800 text-left"
+                      >
+                        {student.name}
+                      </button>
                       <p className="text-xs text-gray-400">
                         {student.classes?.name ?? 'No class assigned'}
                       </p>
