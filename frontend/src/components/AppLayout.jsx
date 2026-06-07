@@ -2,7 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { supabase } from '../supabase'
 
-const NAV_ITEMS = [
+const studentNav = [
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'My Results', to: '/results' },
+  { label: 'Subjects', to: '/subjects' },
+  { label: 'Announcements', to: '/announcements' },
+]
+
+const teacherNav = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Subjects', to: '/subjects' },
   { label: 'Exams', to: '/exams' },
@@ -10,6 +17,18 @@ const NAV_ITEMS = [
   { label: 'Students', to: '/students' },
   { label: 'Results', to: '/results' },
   { label: 'Announcements', to: '/announcements' },
+]
+
+const adminNav = [
+  { label: 'Dashboard', to: '/dashboard' },
+  { label: 'Classes', to: '/classes' },
+  { label: 'Subjects', to: '/subjects' },
+  { label: 'Exams', to: '/exams' },
+  { label: 'Scan', to: '/scan' },
+  { label: 'Students', to: '/students' },
+  { label: 'Results', to: '/results' },
+  { label: 'Announcements', to: '/announcements' },
+  { label: 'Admin', to: '/admin' },
 ]
 
 export default function AppLayout({ session }) {
@@ -29,12 +48,12 @@ export default function AppLayout({ session }) {
       })
   }, [session])
 
-  const navItems = [
-    ...NAV_ITEMS.slice(0, 2),
-    ...(userRole === 'admin' ? [{ label: 'Classes', to: '/classes' }] : []),
-    ...NAV_ITEMS.slice(2),
-    ...(userRole === 'admin' ? [{ label: 'Admin', to: '/admin' }] : []),
-  ]
+  const navItems =
+    userRole === 'student'
+      ? studentNav
+      : userRole === 'admin'
+        ? adminNav
+        : teacherNav
 
   async function handleLogout() {
     await supabase.auth.signOut()

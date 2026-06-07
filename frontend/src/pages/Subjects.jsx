@@ -38,16 +38,18 @@ export default function Subjects() {
       })
   }, [session])
 
+  const isStudent = userRole === 'student'
+
   async function fetchSubjects() {
     setError(null)
     const { data: { user } } = await supabase.auth.getUser()
 
     let query = supabase
       .from('subjects')
-      .select('id, name, topics(id, name)')
+      .select('id, name, teacher_id, topics(id, name), users(name)')
       .order('name')
 
-    if (userRole === 'admin') {
+    if (userRole === 'admin' || userRole === 'student') {
       query = query.eq('institute_id', instituteId)
     } else {
       query = query.eq('teacher_id', user.id)
@@ -65,7 +67,7 @@ export default function Subjects() {
 
   useEffect(() => {
     if (!userRole) return
-    if (userRole === 'admin' && !instituteId) return
+    if ((userRole === 'admin' || userRole === 'student') && !instituteId) return
     fetchSubjects()
   }, [userRole, instituteId])
 
@@ -202,28 +204,30 @@ export default function Subjects() {
     <>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Subjects</h1>
 
-      <form
-        onSubmit={handleCreateSubject}
-        className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6"
-      >
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Create Subject</h2>
-        <div className="flex flex-col sm:flex-row gap-3">
-          <input
-            type="text"
-            value={subjectName}
-            onChange={(e) => setSubjectName(e.target.value)}
-            placeholder="Subject name"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-          />
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
-          >
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-        </div>
-      </form>
+      {!isStudent && (
+        <form
+          onSubmit={handleCreateSubject}
+          className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6"
+        >
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Create Subject</h2>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              value={subjectName}
+              onChange={(e) => setSubjectName(e.target.value)}
+              placeholder="Subject name"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+            />
+            <button
+              type="submit"
+              disabled={saving}
+              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+        </form>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-6">
@@ -234,7 +238,9 @@ export default function Subjects() {
       {loading ? (
         <p className="text-gray-500 text-sm">Loading subjects…</p>
       ) : subjects.length === 0 ? (
-        <p className="text-gray-500 text-sm">No subjects yet. Create one above.</p>
+        <p className="text-gray-500 text-sm">
+          {isStudent ? 'No subjects yet.' : 'No subjects yet. Create one above.'}
+        </p>
       ) : (
         <ul className="space-y-3">
           {subjects.map((subject) => (
@@ -242,6 +248,33 @@ export default function Subjects() {
               key={subject.id}
               className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
             >
+              {isStudent ? (
+                <>
+                  <p className="font-medium text-gray-900">{subject.name}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Teacher: {subject.users?.name ?? '—'}
+                  </p>
+
+                  {subject.topics?.length > 0 && (
+                    <ul className="mt-3 flex flex-wrap gap-2">
+                      {subject.topics.map((topic) => (
+                        <li
+                          key={topic.id}
+                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
+                        >
+                          {topic.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="mt-4 pt-4 border-t border-gray-100">
+                    <p className="text-sm font-semibold text-gray-900">Notes & Files</p>
+                    <p className="text-sm text-gray-400 mt-1">No files uploaded yet</p>
+                  </div>
+                </>
+              ) : (
+                <>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <span className="font-medium text-gray-900">{subject.name}</span>
                 <div className="flex items-center gap-3 shrink-0">
@@ -351,21 +384,25 @@ export default function Subjects() {
                   </button>
                 </div>
               )}
+                </>
+              )}
             </li>
           ))}
         </ul>
       )}
 
-      <input
-        ref={pdfRef}
-        type="file"
-        accept="application/pdf"
-        className="hidden"
-        onChange={(e) => {
-          const subjectId = pdfRef.current?.dataset?.subjectId
-          if (subjectId) handlePdfUpload(e, subjectId)
-        }}
-      />
+      {!isStudent && (
+        <input
+          ref={pdfRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(e) => {
+            const subjectId = pdfRef.current?.dataset?.subjectId
+            if (subjectId) handlePdfUpload(e, subjectId)
+          }}
+        />
+      )}
     </>
   )
 }
