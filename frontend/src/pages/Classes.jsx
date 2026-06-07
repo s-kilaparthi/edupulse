@@ -10,6 +10,7 @@ export default function Classes() {
 
   const [className, setClassName] = useState('')
   const [academicYear, setAcademicYear] = useState('')
+  const [selectedSubjectIdsForClass, setSelectedSubjectIdsForClass] = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -29,8 +30,10 @@ export default function Classes() {
   const [addStudentId, setAddStudentId] = useState('')
   const [addTeacherId, setAddTeacherId] = useState('')
   const [addSubjectId, setAddSubjectId] = useState('')
+  const [addClassSubjectId, setAddClassSubjectId] = useState('')
   const [addingStudent, setAddingStudent] = useState(false)
   const [addingTeacher, setAddingTeacher] = useState(false)
+  const [addingClassSubject, setAddingClassSubject] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -53,7 +56,7 @@ export default function Classes() {
     setError(null)
     const { data: classRows, error: classError } = await supabase
       .from('classes')
-      .select('id, name, academic_year')
+      .select('id, name, academic_year, subject_classes(subject_id, subjects(name))')
       .eq('institute_id', instituteId)
       .order('name')
 
@@ -127,6 +130,7 @@ export default function Classes() {
     setAddStudentId('')
     setAddTeacherId('')
     setAddSubjectId('')
+    setAddClassSubjectId('')
   }
 
   async function handleCreateClass(e) {
@@ -136,22 +140,67 @@ export default function Classes() {
     setSaving(true)
     setError(null)
 
-    const { error: insertError } = await supabase.from('classes').insert({
-      name: className.trim(),
-      academic_year: academicYear.trim(),
-      institute_id: instituteId,
-    })
+    try {
+      const { data: newClass, error: classErr } = await supabase
+        .from('classes')
+        .insert({
+          name: className.trim(),
+          academic_year: academicYear.trim(),
+          institute_id: instituteId,
+        })
+        .select('id')
+        .single()
+
+      if (classErr) throw new Error(classErr.message)
+
+      if (selectedSubjectIdsForClass.length > 0) {
+        const rows = selectedSubjectIdsForClass.map((subjectId) => ({
+          subject_id: subjectId,
+          class_id: newClass.id,
+        }))
+        const { error: scError } = await supabase.from('subject_classes').insert(rows)
+        if (scError) throw new Error(scError.message)
+      }
+
+      setClassName('')
+      setAcademicYear('')
+      setSelectedSubjectIdsForClass([])
+      setLoading(true)
+      await fetchClasses()
+    } catch (err) {
+      setError(err.message)
+    }
 
     setSaving(false)
+  }
+
+  async function handleAddSubjectToClass(classId, subjectId) {
+    const { error: insertError } = await supabase.from('subject_classes').insert({
+      class_id: classId,
+      subject_id: subjectId,
+    })
 
     if (insertError) {
       setError(insertError.message)
       return
     }
 
-    setClassName('')
-    setAcademicYear('')
-    setLoading(true)
+    setAddClassSubjectId('')
+    await fetchClasses()
+  }
+
+  async function handleRemoveSubjectFromClass(classId, subjectId) {
+    const { error: deleteError } = await supabase
+      .from('subject_classes')
+      .delete()
+      .eq('class_id', classId)
+      .eq('subject_id', subjectId)
+
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+
     await fetchClasses()
   }
 
@@ -279,6 +328,41 @@ export default function Classes() {
             className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
+
+        {allSubjects.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Assign Subjects
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {allSubjects.map((s) => (
+                <label
+                  key={s.id}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
+                    selectedSubjectIdsForClass.includes(s.id)
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedSubjectIdsForClass.includes(s.id)}
+                    onChange={() =>
+                      setSelectedSubjectIdsForClass((prev) =>
+                        prev.includes(s.id)
+                          ? prev.filter((id) => id !== s.id)
+                          : [...prev, s.id]
+                      )
+                    }
+                    className="hidden"
+                  />
+                  {s.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={saving}
@@ -313,6 +397,18 @@ export default function Classes() {
                     <p className="text-sm text-gray-500">
                       {cls.academic_year || '—'} · {studentCounts[cls.id] ?? 0} students
                     </p>
+                    {cls.subject_classes?.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {cls.subject_classes.map((sc) => (
+                          <span
+                            key={sc.subject_id}
+                            className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200"
+                          >
+                            {sc.subjects?.name}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -347,6 +443,18 @@ export default function Classes() {
                       >
                         Teachers
                         {activeTab === 'teachers' && (
+                          <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('subjects')}
+                        className={`px-4 py-2 text-sm font-medium relative ${
+                          activeTab === 'subjects' ? 'text-gray-900' : 'text-gray-500'
+                        }`}
+                      >
+                        Subjects
+                        {activeTab === 'subjects' && (
                           <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />
                         )}
                       </button>
@@ -467,6 +575,66 @@ export default function Classes() {
                         </div>
                       </div>
                     )}
+
+                    {activeTab === 'subjects' && (() => {
+                      const assignedSubjectIds = cls.subject_classes?.map((sc) => sc.subject_id) ?? []
+                      const unassignedSubjects = allSubjects.filter(
+                        (s) => !assignedSubjectIds.includes(s.id)
+                      )
+                      return (
+                        <div className="flex flex-col gap-4">
+                          {cls.subject_classes?.length === 0 ? (
+                            <p className="text-sm text-gray-500">No subjects assigned yet.</p>
+                          ) : (
+                            <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                              {cls.subject_classes.map((sc) => (
+                                <li
+                                  key={sc.subject_id}
+                                  className="flex items-center justify-between px-4 py-3"
+                                >
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {sc.subjects?.name ?? '—'}
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSubjectFromClass(cls.id, sc.subject_id)}
+                                    className="text-xs text-red-500 hover:text-red-700"
+                                  >
+                                    Remove
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <select
+                              value={addClassSubjectId}
+                              onChange={(e) => setAddClassSubjectId(e.target.value)}
+                              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+                            >
+                              <option value="">Add subject…</option>
+                              {unassignedSubjects.map((s) => (
+                                <option key={s.id} value={s.id}>{s.name}</option>
+                              ))}
+                            </select>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (!addClassSubjectId) return
+                                setAddingClassSubject(true)
+                                await handleAddSubjectToClass(cls.id, addClassSubjectId)
+                                setAddingClassSubject(false)
+                              }}
+                              disabled={!addClassSubjectId || addingClassSubject}
+                              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
+                            >
+                              {addingClassSubject ? 'Adding…' : 'Add'}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })()}
                   </div>
                 )}
               </li>

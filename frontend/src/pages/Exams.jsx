@@ -36,6 +36,7 @@ export default function Exams() {
   const [scope, setScope] = useState('class')
   const [selectedClassIds, setSelectedClassIds] = useState([])
   const [classes, setClasses] = useState([])
+  const [availableClasses, setAvailableClasses] = useState([])
   const [teacherAssignments, setTeacherAssignments] = useState([])
   const [userRole, setUserRole] = useState(null)
   const [instituteId, setInstituteId] = useState(null)
@@ -139,8 +140,21 @@ export default function Exams() {
           .eq('teacher_id', user.id)
 
         setTeacherAssignments(tcData ?? [])
+
+        const allTeacherClassIds = [...new Set(tcData?.map((a) => a.class_id) ?? [])]
+        if (allTeacherClassIds.length > 0) {
+          const { data: classDetails } = await supabase
+            .from('classes')
+            .select('id, name')
+            .in('id', allTeacherClassIds)
+            .order('name')
+          setAvailableClasses(classDetails ?? [])
+        } else {
+          setAvailableClasses([])
+        }
       } else {
         setTeacherAssignments([])
+        setAvailableClasses([])
       }
 
       await fetchExams()
@@ -159,25 +173,23 @@ export default function Exams() {
     fetchSubjects().catch((err) => setError(err.message))
   }, [userRole, instituteId])
 
+  useEffect(() => {
+    if (userRole !== 'teacher') return
+
+    const relevantSubjectIds = teacherAssignments
+      .filter((a) => selectedClassIds.includes(a.class_id))
+      .map((a) => a.subject_id)
+
+    setSelectedSubjects((prev) =>
+      prev.filter((s) => relevantSubjectIds.includes(s.subject_id))
+    )
+  }, [selectedClassIds, userRole, teacherAssignments])
+
   function toggleSubject(subject) {
     setSelectedSubjects((prev) => {
       const exists = prev.find((s) => s.subject_id === subject.id)
-      const next = exists
-        ? prev.filter((s) => s.subject_id !== subject.id)
-        : [...prev, { subject_id: subject.id, name: subject.name, question_from: '', question_to: '' }]
-
-      if (userRole === 'teacher') {
-        const subjectIds = next.map((s) => s.subject_id)
-        setSelectedClassIds((classIds) =>
-          classIds.filter((id) =>
-            teacherAssignments.some(
-              (a) => a.class_id === id && subjectIds.includes(a.subject_id)
-            )
-          )
-        )
-      }
-
-      return next
+      if (exists) return prev.filter((s) => s.subject_id !== subject.id)
+      return [...prev, { subject_id: subject.id, name: subject.name, question_from: '', question_to: '' }]
     })
   }
 
@@ -447,19 +459,17 @@ export default function Exams() {
   const allNums = activeExam ? getAllQuestionNums() : []
   const unassignedCount = activeExam ? getUnassignedCount() : 0
   const missingAnswerCount = activeExam ? getMissingAnswerCount() : 0
-  const selectedSubjectIds = selectedSubjects.map((s) => s.subject_id)
-  const availableClasses =
-    userRole === 'admin'
-      ? classes
-      : selectedSubjectIds.length > 0
-        ? classes.filter((c) =>
-            teacherAssignments.some(
-              (a) => a.class_id === c.id && selectedSubjectIds.includes(a.subject_id)
-            )
-          )
-        : classes.filter((c) =>
-            teacherAssignments.some((a) => a.class_id === c.id)
-          )
+  const relevantSubjectIds = userRole === 'teacher'
+    ? teacherAssignments
+        .filter((a) => selectedClassIds.includes(a.class_id))
+        .map((a) => a.subject_id)
+    : []
+
+  const filteredSubjects = userRole === 'teacher'
+    ? subjects.filter((s) => relevantSubjectIds.includes(s.id))
+    : subjects
+
+  const displayClasses = userRole === 'admin' ? classes : availableClasses
 
   return (
     <>
@@ -517,11 +527,11 @@ export default function Exams() {
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 {userRole === 'teacher'
-                  ? 'Select Class'
+                  ? 'Select Classes'
                   : `Select Class${scope === 'multiple' ? 'es' : ''}`}
               </label>
               <div className="flex flex-wrap gap-2">
-                {availableClasses.map((c) => (
+                {displayClasses.map((c) => (
                   <label
                     key={c.id}
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
@@ -536,9 +546,9 @@ export default function Exams() {
                       onChange={() => setSelectedClassIds((prev) =>
                         prev.includes(c.id)
                           ? prev.filter((id) => id !== c.id)
-                          : userRole === 'teacher' || scope === 'class'
-                            ? [c.id]
-                            : [...prev, c.id]
+                          : userRole === 'teacher' || scope === 'multiple'
+                            ? [...prev, c.id]
+                            : [c.id]
                       )}
                       className="hidden"
                     />
@@ -546,7 +556,7 @@ export default function Exams() {
                   </label>
                 ))}
               </div>
-              {availableClasses.length === 0 && (
+              {displayClasses.length === 0 && (
                 <p className="text-xs text-gray-400">
                   {userRole === 'teacher'
                     ? 'No assigned classes found.'
@@ -558,11 +568,13 @@ export default function Exams() {
 
           <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-2">Subjects & Question Ranges</label>
-            {subjects.length === 0 ? (
+            {userRole === 'teacher' && selectedClassIds.length === 0 ? (
+              <p className="text-sm text-gray-400">Select one or more classes to see subjects.</p>
+            ) : filteredSubjects.length === 0 ? (
               <p className="text-sm text-gray-400">No subjects found. Add subjects on the Subjects page first.</p>
             ) : (
               <div className="flex flex-col gap-2">
-                {subjects.map((s) => {
+                {filteredSubjects.map((s) => {
                   const selected = selectedSubjects.find((ss) => ss.subject_id === s.id)
                   return (
                     <div key={s.id} className="flex flex-wrap items-center gap-3">
