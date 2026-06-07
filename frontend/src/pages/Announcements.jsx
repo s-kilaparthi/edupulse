@@ -7,7 +7,7 @@ export default function Announcements() {
   const [userRole, setUserRole] = useState('student')
   const [userName, setUserName] = useState('')
   const [instituteId, setInstituteId] = useState(null)
-  const [userSubjects, setUserSubjects] = useState([])
+  const [studentClassId, setStudentClassId] = useState(null)
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
 
   const [announcements, setAnnouncements] = useState([])
@@ -25,7 +25,7 @@ export default function Announcements() {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role, name, institute_id')
+      .select('role, name, institute_id, class_id')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
@@ -33,6 +33,9 @@ export default function Announcements() {
           setUserRole(data.role)
           setUserName(data.name)
           setInstituteId(data.institute_id)
+          if (data.role === 'student') {
+            setStudentClassId(data.class_id)
+          }
         }
       })
   }, [session])
@@ -62,42 +65,33 @@ export default function Announcements() {
     }
   }, [userRole, session, instituteId])
 
-  useEffect(() => {
-    if (isTeacher || !instituteId) return
-
-    supabase
-      .from('subjects')
-      .select('id')
-      .eq('institute_id', instituteId)
-      .then(({ data }) => {
-        if (data) setUserSubjects(data.map((s) => s.id))
-      })
-  }, [isTeacher, instituteId])
-
   const loadAnnouncements = useCallback(async () => {
     if (!session?.user?.id || !instituteId) return
 
     setLoading(true)
 
+    const selectFields =
+      'id, title, body, is_pinned, created_at, class_id, subject_id, subjects(name), users(name), classes(name)'
+
     if (isTeacher) {
       const { data } = await supabase
         .from('announcements')
-        .select('id, title, body, is_pinned, created_at, subject_id, subjects(name), users(name)')
+        .select(selectFields)
         .eq('institute_id', instituteId)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
       setAnnouncements(data ?? [])
-    } else {
+    } else if (userRole === 'student') {
       let query = supabase
         .from('announcements')
-        .select('id, title, body, is_pinned, created_at, subject_id, subjects(name), users(name)')
+        .select(selectFields)
         .eq('institute_id', instituteId)
 
-      if (userSubjects.length > 0) {
-        query = query.or(`subject_id.is.null,subject_id.in.(${userSubjects.join(',')})`)
+      if (studentClassId) {
+        query = query.or(`class_id.is.null,class_id.eq.${studentClassId}`)
       } else {
-        query = query.is('subject_id', null)
+        query = query.is('class_id', null)
       }
 
       const { data } = await query
@@ -108,12 +102,12 @@ export default function Announcements() {
     }
 
     setLoading(false)
-  }, [session, isTeacher, userSubjects, instituteId])
+  }, [session, isTeacher, userRole, studentClassId, instituteId])
 
   useEffect(() => {
     if (!session?.user?.id || !instituteId) return
     loadAnnouncements()
-  }, [session, isTeacher, userSubjects, instituteId, loadAnnouncements])
+  }, [session, isTeacher, userRole, studentClassId, instituteId, loadAnnouncements])
 
   async function handlePost(e) {
     e.preventDefault()
@@ -177,6 +171,7 @@ export default function Announcements() {
         <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
           <span>By {item.users?.name}</span>
           {item.subjects?.name && <span>· {item.subjects.name}</span>}
+          <span>· {item.classes?.name ?? 'Institute-wide'}</span>
           <span>· {new Date(item.created_at).toLocaleDateString()}</span>
         </div>
       </div>
@@ -202,7 +197,7 @@ export default function Announcements() {
         )}
       </div>
 
-      {showForm && isTeacher && (
+      {isTeacher && showForm && (
         <form
           onSubmit={handlePost}
           className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col gap-4"
