@@ -70,6 +70,9 @@ export default function Dashboard() {
   })
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
+  const [teacherClasses, setTeacherClasses] = useState([])
+  const [selectedClassId, setSelectedClassId] = useState('')
+  const [classStudents, setClassStudents] = useState([])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -141,10 +144,23 @@ export default function Dashboard() {
 
         setStats({ lastExamName, lastExamScore, lastExamTotal, lastExamPct, subjectsEnrolled })
       } else if (userRole === 'teacher') {
-        const { count: studentCount } = await supabase
-          .from('users')
-          .select('*', { count: 'exact', head: true })
-          .eq('role', 'student')
+        const { data: teacherClassesData } = await supabase
+          .from('class_teachers')
+          .select('class_id, classes(id, name)')
+          .eq('teacher_id', session.user.id)
+
+        const classIds = teacherClassesData?.map((tc) => tc.class_id) ?? []
+        setTeacherClasses(teacherClassesData ?? [])
+
+        let studentCount = 0
+        if (classIds.length > 0) {
+          const { count } = await supabase
+            .from('users')
+            .select('id', { count: 'exact' })
+            .eq('role', 'student')
+            .in('class_id', classIds)
+          studentCount = count ?? 0
+        }
 
         const { count: examCount } = await supabase
           .from('exams')
@@ -175,7 +191,8 @@ export default function Dashboard() {
         }
 
         setStats({
-          totalStudents: studentCount ?? 0,
+          myClasses: classIds.length,
+          myStudents: studentCount,
           examsCreated: examCount ?? 0,
           lastScanDate,
           lastScanExamName,
@@ -220,6 +237,20 @@ export default function Dashboard() {
 
     loadDashboard()
   }, [session, userLoaded, instituteId, userRole])
+
+  useEffect(() => {
+    if (!selectedClassId) {
+      setClassStudents([])
+      return
+    }
+    supabase
+      .from('users')
+      .select('id, name, roll_number')
+      .eq('role', 'student')
+      .eq('class_id', selectedClassId)
+      .order('roll_number')
+      .then(({ data }) => setClassStudents(data ?? []))
+  }, [selectedClassId])
 
   if (loading) {
     return (
@@ -269,8 +300,9 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-gray-900 mt-1">Welcome, {userName}!</h1>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="Total Students" value={stats.totalStudents ?? 0} />
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <StatCard label="My Classes" value={stats.myClasses ?? 0} />
+            <StatCard label="My Students" value={stats.myStudents ?? 0} />
             <StatCard label="Exams Created" value={stats.examsCreated ?? 0} />
             <StatCard
               label="Last Scan Date"
@@ -296,6 +328,33 @@ export default function Dashboard() {
             >
               View Class Heatmap
             </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">My Students</h2>
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-3"
+            >
+              <option value="">Select a class to view students...</option>
+              {teacherClasses.map((tc) => (
+                <option key={tc.class_id} value={tc.class_id}>
+                  {tc.classes?.name}
+                </option>
+              ))}
+            </select>
+
+            {classStudents.length > 0 && (
+              <ul className="space-y-2">
+                {classStudents.map((s) => (
+                  <li key={s.id} className="flex justify-between text-sm px-3 py-2 bg-gray-50 rounded-lg">
+                    <span className="font-medium text-gray-900">{s.name}</span>
+                    <span className="text-gray-400">Roll #{s.roll_number}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </>
       )}
