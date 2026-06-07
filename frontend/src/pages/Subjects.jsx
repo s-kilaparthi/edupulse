@@ -28,6 +28,10 @@ export default function Subjects() {
   const [availableClasses, setAvailableClasses] = useState([])
   const [teacherAssignments, setTeacherAssignments] = useState([])
   const [classesLoaded, setClassesLoaded] = useState(false)
+  const [selectedClassIdsForSubject, setSelectedClassIdsForSubject] = useState([])
+  const [manageClassesSubjectId, setManageClassesSubjectId] = useState(null)
+  const [manageClassIds, setManageClassIds] = useState([])
+  const [savingClassAssignments, setSavingClassAssignments] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -123,7 +127,7 @@ export default function Subjects() {
 
     let query = supabase
       .from('subjects')
-      .select('id, name, teacher_id, topics(id, name, class_id), users(name)')
+      .select('id, name, teacher_id, topics(id, name, class_id), users(name), subject_classes(class_id, classes(name))')
       .order('name')
 
     if (userRole === 'admin' || userRole === 'student') {
@@ -181,38 +185,90 @@ export default function Subjects() {
     setSaving(true)
     setError(null)
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
 
-    if (userError || !user) {
-      setError(userError?.message ?? 'Not authenticated')
-      setSaving(false)
-      return
+      if (userError || !user) {
+        throw new Error(userError?.message ?? 'Not authenticated')
+      }
+
+      const { data: newSubject, error: insertError } = await supabase
+        .from('subjects')
+        .insert({ name, institute_id: instituteId, teacher_id: user.id })
+        .select('id')
+        .single()
+
+      if (insertError) throw new Error(insertError.message)
+
+      if (selectedClassIdsForSubject.length > 0) {
+        const subjectClassRows = selectedClassIdsForSubject.map((classId) => ({
+          subject_id: newSubject.id,
+          class_id: classId,
+        }))
+        const { error: scError } = await supabase.from('subject_classes').insert(subjectClassRows)
+        if (scError) throw new Error(scError.message)
+      }
+
+      setSubjectName('')
+      setSelectedClassIdsForSubject([])
+      setLoading(true)
+      await fetchSubjects()
+    } catch (err) {
+      setError(err.message)
     }
-
-    const { error: insertError } = await supabase.from('subjects').insert({
-      name,
-      institute_id: instituteId,
-      teacher_id: user.id,
-    })
 
     setSaving(false)
-
-    if (insertError) {
-      setError(insertError.message)
-      return
-    }
-
-    setSubjectName('')
-    setLoading(true)
-    await fetchSubjects()
   }
 
   function toggleTopics(subjectId) {
     setExpandedSubjectId((prev) => (prev === subjectId ? null : subjectId))
+    setManageClassesSubjectId(null)
     setTopicInput('')
+  }
+
+  function toggleManageClasses(subject) {
+    setManageClassesSubjectId((prev) => (prev === subject.id ? null : subject.id))
+    setManageClassIds(subject.subject_classes?.map((sc) => sc.class_id) ?? [])
+    setExpandedSubjectId(null)
+  }
+
+  async function handleSaveClassAssignments(subjectId) {
+    const subject = subjects.find((s) => s.id === subjectId)
+    const currentIds = subject?.subject_classes?.map((sc) => sc.class_id) ?? []
+    const toAdd = manageClassIds.filter((id) => !currentIds.includes(id))
+    const toRemove = currentIds.filter((id) => !manageClassIds.includes(id))
+
+    setSavingClassAssignments(true)
+    setError(null)
+
+    try {
+      if (toRemove.length > 0) {
+        const { error: deleteError } = await supabase
+          .from('subject_classes')
+          .delete()
+          .eq('subject_id', subjectId)
+          .in('class_id', toRemove)
+        if (deleteError) throw new Error(deleteError.message)
+      }
+
+      if (toAdd.length > 0) {
+        const { error: insertError } = await supabase.from('subject_classes').insert(
+          toAdd.map((classId) => ({ subject_id: subjectId, class_id: classId }))
+        )
+        if (insertError) throw new Error(insertError.message)
+      }
+
+      setManageClassesSubjectId(null)
+      setLoading(true)
+      await fetchSubjects()
+    } catch (err) {
+      setError(err.message)
+    }
+
+    setSavingClassAssignments(false)
   }
 
   async function handlePdfUpload(e, subjectId) {
@@ -322,21 +378,57 @@ export default function Subjects() {
           className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6"
         >
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Create Subject</h2>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="text"
-              value={subjectName}
-              onChange={(e) => setSubjectName(e.target.value)}
-              placeholder="Subject name"
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-            />
-            <button
-              type="submit"
-              disabled={saving}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
-            >
-              {saving ? 'Saving…' : 'Save'}
-            </button>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="text"
+                value={subjectName}
+                onChange={(e) => setSubjectName(e.target.value)}
+                placeholder="Subject name"
+                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              />
+              <button
+                type="submit"
+                disabled={saving}
+                className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+
+            {availableClasses.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Assign to Classes
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {availableClasses.map((c) => (
+                    <label
+                      key={c.id}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
+                        selectedClassIdsForSubject.includes(c.id)
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                          : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedClassIdsForSubject.includes(c.id)}
+                        onChange={() =>
+                          setSelectedClassIdsForSubject((prev) =>
+                            prev.includes(c.id)
+                              ? prev.filter((id) => id !== c.id)
+                              : [...prev, c.id]
+                          )
+                        }
+                        className="hidden"
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </form>
       )}
@@ -350,6 +442,7 @@ export default function Subjects() {
               onClick={() => {
                 setSelectedClassId(c.id)
                 setExpandedSubjectId(null)
+                setManageClassesSubjectId(null)
               }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedClassId === c.id
@@ -423,8 +516,33 @@ export default function Subjects() {
                   ) : (
                     <>
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <span className="font-medium text-gray-900">{subject.name}</span>
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div>
+                          <span className="font-medium text-gray-900">{subject.name}</span>
+                          {subject.subject_classes?.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              {subject.subject_classes.map((sc) => (
+                                <span
+                                  key={sc.class_id}
+                                  className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-200"
+                                >
+                                  {sc.classes?.name}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => toggleManageClasses(subject)}
+                              className="text-sm font-medium text-gray-600 hover:text-gray-800 shrink-0"
+                            >
+                              {manageClassesSubjectId === subject.id
+                                ? 'Hide Classes'
+                                : 'Manage Classes'}
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => {
@@ -447,6 +565,52 @@ export default function Subjects() {
                           </button>
                         </div>
                       </div>
+
+                      {isAdmin && manageClassesSubjectId === subject.id && (
+                        <div className="mt-4 pt-4 border-t border-gray-100">
+                          <p className="text-sm font-medium text-gray-700 mb-2">Assign to Classes</p>
+                          {availableClasses.length === 0 ? (
+                            <p className="text-sm text-gray-400">No classes available.</p>
+                          ) : (
+                            <>
+                              <div className="flex flex-wrap gap-2 mb-3">
+                                {availableClasses.map((c) => (
+                                  <label
+                                    key={c.id}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
+                                      manageClassIds.includes(c.id)
+                                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                                        : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                                    }`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={manageClassIds.includes(c.id)}
+                                      onChange={() =>
+                                        setManageClassIds((prev) =>
+                                          prev.includes(c.id)
+                                            ? prev.filter((id) => id !== c.id)
+                                            : [...prev, c.id]
+                                        )
+                                      }
+                                      className="hidden"
+                                    />
+                                    {c.name}
+                                  </label>
+                                ))}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleSaveClassAssignments(subject.id)}
+                                disabled={savingClassAssignments}
+                                className="text-sm font-medium bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                              >
+                                {savingClassAssignments ? 'Saving…' : 'Save Class Assignments'}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
 
                       {classTopics.length > 0 && (
                         <ul className="mt-3 flex flex-wrap gap-2">
