@@ -6,6 +6,7 @@ export default function Subjects() {
   const { session } = useOutletContext()
   const [userRole, setUserRole] = useState('teacher')
   const [instituteId, setInstituteId] = useState(null)
+  const [studentClassId, setStudentClassId] = useState(null)
 
   const [subjects, setSubjects] = useState([])
   const [subjectName, setSubjectName] = useState('')
@@ -23,17 +24,25 @@ export default function Subjects() {
   const [savingTopics, setSavingTopics] = useState(false)
   const pdfRef = useRef(null)
 
+  const [selectedClassId, setSelectedClassId] = useState('')
+  const [availableClasses, setAvailableClasses] = useState([])
+  const [teacherAssignments, setTeacherAssignments] = useState([])
+  const [classesLoaded, setClassesLoaded] = useState(false)
+
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role, institute_id')
+      .select('role, institute_id, class_id')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
         if (data) {
           setUserRole(data.role)
           setInstituteId(data.institute_id)
+          if (data.role === 'student') {
+            setStudentClassId(data.class_id)
+          }
         }
       })
   }, [session])
@@ -42,17 +51,53 @@ export default function Subjects() {
   const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
 
+  useEffect(() => {
+    if (!session?.user?.id || !userRole) return
+
+    async function loadClasses() {
+      setClassesLoaded(false)
+
+      if (userRole === 'teacher') {
+        const { data: tc } = await supabase
+          .from('class_teachers')
+          .select('class_id, classes(id, name), subject_id')
+          .eq('teacher_id', session.user.id)
+
+        const seen = new Set()
+        const uniqueClasses = []
+        for (const row of tc ?? []) {
+          if (!seen.has(row.class_id)) {
+            seen.add(row.class_id)
+            uniqueClasses.push(row.classes)
+          }
+        }
+        setAvailableClasses(uniqueClasses.filter(Boolean))
+        setTeacherAssignments(tc ?? [])
+        setClassesLoaded(true)
+      } else if (userRole === 'admin' && instituteId) {
+        const { data: cls } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('institute_id', instituteId)
+          .order('name')
+
+        setAvailableClasses(cls ?? [])
+        setTeacherAssignments([])
+        setClassesLoaded(true)
+      }
+    }
+
+    loadClasses()
+  }, [userRole, instituteId, session])
+
   async function fetchSubjects() {
     setError(null)
     const { data: { user } } = await supabase.auth.getUser()
 
     if (userRole === 'teacher') {
-      const { data: assignments } = await supabase
-        .from('class_teachers')
-        .select('subject_id')
-        .eq('teacher_id', user.id)
-
-      const subjectIds = assignments?.map((a) => a.subject_id) ?? []
+      const subjectIds = [
+        ...new Set(teacherAssignments.map((a) => a.subject_id).filter(Boolean)),
+      ]
 
       if (subjectIds.length === 0) {
         setSubjects([])
@@ -62,7 +107,7 @@ export default function Subjects() {
 
       const { data, error: fetchError } = await supabase
         .from('subjects')
-        .select('id, name, topics(id, name)')
+        .select('id, name, topics(id, name, class_id)')
         .in('id', subjectIds)
         .order('name')
 
@@ -78,7 +123,7 @@ export default function Subjects() {
 
     let query = supabase
       .from('subjects')
-      .select('id, name, teacher_id, topics(id, name), users(name)')
+      .select('id, name, teacher_id, topics(id, name, class_id), users(name)')
       .order('name')
 
     if (userRole === 'admin' || userRole === 'student') {
@@ -97,6 +142,7 @@ export default function Subjects() {
 
   useEffect(() => {
     if (!userRole) return
+    if ((userRole === 'teacher' || userRole === 'admin') && !classesLoaded) return
     if (userRole === 'teacher') {
       setLoading(true)
       fetchSubjects()
@@ -105,7 +151,27 @@ export default function Subjects() {
     if ((userRole === 'admin' || userRole === 'student') && !instituteId) return
     setLoading(true)
     fetchSubjects()
-  }, [userRole, instituteId])
+  }, [userRole, instituteId, teacherAssignments, classesLoaded])
+
+  function getClassTopics(subject) {
+    const classId = isStudent ? studentClassId : selectedClassId
+    if (!classId) {
+      return subject.topics?.filter((t) => t.class_id === null) ?? []
+    }
+    return (
+      subject.topics?.filter(
+        (t) => t.class_id === classId || t.class_id === null
+      ) ?? []
+    )
+  }
+
+  const classSubjectIds = teacherAssignments
+    .filter((a) => a.class_id === selectedClassId)
+    .map((a) => a.subject_id)
+
+  const displayedSubjects = isTeacher
+    ? subjects.filter((s) => classSubjectIds.includes(s.id))
+    : subjects
 
   async function handleCreateSubject(e) {
     e.preventDefault()
@@ -172,7 +238,7 @@ export default function Subjects() {
       const topics = data.topics ?? []
       setSuggestedTopics(topics)
       setSelectedTopics(topics)
-    } catch (err) {
+    } catch {
       setExtractError('Failed to extract topics. Try a smaller PDF.')
     } finally {
       setExtractingId(null)
@@ -187,6 +253,7 @@ export default function Subjects() {
     const rows = selectedTopics.map((name, i) => ({
       name,
       subject_id: subjectId,
+      class_id: selectedClassId || null,
       order_index: i,
     }))
 
@@ -221,6 +288,7 @@ export default function Subjects() {
     const { error: insertError } = await supabase.from('topics').insert({
       name,
       subject_id: subjectId,
+      class_id: selectedClassId || null,
     })
 
     setTopicSaving(false)
@@ -236,9 +304,17 @@ export default function Subjects() {
     setExpandedSubjectId(subjectId)
   }
 
+  const showSubjectList = isStudent || selectedClassId
+
   return (
     <>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Subjects</h1>
+
+      {selectedClassId && (
+        <p className="text-sm text-gray-500 mb-4">
+          {availableClasses.find((c) => c.id === selectedClassId)?.name}
+        </p>
+      )}
 
       {isAdmin && (
         <form
@@ -265,170 +341,205 @@ export default function Subjects() {
         </form>
       )}
 
+      {!isStudent && availableClasses.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {availableClasses.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              onClick={() => {
+                setSelectedClassId(c.id)
+                setExpandedSubjectId(null)
+              }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                selectedClassId === c.id
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'
+              }`}
+            >
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!isStudent && !selectedClassId && (
+        <p className="text-sm text-gray-500">
+          Select a class to view subjects and topics.
+        </p>
+      )}
+
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-6">
           <p className="text-red-700 text-sm">{error}</p>
         </div>
       )}
 
-      {loading ? (
-        <p className="text-gray-500 text-sm">Loading subjects…</p>
-      ) : subjects.length === 0 ? (
-        <p className="text-gray-500 text-sm">
-          {isAdmin
-            ? 'No subjects yet. Create one above.'
-            : isTeacher
-              ? 'No subjects assigned to you yet.'
-              : 'No subjects yet.'}
-        </p>
-      ) : (
-        <ul className="space-y-3">
-          {subjects.map((subject) => (
-            <li
-              key={subject.id}
-              className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
-            >
-              {isStudent ? (
-                <>
-                  <p className="font-medium text-gray-900">{subject.name}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Teacher: {subject.users?.name ?? '—'}
-                  </p>
+      {showSubjectList && (
+        loading ? (
+          <p className="text-gray-500 text-sm">Loading subjects…</p>
+        ) : displayedSubjects.length === 0 ? (
+          <p className="text-gray-500 text-sm">
+            {isAdmin
+              ? 'No subjects yet. Create one above.'
+              : isTeacher
+                ? 'No subjects assigned to you in this class.'
+                : 'No subjects yet.'}
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {displayedSubjects.map((subject) => {
+              const classTopics = getClassTopics(subject)
+              return (
+                <li
+                  key={subject.id}
+                  className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
+                >
+                  {isStudent ? (
+                    <>
+                      <p className="font-medium text-gray-900">{subject.name}</p>
+                      <p className="text-sm text-gray-500 mt-1">
+                        Teacher: {subject.users?.name ?? '—'}
+                      </p>
 
-                  {subject.topics?.length > 0 && (
-                    <ul className="mt-3 flex flex-wrap gap-2">
-                      {subject.topics.map((topic) => (
-                        <li
-                          key={topic.id}
-                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
-                        >
-                          {topic.name}
-                        </li>
-                      ))}
-                    </ul>
+                      {classTopics.length > 0 && (
+                        <ul className="mt-3 flex flex-wrap gap-2">
+                          {classTopics.map((topic) => (
+                            <li
+                              key={topic.id}
+                              className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
+                            >
+                              {topic.name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <p className="text-sm font-semibold text-gray-900">Notes & Files</p>
+                        <p className="text-sm text-gray-400 mt-1">No files uploaded yet</p>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <span className="font-medium text-gray-900">{subject.name}</span>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              pdfRef.current.dataset.subjectId = subject.id
+                              pdfRef.current.click()
+                            }}
+                            disabled={extractingId === subject.id}
+                            className="text-sm font-medium text-purple-600 hover:text-purple-700 shrink-0 disabled:opacity-40"
+                          >
+                            {extractingId === subject.id ? 'Extracting…' : '📄 Extract from PDF'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleTopics(subject.id)}
+                            className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
+                          >
+                            {expandedSubjectId === subject.id
+                              ? 'Hide Topics'
+                              : `Add Topic to ${subject.name}`}
+                          </button>
+                        </div>
+                      </div>
+
+                      {classTopics.length > 0 && (
+                        <ul className="mt-3 flex flex-wrap gap-2">
+                          {classTopics.map((topic) => (
+                            <li
+                              key={topic.id}
+                              className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
+                            >
+                              {topic.name}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+
+                      {suggestedTopics.length > 0 && extractedSubjectId === subject.id && (
+                        <div className="mt-4 pt-4 border-t border-purple-100 bg-purple-50 rounded-lg p-4">
+                          <p className="text-sm font-semibold text-purple-900 mb-3">
+                            Gemini extracted {suggestedTopics.length} topics — select which to add:
+                          </p>
+                          <div className="flex flex-wrap gap-2 mb-4">
+                            {suggestedTopics.map((topic) => (
+                              <button
+                                key={topic}
+                                type="button"
+                                onClick={() => toggleTopicSelection(topic)}
+                                className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
+                                  selectedTopics.includes(topic)
+                                    ? 'bg-purple-600 text-white border-purple-600'
+                                    : 'bg-white text-gray-600 border-gray-300'
+                                }`}
+                              >
+                                {topic}
+                              </button>
+                            ))}
+                          </div>
+                          {extractError && <p className="text-xs text-red-600 mb-2">{extractError}</p>}
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSuggestedTopics(subject.id)}
+                              disabled={savingTopics || selectedTopics.length === 0}
+                              className="text-sm font-medium bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-40 transition-colors"
+                            >
+                              {savingTopics ? 'Saving…' : `Add ${selectedTopics.length} topics`}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSuggestedTopics([])
+                                setSelectedTopics([])
+                                setExtractedSubjectId(null)
+                                setExtractError(null)
+                              }}
+                              className="text-sm font-medium text-gray-500 px-4 py-2 rounded-lg hover:text-gray-700"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {expandedSubjectId === subject.id && (
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="text"
+                            value={topicInput}
+                            onChange={(e) => setTopicInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault()
+                                handleAddTopic(subject.id)
+                              }
+                            }}
+                            placeholder="Topic name"
+                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleAddTopic(subject.id)}
+                            disabled={topicSaving}
+                            className="text-sm font-medium bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
+                          >
+                            {topicSaving ? 'Adding…' : 'Add'}
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
-
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <p className="text-sm font-semibold text-gray-900">Notes & Files</p>
-                    <p className="text-sm text-gray-400 mt-1">No files uploaded yet</p>
-                  </div>
-                </>
-              ) : (
-                <>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span className="font-medium text-gray-900">{subject.name}</span>
-                <div className="flex items-center gap-3 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      pdfRef.current.dataset.subjectId = subject.id
-                      pdfRef.current.click()
-                    }}
-                    disabled={extractingId === subject.id}
-                    className="text-sm font-medium text-purple-600 hover:text-purple-700 shrink-0 disabled:opacity-40"
-                  >
-                    {extractingId === subject.id ? 'Extracting…' : '📄 Extract from PDF'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => toggleTopics(subject.id)}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
-                  >
-                    {expandedSubjectId === subject.id ? 'Hide Topics' : 'Add Topics'}
-                  </button>
-                </div>
-              </div>
-
-              {subject.topics?.length > 0 && (
-                <ul className="mt-3 flex flex-wrap gap-2">
-                  {subject.topics.map((topic) => (
-                    <li
-                      key={topic.id}
-                      className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded-md"
-                    >
-                      {topic.name}
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {suggestedTopics.length > 0 && extractedSubjectId === subject.id && (
-                <div className="mt-4 pt-4 border-t border-purple-100 bg-purple-50 rounded-lg p-4">
-                  <p className="text-sm font-semibold text-purple-900 mb-3">
-                    Gemini extracted {suggestedTopics.length} topics — select which to add:
-                  </p>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {suggestedTopics.map((topic) => (
-                      <button
-                        key={topic}
-                        type="button"
-                        onClick={() => toggleTopicSelection(topic)}
-                        className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
-                          selectedTopics.includes(topic)
-                            ? 'bg-purple-600 text-white border-purple-600'
-                            : 'bg-white text-gray-600 border-gray-300'
-                        }`}
-                      >
-                        {topic}
-                      </button>
-                    ))}
-                  </div>
-                  {extractError && <p className="text-xs text-red-600 mb-2">{extractError}</p>}
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSaveSuggestedTopics(subject.id)}
-                      disabled={savingTopics || selectedTopics.length === 0}
-                      className="text-sm font-medium bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-40 transition-colors"
-                    >
-                      {savingTopics ? 'Saving…' : `Add ${selectedTopics.length} topics`}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSuggestedTopics([])
-                        setSelectedTopics([])
-                        setExtractedSubjectId(null)
-                        setExtractError(null)
-                      }}
-                      className="text-sm font-medium text-gray-500 px-4 py-2 rounded-lg hover:text-gray-700"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {expandedSubjectId === subject.id && (
-                <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    value={topicInput}
-                    onChange={(e) => setTopicInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleAddTopic(subject.id)
-                      }
-                    }}
-                    placeholder="Topic name"
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => handleAddTopic(subject.id)}
-                    disabled={topicSaving}
-                    className="text-sm font-medium bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
-                  >
-                    {topicSaving ? 'Adding…' : 'Add'}
-                  </button>
-                </div>
-              )}
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+                </li>
+              )
+            })}
+          </ul>
+        )
       )}
 
       {!isStudent && (
