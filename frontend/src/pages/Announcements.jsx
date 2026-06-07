@@ -71,7 +71,7 @@ export default function Announcements() {
     setLoading(true)
 
     const selectFields =
-      'id, title, body, is_pinned, created_at, class_id, subject_id, subjects(name), users(name), classes(name)'
+      'id, title, body, is_pinned, created_at, class_id, subject_id, subjects(name), classes(name), created_by, users(name, role)'
 
     if (isTeacher) {
       const { data } = await supabase
@@ -158,11 +158,12 @@ export default function Announcements() {
             <h3 className="font-semibold text-gray-900">{item.title}</h3>
             <p className="text-sm text-gray-500 mt-1">{item.body}</p>
           </div>
-          {isTeacher && (
+          {(userRole === 'admin' ||
+            (userRole === 'teacher' && item.created_by === session.user.id)) && (
             <button
               type="button"
               onClick={() => handleDelete(item.id)}
-              className="text-xs text-red-500 hover:text-red-700 shrink-0 ml-4"
+              className="text-xs text-red-500 hover:text-red-700 shrink-0"
             >
               Delete
             </button>
