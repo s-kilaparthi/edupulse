@@ -62,6 +62,12 @@ export default function Dashboard() {
   const [instituteId, setInstituteId] = useState(null)
   const [userLoaded, setUserLoaded] = useState(false)
   const [stats, setStats] = useState({})
+  const [adminStats, setAdminStats] = useState({
+    students: 0,
+    teachers: 0,
+    exams: 0,
+    avg: 0,
+  })
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -174,6 +180,39 @@ export default function Dashboard() {
           lastScanDate,
           lastScanExamName,
         })
+      } else if (userRole === 'admin' && instituteId) {
+        const [studentsRes, teachersRes, examsRes, scoresRes] = await Promise.all([
+          supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'student')
+            .eq('institute_id', instituteId),
+          supabase
+            .from('users')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'teacher')
+            .eq('institute_id', instituteId),
+          supabase
+            .from('exams')
+            .select('*', { count: 'exact', head: true })
+            .eq('institute_id', instituteId),
+          supabase.from('topic_scores').select('percentage'),
+        ])
+
+        const pcts = (scoresRes.data ?? [])
+          .map((r) => r.percentage)
+          .filter((p) => p != null)
+        const avg =
+          pcts.length > 0
+            ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
+            : 0
+
+        setAdminStats({
+          students: studentsRes.count ?? 0,
+          teachers: teachersRes.count ?? 0,
+          exams: examsRes.count ?? 0,
+          avg,
+        })
       }
 
       setLoading(false)
@@ -263,22 +302,49 @@ export default function Dashboard() {
 
       {userRole === 'admin' && (
         <>
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse</p>
-            <h1 className="text-2xl font-bold text-gray-900 mt-1">Welcome, Admin!</h1>
+          <div className="rounded-2xl bg-blue-50 border border-blue-100 p-5">
+            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse Admin</p>
+            <h1 className="text-2xl font-bold text-gray-900">Welcome, {userName}!</h1>
           </div>
 
-          <button
-            type="button"
-            onClick={() => navigate('/admin')}
-            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            Go to Admin Dashboard
-          </button>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <StatCard label="Total Students" value={adminStats.students} />
+            <StatCard label="Total Teachers" value={adminStats.teachers} />
+            <StatCard label="Total Exams" value={adminStats.exams} />
+            <StatCard label="Institute Avg" value={`${adminStats.avg}%`} />
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => navigate('/classes')}
+              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Manage Classes
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/students')}
+              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Manage Students
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/admin')}
+              className="border border-gray-300 text-gray-700 font-medium px-4 py-2 rounded-lg hover:bg-gray-50"
+            >
+              Full Admin Panel
+            </button>
+          </div>
+
+          <AnnouncementsSection announcements={recentAnnouncements} navigate={navigate} />
         </>
       )}
 
-      <AnnouncementsSection announcements={recentAnnouncements} navigate={navigate} />
+      {(userRole === 'student' || userRole === 'teacher') && (
+        <AnnouncementsSection announcements={recentAnnouncements} navigate={navigate} />
+      )}
     </div>
   )
 }
