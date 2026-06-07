@@ -494,7 +494,7 @@ async function openQuestionsPanel(exam) {
             {subjects.length === 0 ? (
               <p className="text-sm text-gray-400">No subjects found. Add subjects on the Subjects page first.</p>
             ) : (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2">
                 {subjects.map((s) => {
                   const selected = selectedSubjects.find((ss) => ss.subject_id === s.id)
                   return (

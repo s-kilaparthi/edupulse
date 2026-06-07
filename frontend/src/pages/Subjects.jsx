@@ -38,11 +38,43 @@ export default function Subjects() {
       })
   }, [session])
 
+  const isAdmin = userRole === 'admin'
+  const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
 
   async function fetchSubjects() {
     setError(null)
     const { data: { user } } = await supabase.auth.getUser()
+
+    if (userRole === 'teacher') {
+      const { data: assignments } = await supabase
+        .from('class_teachers')
+        .select('subject_id')
+        .eq('teacher_id', user.id)
+
+      const subjectIds = assignments?.map((a) => a.subject_id) ?? []
+
+      if (subjectIds.length === 0) {
+        setSubjects([])
+        setLoading(false)
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('subjects')
+        .select('id, name, topics(id, name)')
+        .in('id', subjectIds)
+        .order('name')
+
+      if (fetchError) {
+        setError(fetchError.message)
+        setSubjects([])
+      } else {
+        setSubjects(data ?? [])
+      }
+      setLoading(false)
+      return
+    }
 
     let query = supabase
       .from('subjects')
@@ -51,8 +83,6 @@ export default function Subjects() {
 
     if (userRole === 'admin' || userRole === 'student') {
       query = query.eq('institute_id', instituteId)
-    } else {
-      query = query.eq('teacher_id', user.id)
     }
 
     const { data, error: fetchError } = await query
@@ -67,7 +97,13 @@ export default function Subjects() {
 
   useEffect(() => {
     if (!userRole) return
+    if (userRole === 'teacher') {
+      setLoading(true)
+      fetchSubjects()
+      return
+    }
     if ((userRole === 'admin' || userRole === 'student') && !instituteId) return
+    setLoading(true)
     fetchSubjects()
   }, [userRole, instituteId])
 
@@ -92,7 +128,7 @@ export default function Subjects() {
 
     const { error: insertError } = await supabase.from('subjects').insert({
       name,
-      institute_id: null,
+      institute_id: instituteId,
       teacher_id: user.id,
     })
 
@@ -204,7 +240,7 @@ export default function Subjects() {
     <>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Subjects</h1>
 
-      {!isStudent && (
+      {isAdmin && (
         <form
           onSubmit={handleCreateSubject}
           className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6"
@@ -239,7 +275,11 @@ export default function Subjects() {
         <p className="text-gray-500 text-sm">Loading subjects…</p>
       ) : subjects.length === 0 ? (
         <p className="text-gray-500 text-sm">
-          {isStudent ? 'No subjects yet.' : 'No subjects yet. Create one above.'}
+          {isAdmin
+            ? 'No subjects yet. Create one above.'
+            : isTeacher
+              ? 'No subjects assigned to you yet.'
+              : 'No subjects yet.'}
         </p>
       ) : (
         <ul className="space-y-3">
