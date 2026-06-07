@@ -30,7 +30,9 @@ export default function AppLayout({ session }) {
   }, [session])
 
   const navItems = [
-    ...NAV_ITEMS,
+    ...NAV_ITEMS.slice(0, 2),
+    ...(userRole === 'admin' ? [{ label: 'Classes', to: '/classes' }] : []),
+    ...NAV_ITEMS.slice(2),
     ...(userRole === 'admin' ? [{ label: 'Admin', to: '/admin' }] : []),
   ]
 

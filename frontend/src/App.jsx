@@ -4,6 +4,7 @@ import { supabase } from './supabase'
 import AppLayout from './components/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
+import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import Subjects from './pages/Subjects'
 import Exams from './pages/Exams'
@@ -12,6 +13,7 @@ import Scan from './pages/Scan'
 import Results from './pages/Results'
 import Admin from './pages/Admin'
 import Announcements from './pages/Announcements'
+import Classes from './pages/Classes'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -43,10 +45,15 @@ export default function App() {
           path="/login"
           element={session ? <Navigate to="/dashboard" replace /> : <Login />}
         />
+        <Route
+          path="/register"
+          element={session ? <Navigate to="/dashboard" replace /> : <Register />}
+        />
         <Route element={<ProtectedRoute session={session} />}>
           <Route element={<AppLayout session={session} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/subjects" element={<Subjects />} />
+            <Route path="/classes" element={<Classes />} />
             <Route path="/exams" element={<Exams />} />
             <Route path="/students" element={<Students />} />
             <Route path="/scan" element={<Scan />} />
