@@ -223,7 +223,17 @@ export default function Exams() {
     setSavingExam(false)
   }
 
-async function openQuestionsPanel(exam) {
+  function getTopicOptionLabel(topic) {
+    if (!topic.class_id) return `${topic.name} (General)`
+    const className = activeExam?.exam_classes?.find(
+      (ec) => ec.class_id === topic.class_id
+    )?.classes?.name
+    const classIds = activeExam?.exam_classes?.map((ec) => ec.class_id) ?? []
+    if (classIds.length > 1 && className) return `${topic.name} (${className})`
+    return topic.name
+  }
+
+  async function openQuestionsPanel(exam) {
     setError(null)
     setSuccessMessage(null)
     setActiveExam(exam)
@@ -235,11 +245,20 @@ async function openQuestionsPanel(exam) {
     setExamSubjects(es)
     const subjectIds = es.map((s) => s.subject_id)
     if (subjectIds.length === 0) { setTopics([]); return }
-    const { data, error: fetchError } = await supabase
+
+    const classIds = exam.exam_classes?.map((ec) => ec.class_id) ?? []
+    const primaryClassId = classIds[0] ?? null
+
+    let topicQuery = supabase
       .from('topics')
-      .select('id, name, subject_id, subjects(name)')
+      .select('id, name, subject_id, class_id, subjects(name)')
       .in('subject_id', subjectIds)
-      .order('name')
+
+    if (primaryClassId) {
+      topicQuery = topicQuery.or(`class_id.eq.${primaryClassId},class_id.is.null`)
+    }
+
+    const { data, error: fetchError } = await topicQuery.order('name')
     if (fetchError) { setError(fetchError.message); setTopics([]) }
     else setTopics(data ?? [])
 
@@ -384,6 +403,8 @@ async function openQuestionsPanel(exam) {
     setSavingQuestions(false)
   }
 
+  const primaryClassName = activeExam?.exam_classes?.[0]?.classes?.name
+  const examClassCount = activeExam?.exam_classes?.length ?? 0
   const activeSubjectTopics = topics.filter((t) => t.subject_id === activeSubjectId)
   const gridNums = getActiveSubjectRange()
   const allNums = activeExam ? getAllQuestionNums() : []
@@ -630,9 +651,18 @@ async function openQuestionsPanel(exam) {
                     ref={questionsPanelRef}
                     className="mt-2 bg-white rounded-xl border border-blue-200 p-6 shadow-sm"
                   >
-                    <h2 className="text-sm font-semibold text-gray-900 mb-4">
+                    <h2 className="text-sm font-semibold text-gray-900 mb-1">
                       Add Questions — {activeExam.name}
                     </h2>
+                    {primaryClassName && (
+                      <p className="text-xs text-gray-500 mb-4">
+                        Topics for {primaryClassName}
+                        {examClassCount > 1 && ' (first linked class)'}
+                      </p>
+                    )}
+                    {!primaryClassName && activeExam.scope !== 'institute' && (
+                      <p className="text-xs text-gray-500 mb-4">No class linked — showing all topics.</p>
+                    )}
 
                     {examSubjects.length === 0 && (
                       <p className="text-sm text-gray-500">No subjects linked to this exam.</p>
@@ -667,7 +697,7 @@ async function openQuestionsPanel(exam) {
                               >
                                 <option value="">Select topic</option>
                                 {activeSubjectTopics.map((t) => (
-                                  <option key={t.id} value={t.id}>{t.name}</option>
+                                  <option key={t.id} value={t.id}>{getTopicOptionLabel(t)}</option>
                                 ))}
                               </select>
                             </div>
@@ -715,7 +745,7 @@ async function openQuestionsPanel(exam) {
                                   if (count === 0) return null
                                   return (
                                     <span key={t.id} className={`text-xs px-2 py-1 rounded-full border ${getTopicColor(t.id)}`}>
-                                      {t.name} ({count})
+                                      {getTopicOptionLabel(t)} ({count})
                                     </span>
                                   )
                                 })}
