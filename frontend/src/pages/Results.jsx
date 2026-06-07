@@ -377,6 +377,9 @@ export default function Results() {
   const [activeTab, setActiveTab] = useState('student')
   const [selectedStudentId, setSelectedStudentId] = useState('')
   const [students, setStudents] = useState([])
+  const [classes, setClasses] = useState([])
+  const [selectedClassId, setSelectedClassId] = useState('')
+  const [studentSearch, setStudentSearch] = useState('')
 
   useEffect(() => {
     if (location.state?.examId) {
@@ -401,13 +404,58 @@ export default function Results() {
 
   useEffect(() => {
     if (!isTeacher) return
-    supabase
+
+    let query = supabase
       .from('users')
-      .select('id, name, roll_number')
+      .select('id, name, roll_number, class_id')
       .eq('role', 'student')
       .order('roll_number')
-      .then(({ data }) => { if (data) setStudents(data) })
-  }, [isTeacher])
+
+    if (selectedClassId) {
+      query = query.eq('class_id', selectedClassId)
+    }
+
+    query.then(({ data }) => { if (data) setStudents(data) })
+  }, [isTeacher, selectedClassId])
+
+  useEffect(() => {
+    if (!isTeacher || !examId || !session?.user?.id) return
+
+    setClasses([])
+    supabase
+      .from('exam_classes')
+      .select('class_id, classes(id, name)')
+      .eq('exam_id', examId)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setClasses(data.map((ec) => ec.classes).filter(Boolean))
+        } else {
+          supabase
+            .from('users')
+            .select('institute_id')
+            .eq('id', session.user.id)
+            .single()
+            .then(({ data: userData }) => {
+              if (userData?.institute_id) {
+                supabase
+                  .from('classes')
+                  .select('id, name')
+                  .eq('institute_id', userData.institute_id)
+                  .then(({ data: classData }) => {
+                    if (classData) setClasses(classData)
+                  })
+              }
+            })
+        }
+      })
+  }, [examId, isTeacher, session])
+
+  useEffect(() => {
+    setSelectedClassId('')
+    setStudents([])
+    setSelectedStudentId('')
+    setStudentSearch('')
+  }, [examId])
 
   useEffect(() => {
     supabase
@@ -542,6 +590,11 @@ export default function Results() {
 
   const subject = result?.subjects?.find((s) => s.subject_id === activeSubject) ?? result?.subjects?.[0]
 
+  const searchedStudents = students.filter((s) =>
+    s.name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    String(s.roll_number).includes(studentSearch)
+  )
+
   return (
     <div className="min-h-screen bg-gray-50 px-4 py-6">
       <div className="mx-auto flex max-w-4xl flex-col gap-5">
@@ -555,14 +608,32 @@ export default function Results() {
               className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500">
               {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}
             </select>
-            {isTeacher && (
-              <select value={selectedStudentId} onChange={(e) => setSelectedStudentId(e.target.value)}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600">
-                <option value="">Select student…</option>
-                {students.map((s) => (
-                  <option key={s.id} value={s.id}>{s.roll_number} — {s.name}</option>
+            {isTeacher && activeTab === 'student' && classes.length > 0 && (
+              <select
+                value={selectedClassId}
+                onChange={(e) => {
+                  setSelectedClassId(e.target.value)
+                  setSelectedStudentId('')
+                  setStudentSearch('')
+                }}
+                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+              >
+                <option value="">Select class…</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
+            )}
+            {isTeacher && activeTab === 'student' && (classes.length === 0 || selectedClassId) && (
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder="Search by name or roll number..."
+                  value={studentSearch}
+                  onChange={(e) => setStudentSearch(e.target.value)}
+                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600 w-64"
+                />
+              </div>
             )}
           </div>
         </header>
@@ -586,7 +657,13 @@ export default function Results() {
           <ClassHeatmap examId={examId} exams={exams} />
         )}
 
-        {isTeacher && activeTab === 'student' && !selectedStudentId && (
+        {isTeacher && activeTab === 'student' && classes.length > 0 && !selectedClassId && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <p className="text-gray-500 text-sm">Select a class to view students</p>
+          </div>
+        )}
+
+        {isTeacher && activeTab === 'student' && (classes.length === 0 || selectedClassId) && !selectedStudentId && students.length === 0 && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-gray-500 text-sm">Select a student to view their performance</p>
           </div>
@@ -619,6 +696,36 @@ export default function Results() {
 
         {(!isTeacher || (isTeacher && activeTab === 'student' && selectedStudentId)) && !loadingTrend && trendData.length > 0 && (
           <PerformanceTrend trendData={trendData} totalExams={exams.length} />
+        )}
+
+        {isTeacher && students.length > 0 && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">
+              Students — {students.length} in class
+            </h2>
+            <div className="space-y-2">
+              {searchedStudents.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => setSelectedStudentId(s.id)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm transition-colors ${
+                    selectedStudentId === s.id
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <span className="font-medium">{s.name}</span>
+                  <span className="text-gray-400">Roll #{s.roll_number}</span>
+                </button>
+              ))}
+              {searchedStudents.length === 0 && (
+                <p className="text-sm text-gray-400 text-center py-4">
+                  No students found matching &quot;{studentSearch}&quot;
+                </p>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
