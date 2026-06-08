@@ -97,7 +97,7 @@ export default function AppLayout({ session }) {
           </Link>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-sm text-gray-600 hidden md:block">{displayName}</span>
+          <span className="text-sm text-gray-600">{displayName}</span>
           <button
             type="button"
             onClick={handleLogout}
