@@ -9,6 +9,7 @@ const studentNav = [
   { label: 'Schedule', to: '/schedule' },
   { label: 'Attendance', to: '/attendance' },
   { label: 'Announcements', to: '/announcements' },
+  { label: 'Profile', to: '/profile' },
 ]
 
 const teacherNav = [
@@ -21,6 +22,7 @@ const teacherNav = [
   { label: 'Students', to: '/students' },
   { label: 'Results', to: '/results' },
   { label: 'Announcements', to: '/announcements' },
+  { label: 'Profile', to: '/profile' },
 ]
 
 const adminNav = [
@@ -36,6 +38,7 @@ const adminNav = [
   { label: 'Results', to: '/results' },
   { label: 'Announcements', to: '/announcements' },
   { label: 'Admin', to: '/admin' },
+  { label: 'Profile', to: '/profile' },
 ]
 
 export default function AppLayout({ session }) {

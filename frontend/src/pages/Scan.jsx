@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 const API_URL = import.meta.env.VITE_API_URL
@@ -43,6 +43,9 @@ function parseScanResponse(data, questionCount) {
 }
 
 export default function Scan() {
+  const { session } = useOutletContext()
+  const [userRole, setUserRole] = useState('')
+  const [instituteId, setInstituteId] = useState(null)
   const [step, setStep] = useState(1)
   const [exams, setExams] = useState([])
   const [examId, setExamId] = useState('')
@@ -97,7 +100,27 @@ export default function Scan() {
     [students, studentId]
   )
 
+  const canScan = userRole === 'teacher' || userRole === 'admin'
+  const showScanUI = !userRole || canScan
+
   useEffect(() => {
+    if (!session?.user?.id) return
+    supabase
+      .from('users')
+      .select('role, institute_id')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setUserRole(data.role)
+          setInstituteId(data.institute_id)
+        }
+      })
+  }, [session])
+
+  useEffect(() => {
+    if (!canScan) return
+
     async function loadExamsAndClasses() {
       const { data, error } = await supabase
         .from('exams')
@@ -105,37 +128,35 @@ export default function Scan() {
         .order('created_at', { ascending: false })
       if (!error && data) setExams(data)
 
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-
-      const { data: userData } = await supabase
-        .from('users')
-        .select('institute_id')
-        .eq('id', user.id)
-        .single()
-
-      if (userData?.institute_id) {
+      if (instituteId) {
         const { data: classData } = await supabase
           .from('classes')
           .select('id, name')
-          .eq('institute_id', userData.institute_id)
+          .eq('institute_id', instituteId)
           .order('name')
         if (classData) setClasses(classData)
       }
     }
     loadExamsAndClasses()
-  }, [])
+  }, [canScan, instituteId])
 
   useEffect(() => {
-    supabase
+    if (!canScan) return
+
+    let query = supabase
       .from('users')
       .select('id, name, roll_number, class_id')
       .eq('role', 'student')
       .order('roll_number')
-      .then(({ data, error }) => {
-        if (!error && data) setStudents(data)
-      })
-  }, [])
+
+    if (instituteId) {
+      query = query.eq('institute_id', instituteId)
+    }
+
+    query.then(({ data, error }) => {
+      if (!error && data) setStudents(data)
+    })
+  }, [canScan, instituteId])
 
   useEffect(() => {
     setSelectedClassId('')
@@ -173,22 +194,26 @@ export default function Scan() {
       setRollScanStudentName('')
       return
     }
-    supabase
+    let query = supabase
       .from('users')
       .select('id, name')
       .eq('roll_number', rollScanRoll.trim())
       .eq('role', 'student')
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setRollScanStudentId(data.id)
-          setRollScanStudentName(data.name)
-        } else {
-          setRollScanStudentId('')
-          setRollScanStudentName('Student not found')
-        }
-      })
-  }, [rollScanRoll])
+
+    if (instituteId) {
+      query = query.eq('institute_id', instituteId)
+    }
+
+    query.single().then(({ data }) => {
+      if (data) {
+        setRollScanStudentId(data.id)
+        setRollScanStudentName(data.name)
+      } else {
+        setRollScanStudentId('')
+        setRollScanStudentName('Student not found')
+      }
+    })
+  }, [rollScanRoll, instituteId])
 
   useEffect(() => {
     if (!absentRoll.trim()) {
@@ -196,22 +221,26 @@ export default function Scan() {
       setAbsentStudentName('')
       return
     }
-    supabase
+    let query = supabase
       .from('users')
       .select('id, name, roll_number')
       .eq('roll_number', absentRoll.trim())
       .eq('role', 'student')
-      .single()
-      .then(({ data }) => {
-        if (data) {
-          setAbsentStudentId(data.id)
-          setAbsentStudentName(data.name)
-        } else {
-          setAbsentStudentId('')
-          setAbsentStudentName('Student not found')
-        }
-      })
-  }, [absentRoll])
+
+    if (instituteId) {
+      query = query.eq('institute_id', instituteId)
+    }
+
+    query.single().then(({ data }) => {
+      if (data) {
+        setAbsentStudentId(data.id)
+        setAbsentStudentName(data.name)
+      } else {
+        setAbsentStudentId('')
+        setAbsentStudentName('Student not found')
+      }
+    })
+  }, [absentRoll, instituteId])
 
   const resetStudentFields = useCallback(() => {
     setRollNumber('')
@@ -516,7 +545,11 @@ export default function Scan() {
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">OMR Scanning</h1>
 
-      {step === 1 && (
+      {userRole === 'student' && (
+        <p className="text-sm text-red-600">Scanning is only available to teachers and admins.</p>
+      )}
+
+      {showScanUI && step === 1 && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">Step 1 — Select Exam</h2>
           <label className="block text-sm text-gray-600">Exam</label>
@@ -551,7 +584,7 @@ export default function Scan() {
         </section>
       )}
 
-      {step === 2 && !showReview && (
+      {showScanUI && step === 2 && !showReview && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800">Step 2 — Select Student + Scan</h2>
@@ -830,7 +863,7 @@ export default function Scan() {
         </section>
       )}
 
-      {step === 2 && showReview && (
+      {showScanUI && step === 2 && showReview && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-800">
@@ -906,7 +939,7 @@ export default function Scan() {
         </section>
       )}
 
-      {step === 3 && (
+      {showScanUI && step === 3 && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">Step 3 — Review Detected Answers</h2>
           <p className="text-sm text-gray-600">
@@ -966,7 +999,7 @@ export default function Scan() {
         </section>
       )}
 
-      {step === 4 && sessionSummary && (
+      {showScanUI && step === 4 && sessionSummary && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">Session Summary</h2>
           <p className="text-gray-700">
