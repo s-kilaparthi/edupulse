@@ -315,6 +315,38 @@ export default function Scan() {
         .upsert(topicRows, { onConflict: 'exam_id,student_id,topic_id' })
       if (topicErr) throw topicErr
 
+      try {
+        const { data: examClassData } = await supabase
+          .from('exam_classes')
+          .select('class_id')
+          .eq('exam_id', selectedExam.id)
+
+        const classIds = examClassData?.map((ec) => ec.class_id) ?? []
+
+        if (classIds.length > 0) {
+          const { data: classStudents } = await supabase
+            .from('users')
+            .select('id')
+            .eq('role', 'student')
+            .in('class_id', classIds)
+
+          const notifRows =
+            classStudents?.map((s) => ({
+              user_id: s.id,
+              title: 'Results Posted',
+              body: `Your results for ${selectedExam.name} are now available`,
+              type: 'results',
+              is_read: false,
+            })) ?? []
+
+          if (notifRows.length > 0) {
+            await supabase.from('notifications').insert(notifRows)
+          }
+        }
+      } catch (notifErr) {
+        console.log('Notification error:', notifErr)
+      }
+
       const correctCount = omrRows.filter((r) => r.is_correct).length
       const pct = omrRows.length > 0 ? Math.round((correctCount / omrRows.length) * 100) : 0
 

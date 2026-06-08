@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { Link, Outlet, useLocation } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
 const studentNav = [
@@ -40,9 +40,14 @@ const adminNav = [
 
 export default function AppLayout({ session }) {
   const { pathname } = useLocation()
+  const navigate = useNavigate()
+  const notifRef = useRef(null)
   const [displayName, setDisplayName] = useState('')
   const [userRole, setUserRole] = useState('student')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifDropdown, setShowNotifDropdown] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -58,6 +63,63 @@ export default function AppLayout({ session }) {
         }
       })
   }, [session])
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+    supabase
+      .from('notifications')
+      .select('id, title, body, type, is_read, created_at')
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => {
+        if (data) {
+          setNotifications(data)
+          setUnreadCount(data.filter((n) => !n.is_read).length)
+        }
+      })
+  }, [session])
+
+  useEffect(() => {
+    if (!showNotifDropdown) return
+
+    function handleClickOutside(e) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotifDropdown(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [showNotifDropdown])
+
+  async function markAllRead() {
+    if (!session?.user?.id) return
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', session.user.id)
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
+    setUnreadCount(0)
+  }
+
+  async function handleNotifClick(notification) {
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notification.id)
+
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notification.id ? { ...n, is_read: true } : n))
+    )
+    setUnreadCount((prev) => Math.max(0, prev - 1))
+
+    if (notification.type === 'results') {
+      navigate('/results')
+    }
+
+    setShowNotifDropdown(false)
+  }
 
   const navItems =
     userRole === 'student'
@@ -98,6 +160,76 @@ export default function AppLayout({ session }) {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-600">{displayName}</span>
+
+          <div className="relative" ref={notifRef}>
+            <button
+              type="button"
+              onClick={() => setShowNotifDropdown(!showNotifDropdown)}
+              className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                />
+              </svg>
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+
+            {showNotifDropdown && (
+              <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                  <p className="text-sm font-semibold text-gray-900">Notifications</p>
+                  {unreadCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={markAllRead}
+                      className="text-xs text-blue-600 hover:text-blue-700"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                </div>
+
+                {notifications.length === 0 && (
+                  <p className="text-sm text-gray-400 text-center py-6">No notifications yet</p>
+                )}
+
+                <ul className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                  {notifications.map((n) => (
+                    <li key={n.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleNotifClick(n)}
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
+                          !n.is_read ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <p
+                          className={`text-sm font-medium ${
+                            !n.is_read ? 'text-gray-900' : 'text-gray-600'
+                          }`}
+                        >
+                          {n.title}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
+                        <p className="text-xs text-gray-400 mt-1">
+                          {new Date(n.created_at).toLocaleDateString()}
+                        </p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={handleLogout}
