@@ -65,7 +65,18 @@ export default function Scan() {
   const [reviewStudents, setReviewStudents] = useState([])
   const [absentStudentIds, setAbsentStudentIds] = useState(new Set())
   const [postingResults, setPostingResults] = useState(false)
+  const [scanTab, setScanTab] = useState('class')
+  const [rollScanRoll, setRollScanRoll] = useState('')
+  const [rollScanStudentId, setRollScanStudentId] = useState('')
+  const [rollScanStudentName, setRollScanStudentName] = useState('')
+  const [rollScanRecords, setRollScanRecords] = useState([])
+  const [absentRoll, setAbsentRoll] = useState('')
+  const [absentStudentId, setAbsentStudentId] = useState('')
+  const [absentStudentName, setAbsentStudentName] = useState('')
+  const [absentList, setAbsentList] = useState([])
+  const [activeScanMode, setActiveScanMode] = useState('class')
   const fileRef = useRef(null)
+  const fileRefRoll = useRef(null)
 
   const selectedExam = useMemo(
     () => exams.find((e) => e.id === examId),
@@ -91,7 +102,7 @@ export default function Scan() {
       const { data, error } = await supabase
         .from('exams')
         .select('id, name, total_questions, scope, exam_classes(class_id, classes(name))')
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
       if (!error && data) setExams(data)
 
       const { data: { user } } = await supabase.auth.getUser()
@@ -156,6 +167,52 @@ export default function Scan() {
     }
   }, [rollNumber, filteredStudents])
 
+  useEffect(() => {
+    if (!rollScanRoll.trim()) {
+      setRollScanStudentId('')
+      setRollScanStudentName('')
+      return
+    }
+    supabase
+      .from('users')
+      .select('id, name')
+      .eq('roll_number', rollScanRoll.trim())
+      .eq('role', 'student')
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setRollScanStudentId(data.id)
+          setRollScanStudentName(data.name)
+        } else {
+          setRollScanStudentId('')
+          setRollScanStudentName('Student not found')
+        }
+      })
+  }, [rollScanRoll])
+
+  useEffect(() => {
+    if (!absentRoll.trim()) {
+      setAbsentStudentId('')
+      setAbsentStudentName('')
+      return
+    }
+    supabase
+      .from('users')
+      .select('id, name, roll_number')
+      .eq('roll_number', absentRoll.trim())
+      .eq('role', 'student')
+      .single()
+      .then(({ data }) => {
+        if (data) {
+          setAbsentStudentId(data.id)
+          setAbsentStudentName(data.name)
+        } else {
+          setAbsentStudentId('')
+          setAbsentStudentName('Student not found')
+        }
+      })
+  }, [absentRoll])
+
   const resetStudentFields = useCallback(() => {
     setRollNumber('')
     setStudentId('')
@@ -210,11 +267,14 @@ export default function Scan() {
     })
   }
 
-  async function processFile(file) {
-    if (!file || !selectedExam || !studentId) {
+  async function processFile(file, { studentId: scanStudentId, mode = 'class' } = {}) {
+    const sid = scanStudentId ?? studentId
+    if (!file || !selectedExam || !sid) {
       setScanError('Select exam and student before uploading.')
       return
     }
+    setActiveScanMode(mode)
+    setStudentId(sid)
     setScanError('')
     setScanning(true)
     try {
@@ -249,7 +309,14 @@ export default function Scan() {
   }
 
   const handleFile = async (e) => {
-    await processFile(e.target.files?.[0])
+    await processFile(e.target.files?.[0], { mode: 'class' })
+  }
+
+  const handleFileForRoll = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    await processFile(file, { studentId: rollScanStudentId, mode: 'rollscan' })
+    if (fileRefRoll.current) fileRefRoll.current.value = ''
   }
 
   const setManualAnswer = (qNum, value) => {
@@ -322,20 +389,38 @@ export default function Scan() {
       const correctCount = omrRows.filter((r) => r.is_correct).length
       const pct = omrRows.length > 0 ? Math.round((correctCount / omrRows.length) * 100) : 0
 
-      setSessionRecords((prev) => [
-        ...prev,
-        {
-          studentId,
-          studentName: selectedStudent?.name ?? studentName,
-          score: pct,
-          topicMap,
-        },
-      ])
+      if (activeScanMode === 'rollscan') {
+        setRollScanRecords((prev) => [
+          ...prev,
+          {
+            studentId,
+            name: rollScanStudentName || studentName,
+            roll: rollScanRoll,
+            score: pct,
+          },
+        ])
+        setRollScanRoll('')
+        setRollScanStudentId('')
+        setRollScanStudentName('')
+        if (fileRefRoll.current) fileRefRoll.current.value = ''
+        setScanTab('rollscan')
+      } else {
+        setSessionRecords((prev) => [
+          ...prev,
+          {
+            studentId,
+            studentName: selectedStudent?.name ?? studentName,
+            score: pct,
+            topicMap,
+          },
+        ])
+        resetStudentFields()
+        setScanTab('class')
+      }
 
       setSavedFlash(true)
       setTimeout(() => {
         setSavedFlash(false)
-        resetStudentFields()
         setStep(2)
       }, 1200)
     } catch (err) {
@@ -383,6 +468,31 @@ export default function Scan() {
       }, 2000)
     } catch (err) {
       setScanError('Failed to post results: ' + err.message)
+    }
+
+    setPostingResults(false)
+  }
+
+  async function handleConfirmAbsent() {
+    if (!selectedExam || absentList.length === 0) return
+    setPostingResults(true)
+
+    try {
+      const notifRows = absentList.map((s) => ({
+        user_id: s.id,
+        title: 'Marked Absent',
+        body: `You were marked absent for ${selectedExam.name}`,
+        type: 'absent',
+        is_read: false,
+      }))
+
+      await supabase.from('notifications').insert(notifRows)
+
+      setSavedFlash(true)
+      setAbsentList([])
+      setTimeout(() => setSavedFlash(false), 2000)
+    } catch (err) {
+      setScanError('Failed to confirm: ' + err.message)
     }
 
     setPostingResults(false)
@@ -459,89 +569,263 @@ export default function Scan() {
             Exam: <span className="font-medium text-gray-800">{selectedExam?.name}</span>
           </p>
 
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Select Class</label>
-            <select
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              value={selectedClassId}
-              onChange={(e) => {
-                setSelectedClassId(e.target.value)
-                setRollNumber('')
-                setStudentId('')
-                setStudentName('')
-              }}
-            >
-              <option value="">Choose class…</option>
-              {availableClasses.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
+          <div className="flex rounded-lg border border-gray-200 p-1 mb-4">
+            {[
+              { id: 'class', label: '📋 By Class' },
+              { id: 'rollscan', label: '🔢 By Roll No' },
+              { id: 'absent', label: '❌ Mark Absent' },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setScanTab(tab.id)}
+                className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${
+                  scanTab === tab.id
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
 
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Enter Roll Number</label>
-            <input
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              value={rollNumber}
-              onChange={(e) => setRollNumber(e.target.value)}
-              placeholder="e.g. 101"
-            />
-            {studentName && (
-              <p className="mt-1 text-sm text-green-700 font-medium">{studentName}</p>
-            )}
-          </div>
+          {scanTab === 'class' && (
+            <>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Select Class</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  value={selectedClassId}
+                  onChange={(e) => {
+                    setSelectedClassId(e.target.value)
+                    setRollNumber('')
+                    setStudentId('')
+                    setStudentName('')
+                  }}
+                >
+                  <option value="">Choose class…</option>
+                  {availableClasses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">Or select student</label>
-            <select
-              className="w-full border border-gray-300 rounded-lg px-3 py-2"
-              value={studentId}
-              onChange={(e) => handleStudentSelect(e.target.value)}
-            >
-              <option value="">Choose student…</option>
-              {filteredStudents.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.roll_number} — {s.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Enter Roll Number</label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  value={rollNumber}
+                  onChange={(e) => setRollNumber(e.target.value)}
+                  placeholder="e.g. 101"
+                />
+                {studentName && (
+                  <p className="mt-1 text-sm text-green-700 font-medium">{studentName}</p>
+                )}
+              </div>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={handleFile}
-          />
-          <button
-            type="button"
-            disabled={!studentId || scanning}
-            onClick={() => fileRef.current?.click()}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
-          >
-            📷 Take Photo / Upload OMR
-          </button>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Or select student</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  value={studentId}
+                  onChange={(e) => handleStudentSelect(e.target.value)}
+                >
+                  <option value="">Choose student…</option>
+                  {filteredStudents.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.roll_number} — {s.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          <p className="text-xs text-gray-500 text-center mt-2">
-            💡 Tip: Place the OMR sheet on a dark surface for best scanning accuracy
-          </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFile}
+              />
+              <button
+                type="button"
+                disabled={!studentId || scanning}
+                onClick={() => fileRef.current?.click()}
+                className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+              >
+                📷 Take Photo / Upload OMR
+              </button>
 
-          {scanning && <Spinner />}
-          {savedFlash && (
-            <p className="text-center text-green-700 font-semibold">Saved! ✓</p>
+              <p className="text-xs text-gray-500 text-center mt-2">
+                💡 Tip: Place the OMR sheet on a dark surface for best scanning accuracy
+              </p>
+
+              {scanning && <Spinner />}
+              {savedFlash && (
+                <p className="text-center text-green-700 font-semibold">Saved! ✓</p>
+              )}
+              {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+
+              {sessionRecords.length > 0 && selectedClassId && !showReview && (
+                <button
+                  type="button"
+                  onClick={handleOpenReview}
+                  className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium mt-3"
+                >
+                  Review Class & Post Results ({sessionRecords.length} scanned)
+                </button>
+              )}
+            </>
           )}
-          {scanError && <p className="text-sm text-red-600">{scanError}</p>}
 
-          {sessionRecords.length > 0 && selectedClassId && !showReview && (
-            <button
-              type="button"
-              onClick={handleOpenReview}
-              className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium mt-3"
-            >
-              Review Class & Post Results ({sessionRecords.length} scanned)
-            </button>
+          {scanTab === 'rollscan' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">
+                  Enter Roll Number
+                </label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  value={rollScanRoll}
+                  onChange={(e) => setRollScanRoll(e.target.value)}
+                  placeholder="e.g. 007"
+                />
+                {rollScanStudentName && (
+                  <p
+                    className={`mt-1 text-sm font-medium ${
+                      rollScanStudentId ? 'text-green-700' : 'text-red-500'
+                    }`}
+                  >
+                    {rollScanStudentName}
+                  </p>
+                )}
+              </div>
+
+              <input
+                ref={fileRefRoll}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={handleFileForRoll}
+              />
+              <button
+                type="button"
+                disabled={!rollScanStudentId || scanning}
+                onClick={() => fileRefRoll.current?.click()}
+                className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+              >
+                📷 Upload OMR Photo
+              </button>
+
+              {scanning && <Spinner />}
+              {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+
+              {rollScanRecords.length > 0 && (
+                <div className="border-t pt-3">
+                  <p className="text-xs font-medium text-gray-600 mb-2">
+                    Scanned: {rollScanRecords.length}
+                  </p>
+                  <ul className="space-y-1">
+                    {rollScanRecords.map((r, i) => (
+                      <li key={i} className="flex justify-between text-sm">
+                        <span className="text-gray-700">
+                          {r.name} (#{r.roll})
+                        </span>
+                        <span className="text-green-700 font-medium">{r.score}%</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {scanTab === 'absent' && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">
+                  Enter Roll Number
+                </label>
+                <input
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  value={absentRoll}
+                  onChange={(e) => setAbsentRoll(e.target.value)}
+                  placeholder="e.g. 007"
+                />
+                {absentStudentName && (
+                  <p
+                    className={`mt-1 text-sm font-medium ${
+                      absentStudentId ? 'text-green-700' : 'text-red-500'
+                    }`}
+                  >
+                    {absentStudentName}
+                  </p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                disabled={
+                  !absentStudentId ||
+                  absentList.some((s) => s.id === absentStudentId)
+                }
+                onClick={() => {
+                  setAbsentList((prev) => [
+                    ...prev,
+                    {
+                      id: absentStudentId,
+                      name: absentStudentName,
+                      roll: absentRoll,
+                    },
+                  ])
+                  setAbsentRoll('')
+                  setAbsentStudentId('')
+                  setAbsentStudentName('')
+                }}
+                className="w-full bg-red-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+              >
+                ❌ Mark Absent
+              </button>
+
+              {absentList.length > 0 && (
+                <div className="border-t border-gray-100 pt-3">
+                  <p className="text-xs font-medium text-gray-600 mb-2">
+                    Marked Absent: {absentList.length}
+                  </p>
+                  <ul className="space-y-1 mb-3">
+                    {absentList.map((s, i) => (
+                      <li key={i} className="flex items-center justify-between text-sm py-1">
+                        <div>
+                          <span className="font-medium text-gray-900">{s.name}</span>
+                          <span className="text-gray-400 ml-2">Roll #{s.roll}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAbsentList((prev) => prev.filter((_, idx) => idx !== i))
+                          }
+                          className="text-xs text-gray-400 hover:text-red-500"
+                        >
+                          Remove
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={handleConfirmAbsent}
+                    disabled={postingResults}
+                    className="w-full bg-red-600 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                  >
+                    {postingResults
+                      ? 'Saving...'
+                      : `Confirm & Notify ${absentList.length} Absent Students`}
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </section>
       )}
