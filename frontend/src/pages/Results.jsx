@@ -827,85 +827,114 @@ export default function Results() {
 
             {displayedRankings.length > 0 && (
               <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-                <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="p-4 border-b border-gray-100">
                   <h2 className="text-sm font-semibold text-gray-900">
                     Class Results — {displayedRankings.length} students
                   </h2>
-                  {expandedStudentId && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setExpandedStudentId(null)
-                        setSelectedStudentId('')
-                      }}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      ✕ Close performance
-                    </button>
-                  )}
                 </div>
                 <div className="divide-y divide-gray-50">
                   {searchedRankings.map((s) => {
                     const index = displayedRankings.indexOf(s)
                     return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => {
-                          if (expandedStudentId === s.id) {
-                            setExpandedStudentId(null)
-                            setSelectedStudentId('')
-                          } else {
-                            setExpandedStudentId(s.id)
+                      <div key={s.id}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setExpandedStudentId((prev) => (prev === s.id ? null : s.id))
                             setSelectedStudentId(s.id)
-                          }
-                        }}
-                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left ${
-                          expandedStudentId === s.id ? 'bg-blue-50' : ''
-                        }`}
-                      >
-                        <span
-                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                            !s.attended
-                              ? 'bg-gray-100 text-gray-400'
-                              : index === 0
-                                ? 'bg-yellow-100 text-yellow-700'
-                                : index === 1
-                                  ? 'bg-gray-100 text-gray-600'
-                                  : index === 2
-                                    ? 'bg-orange-100 text-orange-700'
-                                    : 'bg-gray-50 text-gray-500'
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left ${
+                            expandedStudentId === s.id ? 'bg-blue-50' : ''
                           }`}
                         >
-                          {s.attended ? index + 1 : '—'}
-                        </span>
+                          <span
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                              !s.attended
+                                ? 'bg-gray-100 text-gray-400'
+                                : index === 0
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : index === 1
+                                    ? 'bg-gray-100 text-gray-600'
+                                    : index === 2
+                                      ? 'bg-orange-100 text-orange-700'
+                                      : 'bg-gray-50 text-gray-500'
+                            }`}
+                          >
+                            {s.attended ? index + 1 : '—'}
+                          </span>
 
-                        <div className="flex-1">
-                          <p className="font-medium text-gray-900 text-sm">{s.name}</p>
-                          <p className="text-xs text-gray-400">
-                            Roll #{s.roll_number}
-                            {!selectedClassId && s.classes?.name && ` · ${s.classes.name}`}
-                          </p>
-                        </div>
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900 text-sm">{s.name}</p>
+                            <p className="text-xs text-gray-400">
+                              Roll #{s.roll_number}
+                              {!selectedClassId && s.classes?.name && ` · ${s.classes.name}`}
+                            </p>
+                          </div>
 
-                        <div className="text-right shrink-0">
-                          {s.attended ? (
-                            <>
-                              <p className="font-semibold text-gray-900 text-sm">
-                                {s.score} / {s.totalQ}
+                          <div className="text-right shrink-0">
+                            {s.attended ? (
+                              <>
+                                <p className="font-semibold text-gray-900 text-sm">
+                                  {s.score} / {s.totalQ}
+                                </p>
+                                <p className="text-xs text-gray-400">
+                                  {s.totalQ > 0 ? Math.round((s.score / s.totalQ) * 100) : 0}%
+                                </p>
+                              </>
+                            ) : (
+                              <div>
+                                <p className="font-semibold text-gray-500 text-sm">0 / {s.totalQ}</p>
+                                <p className="text-xs text-red-400">Absent</p>
+                              </div>
+                            )}
+                          </div>
+                        </button>
+
+                        {expandedStudentId === s.id && loading && (
+                          <div className="flex items-center justify-center py-8 mx-4 mb-4">
+                            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                            <span className="ml-3 text-sm text-gray-500">Loading results…</span>
+                          </div>
+                        )}
+
+                        {expandedStudentId === s.id && !loading && !result && examId && (
+                          <div className="mx-4 mb-4 rounded-xl border border-gray-200 bg-white p-6 text-center">
+                            <p className="text-gray-500 text-sm">No results found for this exam yet.</p>
+                            <p className="text-gray-400 text-xs mt-1">Scan some OMR sheets first.</p>
+                          </div>
+                        )}
+
+                        {expandedStudentId === s.id && !loading && result && subject && (
+                          <div className="mx-4 mb-4 border border-blue-100 rounded-xl overflow-hidden bg-white">
+                            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-100">
+                              <p className="text-xs font-medium text-blue-700">
+                                {s.name}&apos;s Performance
                               </p>
-                              <p className="text-xs text-gray-400">
-                                {s.totalQ > 0 ? Math.round((s.score / s.totalQ) * 100) : 0}%
-                              </p>
-                            </>
-                          ) : (
-                            <div>
-                              <p className="font-semibold text-gray-500 text-sm">0 / {s.totalQ}</p>
-                              <p className="text-xs text-red-400">Absent</p>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setExpandedStudentId(null)
+                                  setSelectedStudentId('')
+                                }}
+                                className="text-blue-400 hover:text-blue-600 text-sm"
+                              >
+                                ✕ Close
+                              </button>
                             </div>
-                          )}
-                        </div>
-                      </button>
+                            <div className="p-4 flex flex-col gap-4">
+                              <OverallScoreCard result={result} />
+                              <SubjectTabs
+                                subjects={result.subjects}
+                                active={subject.subject_id}
+                                onChange={setActiveSubject}
+                              />
+                              <TopicPerformance subject={subject} />
+                              <TopicSummary subject={subject} />
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     )
                   })}
                   {searchedRankings.length === 0 && (
@@ -914,12 +943,6 @@ export default function Results() {
                     </p>
                   )}
                 </div>
-
-                {expandedStudentId && (
-                  <div className="mt-4 border-t border-gray-100 p-4 flex flex-col gap-5">
-                    {renderPerformanceDashboard()}
-                  </div>
-                )}
               </div>
             )}
           </>
