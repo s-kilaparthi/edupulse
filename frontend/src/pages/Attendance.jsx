@@ -11,6 +11,12 @@ const STATUS_COLORS = {
 }
 const STATUS_ICONS = { present: '✅', absent: '❌', late: '🕐' }
 
+const ADMIN_TABS = [
+  { id: 'mark', label: 'Mark Attendance' },
+  { id: 'reports', label: 'Reports' },
+  { id: 'student', label: 'Student Report' },
+]
+
 function getDayName(dateStr) {
   return DAYS[new Date(dateStr + 'T00:00:00').getDay()]
 }
@@ -167,6 +173,10 @@ export default function Attendance() {
   const [reportToDate, setReportToDate] = useState(todayStr())
   const [reportRows, setReportRows] = useState([])
   const [reportLoading, setReportLoading] = useState(false)
+  const [reportClassId, setReportClassId] = useState('')
+  const [reportStudentId, setReportStudentId] = useState('')
+  const [reportStudents, setReportStudents] = useState([])
+  const [studentAttendance, setStudentAttendance] = useState([])
 
   const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
@@ -199,6 +209,39 @@ export default function Attendance() {
       .order('name')
       .then(({ data }) => setClasses(data ?? []))
   }, [instituteId, isAdmin])
+
+  useEffect(() => {
+    if (!reportClassId) {
+      setReportStudents([])
+      setReportStudentId('')
+      return
+    }
+
+    supabase
+      .from('users')
+      .select('id, name, roll_number')
+      .eq('role', 'student')
+      .eq('class_id', reportClassId)
+      .order('roll_number')
+      .then(({ data }) => setReportStudents(data ?? []))
+  }, [reportClassId])
+
+  useEffect(() => {
+    if (!reportStudentId || !instituteId) {
+      setStudentAttendance([])
+      return
+    }
+
+    supabase
+      .from('attendance')
+      .select(
+        'date, status, subject_id, subjects(name), schedule_slot_id, schedule_slots(period_number, start_time)'
+      )
+      .eq('student_id', reportStudentId)
+      .eq('institute_id', instituteId)
+      .order('date', { ascending: false })
+      .then(({ data }) => setStudentAttendance(data ?? []))
+  }, [reportStudentId, instituteId])
 
   const fetchSavedSlots = useCallback(
     async (slotIds, forTeacher = true) => {
@@ -564,30 +607,21 @@ export default function Attendance() {
       {isAdmin && (
         <>
           <div className="flex gap-1 border-b border-gray-200 mb-6">
-            <button
-              type="button"
-              onClick={() => setAdminTab('mark')}
-              className={`px-4 py-2 text-sm font-medium relative ${
-                adminTab === 'mark' ? 'text-gray-900' : 'text-gray-500'
-              }`}
-            >
-              Mark Attendance
-              {adminTab === 'mark' && (
-                <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />
-              )}
-            </button>
-            <button
-              type="button"
-              onClick={() => setAdminTab('reports')}
-              className={`px-4 py-2 text-sm font-medium relative ${
-                adminTab === 'reports' ? 'text-gray-900' : 'text-gray-500'
-              }`}
-            >
-              Reports
-              {adminTab === 'reports' && (
-                <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />
-              )}
-            </button>
+            {ADMIN_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setAdminTab(tab.id)}
+                className={`px-4 py-2 text-sm font-medium relative ${
+                  adminTab === tab.id ? 'text-gray-900' : 'text-gray-500'
+                }`}
+              >
+                {tab.label}
+                {adminTab === tab.id && (
+                  <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />
+                )}
+              </button>
+            ))}
           </div>
 
           {adminTab === 'mark' && renderMarkAttendance(true)}
@@ -678,6 +712,106 @@ export default function Attendance() {
                   </table>
                 </div>
               )}
+            </>
+          )}
+
+          {adminTab === 'student' && (
+            <>
+              <div className="flex gap-3 mb-4">
+                <select
+                  value={reportClassId}
+                  onChange={(e) => {
+                    setReportClassId(e.target.value)
+                    setReportStudentId('')
+                  }}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Select class...</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
+                {reportStudents.length > 0 && (
+                  <select
+                    value={reportStudentId}
+                    onChange={(e) => setReportStudentId(e.target.value)}
+                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">Select student...</option>
+                    {reportStudents.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.roll_number} — {s.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {reportStudentId && (() => {
+                const present = studentAttendance.filter((a) => a.status === 'present').length
+                const absent = studentAttendance.filter((a) => a.status === 'absent').length
+                const late = studentAttendance.filter((a) => a.status === 'late').length
+                const total = studentAttendance.length
+                const pct = total > 0 ? Math.round(((present + late) / total) * 100) : 0
+
+                return (
+                  <>
+                    <div className="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-xl">
+                      <span className="text-green-600 font-semibold">✅ Present: {present}</span>
+                      <span className="text-red-600 font-semibold">❌ Absent: {absent}</span>
+                      <span className="text-yellow-600 font-semibold">🕐 Late: {late}</span>
+                      <span className="font-bold text-gray-900">
+                        Overall: {pct}%{pct < 75 && ' ⚠️'}
+                      </span>
+                    </div>
+
+                    {studentAttendance.length === 0 ? (
+                      <p className="text-sm text-gray-500">No attendance records for this student.</p>
+                    ) : (
+                      <div className="overflow-x-auto bg-white rounded-2xl border border-gray-200">
+                        <table className="w-full text-sm border-collapse">
+                          <thead>
+                            <tr className="bg-gray-50 text-left">
+                              <th className="px-3 py-2 text-xs font-medium text-gray-500">Date</th>
+                              <th className="px-3 py-2 text-xs font-medium text-gray-500">Subject</th>
+                              <th className="px-3 py-2 text-xs font-medium text-gray-500">Period</th>
+                              <th className="px-3 py-2 text-xs font-medium text-gray-500">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {studentAttendance.map((a, i) => (
+                              <tr key={i} className="border-t border-gray-100">
+                                <td className="px-3 py-2">{a.date}</td>
+                                <td className="px-3 py-2">{a.subjects?.name}</td>
+                                <td className="px-3 py-2 text-xs text-gray-500">
+                                  Period {a.schedule_slots?.period_number} ·{' '}
+                                  {a.schedule_slots?.start_time?.slice(0, 5)}
+                                </td>
+                                <td className="px-3 py-2">
+                                  <span
+                                    className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                                      a.status === 'present'
+                                        ? 'bg-green-100 text-green-700'
+                                        : a.status === 'absent'
+                                          ? 'bg-red-100 text-red-700'
+                                          : 'bg-yellow-100 text-yellow-700'
+                                    }`}
+                                  >
+                                    {a.status}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </>
+                )
+              })()}
             </>
           )}
         </>
