@@ -316,12 +316,17 @@ export default function Scan() {
       if (topicErr) throw topicErr
 
       try {
+        console.log('Creating notifications for exam:', selectedExam.id)
+
         const { data: examClassData } = await supabase
           .from('exam_classes')
           .select('class_id')
           .eq('exam_id', selectedExam.id)
 
+        console.log('Exam classes:', examClassData)
+
         const classIds = examClassData?.map((ec) => ec.class_id) ?? []
+        console.log('Class IDs:', classIds)
 
         if (classIds.length > 0) {
           const { data: classStudents } = await supabase
@@ -329,6 +334,8 @@ export default function Scan() {
             .select('id')
             .eq('role', 'student')
             .in('class_id', classIds)
+
+          console.log('Students to notify:', classStudents)
 
           const notifRows =
             classStudents?.map((s) => ({
@@ -340,7 +347,10 @@ export default function Scan() {
             })) ?? []
 
           if (notifRows.length > 0) {
-            await supabase.from('notifications').insert(notifRows)
+            const { error: notifError } = await supabase
+              .from('notifications')
+              .insert(notifRows)
+            console.log('Notification insert error:', notifError)
           }
         }
       } catch (notifErr) {
