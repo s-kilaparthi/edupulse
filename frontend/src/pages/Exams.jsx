@@ -1224,6 +1224,11 @@ export default function Exams() {
                   </label>
                 ))}
               </div>
+              {selectedAiTopicIds.length > 5 && (
+                <p className="text-xs text-yellow-600 bg-yellow-50 px-3 py-2 rounded-lg mt-2">
+                  ⚠️ Selecting many topics uses more API quota. Consider generating 5 topics at a time for best results.
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
