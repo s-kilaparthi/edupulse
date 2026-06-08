@@ -145,7 +145,7 @@ export default function Dashboard() {
           .select('class_id, classes(id, name)')
           .eq('teacher_id', session.user.id)
 
-        const classIds = teacherClassesData?.map((tc) => tc.class_id) ?? []
+        const classIds = [...new Set(teacherClassesData?.map((tc) => tc.class_id) ?? [])]
 
         let studentCount = 0
         if (classIds.length > 0) {
