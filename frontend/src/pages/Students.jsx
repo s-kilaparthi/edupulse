@@ -25,18 +25,37 @@ export default function Students() {
 
   const [selectedFilterClass, setSelectedFilterClass] = useState('')
   const [teacherClasses, setTeacherClasses] = useState([])
+  const [adminSearch, setAdminSearch] = useState('')
+  const [adminFilterClassId, setAdminFilterClassId] = useState('')
+  const [allClasses, setAllClasses] = useState([])
+  const [instituteId, setInstituteId] = useState(null)
 
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role')
+      .select('role, institute_id')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
-        if (data) setUserRole(data.role)
+        if (data) {
+          setUserRole(data.role)
+          setInstituteId(data.institute_id)
+        }
       })
   }, [session])
+
+  useEffect(() => {
+    if (userRole !== 'admin' || !instituteId) return
+    supabase
+      .from('classes')
+      .select('id, name')
+      .eq('institute_id', instituteId)
+      .order('name')
+      .then(({ data }) => {
+        if (data) setAllClasses(data)
+      })
+  }, [userRole, instituteId])
 
   async function fetchStudents() {
     setError(null)
@@ -212,6 +231,19 @@ export default function Students() {
     ? students.filter((s) => s.class_id === selectedFilterClass)
     : students
 
+  const adminDisplayedStudents = isAdmin
+    ? students.filter((s) => {
+        const matchSearch =
+          !adminSearch ||
+          String(s.roll_number).includes(adminSearch) ||
+          s.name?.toLowerCase().includes(adminSearch.toLowerCase())
+        const matchClass = !adminFilterClassId || s.class_id === adminFilterClassId
+        return matchSearch && matchClass
+      })
+    : displayedStudents
+
+  const listStudents = isAdmin ? adminDisplayedStudents : displayedStudents
+
   return (
     <>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Students</h1>
@@ -264,6 +296,48 @@ export default function Students() {
         </form>
       )}
 
+      {isAdmin && (
+        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mb-4">
+          <input
+            type="text"
+            value={adminSearch}
+            onChange={(e) => setAdminSearch(e.target.value)}
+            placeholder="Search by roll number or name..."
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+          />
+
+          {allClasses.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => setAdminFilterClassId('')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  adminFilterClassId === ''
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                All Classes
+              </button>
+              {allClasses.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setAdminFilterClassId(c.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                    adminFilterClassId === c.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {successMessage && (
         <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 mb-4">
           <p className="text-green-700 text-sm">{successMessage}</p>
@@ -309,18 +383,18 @@ export default function Students() {
 
         <p className="text-sm text-gray-600 mb-4">
           Total students:{' '}
-          <span className="font-semibold text-gray-900">{displayedStudents.length}</span>
+          <span className="font-semibold text-gray-900">{listStudents.length}</span>
         </p>
 
         {loading ? (
           <p className="text-gray-500 text-sm">Loading students…</p>
-        ) : displayedStudents.length === 0 ? (
+        ) : listStudents.length === 0 ? (
           <p className="text-gray-500 text-sm">
             {isAdmin ? 'No students yet. Add one above.' : 'No students yet.'}
           </p>
         ) : (
           <ul className="space-y-3">
-            {displayedStudents.map((student) => (
+            {listStudents.map((student) => (
               <li
                 key={student.id}
                 className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
