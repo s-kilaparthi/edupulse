@@ -70,10 +70,6 @@ export default function Dashboard() {
   })
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
-  const [teacherClasses, setTeacherClasses] = useState([])
-  const [selectedClassId, setSelectedClassId] = useState('')
-  const [classStudents, setClassStudents] = useState([])
-
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
@@ -150,7 +146,6 @@ export default function Dashboard() {
           .eq('teacher_id', session.user.id)
 
         const classIds = teacherClassesData?.map((tc) => tc.class_id) ?? []
-        setTeacherClasses(teacherClassesData ?? [])
 
         let studentCount = 0
         if (classIds.length > 0) {
@@ -213,20 +208,6 @@ export default function Dashboard() {
     loadDashboard()
   }, [session, userLoaded, instituteId, userRole])
 
-  useEffect(() => {
-    if (!selectedClassId) {
-      setClassStudents([])
-      return
-    }
-    supabase
-      .from('users')
-      .select('id, name, roll_number')
-      .eq('role', 'student')
-      .eq('class_id', selectedClassId)
-      .order('roll_number')
-      .then(({ data }) => setClassStudents(data ?? []))
-  }, [selectedClassId])
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -276,53 +257,51 @@ export default function Dashboard() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <StatCard label="My Classes" value={stats.myClasses ?? 0} />
-            <StatCard label="My Students" value={stats.myStudents ?? 0} />
-            <StatCard label="Exams Created" value={stats.examsCreated ?? 0} />
+            <button
+              type="button"
+              onClick={() => navigate('/subjects')}
+              className="text-left w-full"
+            >
+              <StatCard label="My Classes" value={stats.myClasses ?? 0} />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/students')}
+              className="text-left w-full"
+            >
+              <StatCard label="My Students" value={stats.myStudents ?? 0} />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/exams')}
+              className="text-left w-full"
+            >
+              <StatCard label="Exams Created" value={stats.examsCreated ?? 0} />
+            </button>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={() => navigate('/scan')}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700"
+              onClick={() => navigate('/attendance')}
+              className="flex-1 bg-green-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
             >
-              Start Scanning
+              ✅ Mark Attendance
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/scan')}
+              className="flex-1 bg-blue-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            >
+              📷 Start Scanning
             </button>
             <button
               type="button"
               onClick={() => navigate('/results', { state: { tab: 'heatmap' } })}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="flex-1 bg-purple-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
             >
-              View Class Heatmap
+              📊 View Heatmap
             </button>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3">My Students</h2>
-            <select
-              value={selectedClassId}
-              onChange={(e) => setSelectedClassId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-3"
-            >
-              <option value="">Select a class to view students...</option>
-              {teacherClasses.map((tc) => (
-                <option key={tc.class_id} value={tc.class_id}>
-                  {tc.classes?.name}
-                </option>
-              ))}
-            </select>
-
-            {classStudents.length > 0 && (
-              <ul className="space-y-2">
-                {classStudents.map((s) => (
-                  <li key={s.id} className="flex justify-between text-sm px-3 py-2 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-gray-900">{s.name}</span>
-                    <span className="text-gray-400">Roll #{s.roll_number}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
         </>
       )}
