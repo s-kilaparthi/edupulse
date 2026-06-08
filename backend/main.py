@@ -107,6 +107,93 @@ async def extract_topics(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/generate-questions")
+async def generate_questions(request: Request):
+    try:
+        body = await request.json()
+        subject_id = body.get('subject_id')
+        topic_ids = body.get('topic_ids', [])
+        count_per_topic = body.get('count_per_topic', 2)
+        difficulty = body.get('difficulty', 'medium')
+        subject_name = body.get('subject_name', '')
+        topic_names = body.get('topic_names', [])
+
+        if not topic_ids or not topic_names:
+            raise HTTPException(
+                status_code=400,
+                detail="topic_ids and topic_names required",
+            )
+
+        gemini_key = os.environ.get('GEMINI_API_KEY', '')
+        if not gemini_key:
+            raise HTTPException(status_code=500, detail="Gemini API key not configured")
+
+        topics_text = ', '.join(topic_names)
+        prompt = f"""You are an expert teacher creating MCQ questions.
+Generate {count_per_topic} multiple choice questions for EACH of these topics: {topics_text}
+Subject: {subject_name}
+Difficulty: {difficulty}
+
+Rules:
+- Each question must have exactly 4 options (A, B, C, D)
+- One correct answer per question
+- Questions should be clear and unambiguous
+- Match the difficulty level: easy=basic recall, medium=application, hard=analysis
+
+Return ONLY a JSON array, no explanation. Format:
+[
+  {{
+    "topic_name": "topic name here",
+    "question_text": "question here?",
+    "option_a": "option A",
+    "option_b": "option B",
+    "option_c": "option C",
+    "option_d": "option D",
+    "correct_answer": "A"
+  }}
+]"""
+
+        models_to_try = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash-lite',
+            'gemini-2.0-flash-001',
+        ]
+
+        data = None
+        last_error = None
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            for model in models_to_try:
+                response = await client.post(
+                    f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}',
+                    json={"contents": [{"parts": [{"text": prompt}]}]},
+                )
+                data = response.json()
+                if 'candidates' in data:
+                    break
+                last_error = data.get('error', {}).get('message', 'Unknown')
+
+        if not data or 'candidates' not in data:
+            raise ValueError(f"Gemini unavailable: {last_error}")
+
+        text = data['candidates'][0]['content']['parts'][0]['text']
+        clean = text.replace('```json', '').replace('```', '').strip()
+
+        questions = json.loads(clean)
+
+        topic_name_to_id = dict(zip(topic_names, topic_ids))
+        for q in questions:
+            q['topic_id'] = topic_name_to_id.get(q.get('topic_name'), topic_ids[0])
+
+        return {"questions": questions}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Generate questions error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/create-student")
 async def create_student(request: Request):
     try:
