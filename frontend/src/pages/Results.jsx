@@ -379,10 +379,10 @@ export default function Results() {
   const [loadingTrend, setLoadingTrend] = useState(false)
   const [activeTab, setActiveTab] = useState(navState?.tab ?? 'student')
   const [selectedStudentId, setSelectedStudentId] = useState(navState?.studentId ?? '')
-  const [students, setStudents] = useState([])
   const [classes, setClasses] = useState([])
   const [selectedClassId, setSelectedClassId] = useState(navState?.classId ?? '')
   const [studentSearch, setStudentSearch] = useState('')
+  const [studentRankings, setStudentRankings] = useState([])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -397,20 +397,62 @@ export default function Results() {
   }, [session])
 
   useEffect(() => {
-    if (!isTeacher) return
-
-    let query = supabase
-      .from('users')
-      .select('id, name, roll_number, class_id')
-      .eq('role', 'student')
-      .order('roll_number')
-
-    if (selectedClassId) {
-      query = query.eq('class_id', selectedClassId)
+    if (!examId || !selectedClassId || !isTeacher) {
+      setStudentRankings([])
+      return
     }
 
-    query.then(({ data }) => { if (data) setStudents(data) })
-  }, [isTeacher, selectedClassId])
+    async function fetchRankings() {
+      const { data: classStudents } = await supabase
+        .from('users')
+        .select('id, name, roll_number')
+        .eq('role', 'student')
+        .eq('class_id', selectedClassId)
+        .order('roll_number')
+
+      if (!classStudents) {
+        setStudentRankings([])
+        return
+      }
+
+      const { data: scores } = await supabase
+        .from('omr_results')
+        .select('student_id, is_correct')
+        .eq('exam_id', examId)
+        .in('student_id', classStudents.map((s) => s.id))
+
+      const scoreMap = {}
+      for (const r of scores ?? []) {
+        if (!scoreMap[r.student_id]) scoreMap[r.student_id] = 0
+        if (r.is_correct) scoreMap[r.student_id] += 1
+      }
+
+      const { data: examData } = await supabase
+        .from('exams')
+        .select('total_questions')
+        .eq('id', examId)
+        .single()
+
+      const totalQ = examData?.total_questions ?? 0
+
+      const rankings = classStudents.map((s) => ({
+        ...s,
+        score: scoreMap[s.id] ?? 0,
+        totalQ,
+        attended: s.id in scoreMap,
+      }))
+
+      rankings.sort((a, b) => {
+        if (a.attended && !b.attended) return -1
+        if (!a.attended && b.attended) return 1
+        return b.score - a.score
+      })
+
+      setStudentRankings(rankings)
+    }
+
+    fetchRankings()
+  }, [examId, selectedClassId, isTeacher])
 
   useEffect(() => {
     if (!isTeacher || !examId || !session?.user?.id) return
@@ -446,12 +488,11 @@ export default function Results() {
 
   useEffect(() => {
     if (fromStudentsNav) {
-      setStudents([])
       setStudentSearch('')
       return
     }
     setSelectedClassId('')
-    setStudents([])
+    setStudentRankings([])
     setSelectedStudentId('')
     setStudentSearch('')
   }, [examId, fromStudentsNav])
@@ -589,7 +630,7 @@ export default function Results() {
 
   const subject = result?.subjects?.find((s) => s.subject_id === activeSubject) ?? result?.subjects?.[0]
 
-  const searchedStudents = students.filter((s) =>
+  const searchedRankings = studentRankings.filter((s) =>
     s.name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
     String(s.roll_number).includes(studentSearch)
   )
@@ -638,17 +679,6 @@ export default function Results() {
                 ))}
               </select>
             )}
-            {isTeacher && activeTab === 'student' && (classes.length === 0 || selectedClassId) && !navState?.studentId && (
-              <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search by name or roll number..."
-                  value={studentSearch}
-                  onChange={(e) => setStudentSearch(e.target.value)}
-                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600 w-64"
-                />
-              </div>
-            )}
           </div>
         </header>
 
@@ -677,9 +707,9 @@ export default function Results() {
           </div>
         )}
 
-        {isTeacher && activeTab === 'student' && (classes.length === 0 || selectedClassId) && !selectedStudentId && students.length === 0 && (
+        {isTeacher && activeTab === 'student' && examId && selectedClassId && !selectedStudentId && studentRankings.length === 0 && !fromStudentsNav && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-            <p className="text-gray-500 text-sm">Select a student to view their performance</p>
+            <p className="text-gray-500 text-sm">No students in this class</p>
           </div>
         )}
 
@@ -712,34 +742,87 @@ export default function Results() {
           <PerformanceTrend trendData={trendData} totalExams={exams.length} />
         )}
 
-        {isTeacher && students.length > 0 && !navState?.studentId && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3">
-              Students — {students.length} in class
-            </h2>
-            <div className="space-y-2">
-              {searchedStudents.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => setSelectedStudentId(s.id)}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border text-sm transition-colors ${
-                    selectedStudentId === s.id
-                      ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-gray-200 bg-white text-gray-900 hover:border-gray-300 hover:bg-gray-50'
-                  }`}
-                >
-                  <span className="font-medium">{s.name}</span>
-                  <span className="text-gray-400">Roll #{s.roll_number}</span>
-                </button>
-              ))}
-              {searchedStudents.length === 0 && (
-                <p className="text-sm text-gray-400 text-center py-4">
-                  No students found matching &quot;{studentSearch}&quot;
-                </p>
-              )}
+        {isTeacher && activeTab === 'student' && examId && selectedClassId && !fromStudentsNav && (
+          <>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="Search by name or roll number..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+              />
             </div>
-          </div>
+
+            {studentRankings.length > 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="p-4 border-b border-gray-100">
+                  <h2 className="text-sm font-semibold text-gray-900">
+                    Class Results — {studentRankings.length} students
+                  </h2>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {searchedRankings.map((s) => {
+                    const index = studentRankings.indexOf(s)
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => setSelectedStudentId(s.id)}
+                        className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left ${
+                          selectedStudentId === s.id ? 'bg-blue-50' : ''
+                        }`}
+                      >
+                        <span
+                          className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                            !s.attended
+                              ? 'bg-gray-100 text-gray-400'
+                              : index === 0
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : index === 1
+                                  ? 'bg-gray-100 text-gray-600'
+                                  : index === 2
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : 'bg-gray-50 text-gray-500'
+                          }`}
+                        >
+                          {s.attended ? index + 1 : '—'}
+                        </span>
+
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900 text-sm">{s.name}</p>
+                          <p className="text-xs text-gray-400">Roll #{s.roll_number}</p>
+                        </div>
+
+                        <div className="text-right shrink-0">
+                          {s.attended ? (
+                            <>
+                              <p className="font-semibold text-gray-900 text-sm">
+                                {s.score} / {s.totalQ}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {s.totalQ > 0 ? Math.round((s.score / s.totalQ) * 100) : 0}%
+                              </p>
+                            </>
+                          ) : (
+                            <div>
+                              <p className="font-semibold text-gray-500 text-sm">0 / {s.totalQ}</p>
+                              <p className="text-xs text-red-400">Absent</p>
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+                  {searchedRankings.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-4">
+                      No students found matching &quot;{studentSearch}&quot;
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
