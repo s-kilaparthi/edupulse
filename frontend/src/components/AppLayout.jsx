@@ -7,6 +7,7 @@ const studentNav = [
   { label: 'My Results', to: '/results' },
   { label: 'Subjects', to: '/subjects' },
   { label: 'Schedule', to: '/schedule' },
+  { label: 'Attendance', to: '/attendance' },
   { label: 'Announcements', to: '/announcements' },
 ]
 
@@ -14,6 +15,7 @@ const teacherNav = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Subjects', to: '/subjects' },
   { label: 'Schedule', to: '/schedule' },
+  { label: 'Attendance', to: '/attendance' },
   { label: 'Exams', to: '/exams' },
   { label: 'Scan', to: '/scan' },
   { label: 'Students', to: '/students' },
@@ -25,6 +27,7 @@ const adminNav = [
   { label: 'Dashboard', to: '/dashboard' },
   { label: 'Classes', to: '/classes' },
   { label: 'Schedule', to: '/schedule' },
+  { label: 'Attendance', to: '/attendance' },
   { label: 'Teachers', to: '/teachers' },
   { label: 'Subjects', to: '/subjects' },
   { label: 'Exams', to: '/exams' },

@@ -16,6 +16,7 @@ import Announcements from './pages/Announcements'
 import Classes from './pages/Classes'
 import Teachers from './pages/Teachers'
 import Schedule from './pages/Schedule'
+import Attendance from './pages/Attendance'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/subjects" element={<Subjects />} />
             <Route path="/classes" element={<Classes />} />
             <Route path="/schedule" element={<Schedule />} />
+            <Route path="/attendance" element={<Attendance />} />
             <Route path="/teachers" element={<Teachers />} />
             <Route path="/exams" element={<Exams />} />
             <Route path="/students" element={<Students />} />
