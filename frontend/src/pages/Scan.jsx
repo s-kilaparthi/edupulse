@@ -61,6 +61,10 @@ export default function Scan() {
   const [answers, setAnswers] = useState({})
   const [ambiguousSet, setAmbiguousSet] = useState(new Set())
   const [sessionRecords, setSessionRecords] = useState([])
+  const [showReview, setShowReview] = useState(false)
+  const [reviewStudents, setReviewStudents] = useState([])
+  const [absentStudentIds, setAbsentStudentIds] = useState(new Set())
+  const [postingResults, setPostingResults] = useState(false)
   const fileRef = useRef(null)
 
   const selectedExam = useMemo(
@@ -87,7 +91,7 @@ export default function Scan() {
       const { data, error } = await supabase
         .from('exams')
         .select('id, name, total_questions, scope, exam_classes(class_id, classes(name))')
-        .order('name')
+        .order('created_at', { ascending: true })
       if (!error && data) setExams(data)
 
       const { data: { user } } = await supabase.auth.getUser()
@@ -315,48 +319,6 @@ export default function Scan() {
         .upsert(topicRows, { onConflict: 'exam_id,student_id,topic_id' })
       if (topicErr) throw topicErr
 
-      try {
-        console.log('Creating notifications for exam:', selectedExam.id)
-
-        const { data: examClassData } = await supabase
-          .from('exam_classes')
-          .select('class_id')
-          .eq('exam_id', selectedExam.id)
-
-        console.log('Exam classes:', examClassData)
-
-        const classIds = examClassData?.map((ec) => ec.class_id) ?? []
-        console.log('Class IDs:', classIds)
-
-        if (classIds.length > 0) {
-          const { data: classStudents } = await supabase
-            .from('users')
-            .select('id')
-            .eq('role', 'student')
-            .in('class_id', classIds)
-
-          console.log('Students to notify:', classStudents)
-
-          const notifRows =
-            classStudents?.map((s) => ({
-              user_id: s.id,
-              title: 'Results Posted',
-              body: `Your results for ${selectedExam.name} are now available`,
-              type: 'results',
-              is_read: false,
-            })) ?? []
-
-          if (notifRows.length > 0) {
-            const { error: notifError } = await supabase
-              .from('notifications')
-              .insert(notifRows)
-            console.log('Notification insert error:', notifError)
-          }
-        }
-      } catch (notifErr) {
-        console.log('Notification error:', notifErr)
-      }
-
       const correctCount = omrRows.filter((r) => r.is_correct).length
       const pct = omrRows.length > 0 ? Math.round((correctCount / omrRows.length) * 100) : 0
 
@@ -381,6 +343,49 @@ export default function Scan() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleOpenReview() {
+    const { data } = await supabase
+      .from('users')
+      .select('id, name, roll_number')
+      .eq('role', 'student')
+      .eq('class_id', selectedClassId)
+      .order('roll_number')
+
+    setReviewStudents(data ?? [])
+    setShowReview(true)
+  }
+
+  async function handlePostResults() {
+    setPostingResults(true)
+
+    try {
+      const allStudentIds = reviewStudents.map((s) => s.id)
+
+      const notifRows = allStudentIds.map((id) => ({
+        user_id: id,
+        title: 'Results Posted',
+        body: `Your results for ${selectedExam.name} are now available`,
+        type: 'results',
+        is_read: false,
+      }))
+
+      await supabase.from('notifications').insert(notifRows)
+
+      setSavedFlash(true)
+      setShowReview(false)
+      setSessionRecords([])
+      setAbsentStudentIds(new Set())
+      setTimeout(() => {
+        setSavedFlash(false)
+        setStep(1)
+      }, 2000)
+    } catch (err) {
+      setScanError('Failed to post results: ' + err.message)
+    }
+
+    setPostingResults(false)
   }
 
   const sessionSummary = useMemo(() => {
@@ -436,7 +441,7 @@ export default function Scan() {
         </section>
       )}
 
-      {step === 2 && (
+      {step === 2 && !showReview && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800">Step 2 — Select Student + Scan</h2>
@@ -528,6 +533,92 @@ export default function Scan() {
             <p className="text-center text-green-700 font-semibold">Saved! ✓</p>
           )}
           {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+
+          {sessionRecords.length > 0 && selectedClassId && !showReview && (
+            <button
+              type="button"
+              onClick={handleOpenReview}
+              className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium mt-3"
+            >
+              Review Class & Post Results ({sessionRecords.length} scanned)
+            </button>
+          )}
+        </section>
+      )}
+
+      {step === 2 && showReview && (
+        <section className="bg-white rounded-2xl shadow p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-800">
+              Review & Post Results
+            </h2>
+            <button
+              type="button"
+              onClick={() => setShowReview(false)}
+              className="text-sm text-gray-500"
+            >
+              ← Back
+            </button>
+          </div>
+
+          <p className="text-sm text-gray-600">
+            Scanned: {sessionRecords.length} · Not scanned:{' '}
+            {reviewStudents.filter(
+              (s) => !sessionRecords.find((r) => r.studentId === s.id)
+            ).length}
+          </p>
+
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {reviewStudents.map((student) => {
+              const scanned = sessionRecords.find((r) => r.studentId === student.id)
+              const isAbsent = absentStudentIds.has(student.id)
+
+              return (
+                <div
+                  key={student.id}
+                  className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{student.name}</p>
+                    <p className="text-xs text-gray-400">Roll #{student.roll_number}</p>
+                  </div>
+                  {scanned ? (
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                      ✅ {scanned.score}%
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAbsentStudentIds((prev) => {
+                          const next = new Set(prev)
+                          if (next.has(student.id)) next.delete(student.id)
+                          else next.add(student.id)
+                          return next
+                        })
+                      }}
+                      className={`text-xs px-2 py-1 rounded-full font-medium border transition-colors ${
+                        isAbsent
+                          ? 'bg-red-100 text-red-700 border-red-300'
+                          : 'bg-gray-100 text-gray-500 border-gray-300'
+                      }`}
+                    >
+                      {isAbsent ? '❌ Absent' : 'Mark Absent'}
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          <button
+            type="button"
+            onClick={handlePostResults}
+            disabled={postingResults}
+            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+          >
+            {postingResults ? 'Posting...' : 'Post Results & Notify Students'}
+          </button>
         </section>
       )}
 
