@@ -125,14 +125,47 @@ export default function Subjects() {
       return
     }
 
+    if (userRole === 'student') {
+      if (!studentClassId) {
+        setSubjects([])
+        setLoading(false)
+        return
+      }
+
+      const { data: scData } = await supabase
+        .from('subject_classes')
+        .select('subject_id')
+        .eq('class_id', studentClassId)
+
+      const subjectIds = scData?.map((sc) => sc.subject_id) ?? []
+
+      if (subjectIds.length === 0) {
+        setSubjects([])
+        setLoading(false)
+        return
+      }
+
+      const { data, error: fetchError } = await supabase
+        .from('subjects')
+        .select('id, name, teacher_id, topics(id, name, class_id), users(name), subject_classes(class_id, classes(name))')
+        .in('id', subjectIds)
+        .order('name')
+
+      if (fetchError) {
+        setError(fetchError.message)
+        setSubjects([])
+      } else {
+        setSubjects(data ?? [])
+      }
+      setLoading(false)
+      return
+    }
+
     let query = supabase
       .from('subjects')
       .select('id, name, teacher_id, topics(id, name, class_id), users(name), subject_classes(class_id, classes(name))')
       .order('name')
-
-    if (userRole === 'admin' || userRole === 'student') {
-      query = query.eq('institute_id', instituteId)
-    }
+      .eq('institute_id', instituteId)
 
     const { data, error: fetchError } = await query
     if (fetchError) {
@@ -152,10 +185,15 @@ export default function Subjects() {
       fetchSubjects()
       return
     }
-    if ((userRole === 'admin' || userRole === 'student') && !instituteId) return
+    if (userRole === 'student') {
+      setLoading(true)
+      fetchSubjects()
+      return
+    }
+    if (userRole === 'admin' && !instituteId) return
     setLoading(true)
     fetchSubjects()
-  }, [userRole, instituteId, teacherAssignments, classesLoaded])
+  }, [userRole, instituteId, studentClassId, teacherAssignments, classesLoaded])
 
   function getClassTopics(subject) {
     const classId = isStudent ? studentClassId : selectedClassId
