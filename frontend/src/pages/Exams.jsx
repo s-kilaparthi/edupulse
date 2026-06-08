@@ -61,6 +61,10 @@ export default function Exams() {
   const [savingGenerated, setSavingGenerated] = useState(false)
   const [aiError, setAiError] = useState(null)
 
+  const [activeProfileExamId, setActiveProfileExamId] = useState(null)
+  const [examProfile, setExamProfile] = useState(null)
+  const [loadingProfile, setLoadingProfile] = useState(false)
+
   const questionsPanelRef = useRef(null)
 
   async function getAuthUser() {
@@ -463,6 +467,25 @@ export default function Exams() {
     setSavingQuestions(false)
   }
 
+  async function toggleExamProfile(exam) {
+    if (activeProfileExamId === exam.id) {
+      setActiveProfileExamId(null)
+      setExamProfile(null)
+      return
+    }
+    setActiveProfileExamId(exam.id)
+    setLoadingProfile(true)
+
+    const { data } = await supabase
+      .from('questions')
+      .select('id, question_number, correct_answer, question_text, option_a, option_b, option_c, option_d, difficulty, topic_id, topics(name, subjects(name))')
+      .eq('exam_id', exam.id)
+      .order('question_number')
+
+    setExamProfile(data ?? [])
+    setLoadingProfile(false)
+  }
+
   async function openAIGenerator(exam) {
     setAiExamId(exam.id)
     setGeneratedQuestions([])
@@ -555,6 +578,14 @@ export default function Exams() {
       setShowAIGenerator(false)
       setSuccessMessage(`${rows.length} AI questions saved to exam!`)
       await fetchExams()
+      if (activeProfileExamId === aiExamId) {
+        const { data: refreshed } = await supabase
+          .from('questions')
+          .select('id, question_number, correct_answer, question_text, option_a, option_b, option_c, option_d, difficulty, topic_id, topics(name, subjects(name))')
+          .eq('exam_id', aiExamId)
+          .order('question_number')
+        setExamProfile(refreshed ?? [])
+      }
     } catch (err) {
       setAiError(err.message)
     }
@@ -788,7 +819,13 @@ export default function Exams() {
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <p className="font-medium text-gray-900">{exam.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => toggleExamProfile(exam)}
+                        className="font-medium text-gray-900 hover:text-blue-600 text-left transition-colors"
+                      >
+                        {exam.name}
+                      </button>
                       <p className="text-sm text-gray-500 mt-1">
                         {exam.exam_subjects?.map((es) => {
                           const name = es.subjects?.name
@@ -822,6 +859,87 @@ export default function Exams() {
                     </div>
                   </div>
                 </div>
+
+                {activeProfileExamId === exam.id && (
+                  <div className="mt-1 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-sm font-semibold text-gray-900">
+                        Exam Profile — {exam.name}
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveProfileExamId(null)
+                          setExamProfile(null)
+                        }}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        Close
+                      </button>
+                    </div>
+
+                    {loadingProfile ? (
+                      <p className="text-sm text-gray-500">Loading questions…</p>
+                    ) : !examProfile?.length ? (
+                      <p className="text-sm text-gray-400">No questions added yet.</p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-gray-500 mb-4">
+                          {examProfile.length} question{examProfile.length !== 1 ? 's' : ''} saved
+                        </p>
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {examProfile.map((q) => (
+                            <div
+                              key={q.id}
+                              className="border border-gray-100 rounded-xl p-4"
+                            >
+                              <div className="flex flex-wrap items-center gap-2 mb-2">
+                                <span className="text-xs font-bold text-gray-700">
+                                  Q{q.question_number}
+                                </span>
+                                <span className="text-xs text-blue-600">
+                                  {q.topics?.subjects?.name ?? 'Subject'} — {q.topics?.name ?? 'Topic'}
+                                </span>
+                                {q.difficulty && (
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize">
+                                    {q.difficulty}
+                                  </span>
+                                )}
+                                <span className="text-xs text-green-600 font-medium ml-auto">
+                                  Answer: {q.correct_answer}
+                                </span>
+                              </div>
+                              {q.question_text ? (
+                                <p className="text-sm text-gray-900 mb-2">{q.question_text}</p>
+                              ) : (
+                                <p className="text-sm text-gray-400 italic mb-2">No question text</p>
+                              )}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                                {['a', 'b', 'c', 'd'].map((opt) => {
+                                  const letter = opt.toUpperCase()
+                                  const value = q[`option_${opt}`]
+                                  if (!value) return null
+                                  return (
+                                    <p
+                                      key={opt}
+                                      className={`text-xs px-2 py-1 rounded ${
+                                        q.correct_answer === letter
+                                          ? 'bg-green-50 text-green-800 font-medium'
+                                          : 'text-gray-600'
+                                      }`}
+                                    >
+                                      {letter}. {value}
+                                    </p>
+                                  )
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
 
                 {activeExam?.id === exam.id && (
                   <div
@@ -1008,20 +1126,16 @@ export default function Exams() {
                     )}
                   </div>
                 )}
-              </li>
-            ))}
-          </ul>
-        )}
 
-        {showAIGenerator && aiExamId && (
-          <div className="bg-white rounded-xl border border-purple-200 p-6 shadow-sm mt-4">
+                {showAIGenerator && aiExamId === exam.id && (
+                  <div className="mt-2 bg-white rounded-xl border border-purple-200 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-900">
                 🤖 Generate Questions with AI
               </h2>
               <button
                 type="button"
-                onClick={() => { setShowAIGenerator(false); setGeneratedQuestions([]) }}
+                onClick={() => { setShowAIGenerator(false); setAiExamId(null); setGeneratedQuestions([]) }}
                 className="text-sm text-gray-500 hover:text-gray-700"
               >
                 Close
@@ -1211,7 +1325,11 @@ export default function Exams() {
                 </button>
               </div>
             )}
-          </div>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </>
