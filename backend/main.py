@@ -111,26 +111,17 @@ async def extract_topics(file: UploadFile = File(...)):
 async def generate_questions(request: Request):
     try:
         body = await request.json()
-        subject_id = body.get('subject_id')
         subject_name = body.get('subject_name', '')
-        chapter_name = body.get('chapter_name', '')
-        topic_ids = body.get('topic_ids', [])
-        topic_names = body.get('topic_names', [])
-        count_per_topic = body.get('count_per_topic', 2)
+        chapter_context = body.get('chapter_context', '')
+        topic_allocations = body.get('topic_allocations', [])
         difficulty_mix = body.get('difficulty_mix', {'easy': 30, 'medium': 50, 'hard': 20})
         board = body.get('board', 'CBSE')
         class_level = body.get('class_level', '')
 
-        if not topic_ids or not topic_names:
+        if not topic_allocations:
             raise HTTPException(
                 status_code=400,
-                detail="topic_ids and topic_names required",
-            )
-
-        if len(topic_ids) > 10:
-            raise HTTPException(
-                status_code=400,
-                detail="Maximum 10 topics per generation. Please select fewer topics.",
+                detail="topic_allocations required",
             )
 
         gemini_key = os.environ.get('GEMINI_API_KEY', '')
@@ -141,34 +132,46 @@ async def generate_questions(request: Request):
         medium_pct = difficulty_mix.get('medium', 50)
         hard_pct = difficulty_mix.get('hard', 20)
 
-        topics_list = '\n'.join([f"- {name}" for name in topic_names])
+        topics_with_counts = '\n'.join([
+            f"- {t['topic_name']}: {t['count']} questions"
+            for t in topic_allocations
+        ])
+
+        total_questions = sum(t['count'] for t in topic_allocations)
+        easy_count = max(1, round(total_questions * easy_pct / 100))
+        medium_count = max(1, round(total_questions * medium_pct / 100))
+        hard_count = total_questions - easy_count - medium_count
+        if hard_count < 0:
+            hard_count = 0
 
         prompt = f"""You are an expert {board} teacher for {class_level}.
 Generate MCQ questions for a {board} exam.
 
 Subject: {subject_name}
-{f"Chapter: {chapter_name}" if chapter_name else ""}
+Context/Chapter: {chapter_context}
 
-Generate questions for these topics:
-{topics_list}
+Generate questions for these topics with EXACT counts:
+{topics_with_counts}
 
-For EACH topic generate exactly {count_per_topic} questions with this difficulty mix:
-- {easy_pct}% Easy (factual recall, definitions)
-- {medium_pct}% Medium (application, calculations)
-- {hard_pct}% Hard (analysis, multi-step)
+Total: {total_questions} questions with this difficulty distribution:
+- {easy_count} EASY questions (factual recall, definitions, direct formulas)
+- {medium_count} MEDIUM questions (application, short calculations, concept application)
+- {hard_count} HARD questions (analysis, multi-step problems, higher order thinking)
 
 STRICT RULES:
-- Each question must clearly belong to its topic
-- Do NOT mix topics
+- Each question must belong to the exact topic specified
+- Do NOT mix topics or subjects
+- Context/Chapter "{chapter_context}" defines the scope
 - Each question has exactly 4 options (A, B, C, D)
-- Wrong options must be plausible
+- Wrong options must be plausible and related
 - One unambiguous correct answer
-- Appropriate for {board} {class_level} students
+- Appropriate for {board} {class_level} level
+- Distribute difficulty across topics proportionally
 
-Return ONLY a JSON array:
+Return ONLY a JSON array, no explanation:
 [
   {{
-    "topic_name": "exact topic name from list above",
+    "topic_name": "exact topic name",
     "difficulty": "easy|medium|hard",
     "question_text": "question?",
     "option_a": "option A",
@@ -205,9 +208,12 @@ Return ONLY a JSON array:
         clean = text.replace('```json', '').replace('```', '').strip()
         questions = json.loads(clean)
 
-        topic_name_to_id = dict(zip(topic_names, topic_ids))
+        name_to_id = {t['topic_name']: t['topic_id'] for t in topic_allocations}
         for q in questions:
-            q['topic_id'] = topic_name_to_id.get(q.get('topic_name'), topic_ids[0])
+            q['topic_id'] = name_to_id.get(
+                q.get('topic_name'),
+                topic_allocations[0]['topic_id'],
+            )
 
         return {"questions": questions}
 

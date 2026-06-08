@@ -52,20 +52,21 @@ export default function Exams() {
 
   const [showAIGenerator, setShowAIGenerator] = useState(false)
   const [aiExamId, setAiExamId] = useState(null)
-  const [aiTopics, setAiTopics] = useState([])
-  const [selectedAiTopicIds, setSelectedAiTopicIds] = useState([])
+  const [aiExamSubjects, setAiExamSubjects] = useState([])
+  const [aiTotalQuestions, setAiTotalQuestions] = useState('')
+  const [aiTopicAllocations, setAiTopicAllocations] = useState({})
+  const [aiSelectedTopics, setAiSelectedTopics] = useState({})
   const [aiBoard, setAiBoard] = useState('CBSE')
-  const [aiDifficultyMix, setAiDifficultyMix] = useState('balanced')
-  const [aiCustomEasy, setAiCustomEasy] = useState(30)
-  const [aiCustomMedium, setAiCustomMedium] = useState(50)
-  const [aiCustomHard, setAiCustomHard] = useState(20)
-  const [aiChapterNames, setAiChapterNames] = useState({})
   const [aiClassLevel, setAiClassLevel] = useState('')
-  const [aiCountPerTopic, setAiCountPerTopic] = useState(2)
+  const [aiChapterNames, setAiChapterNames] = useState({})
+  const [aiEasy, setAiEasy] = useState(30)
+  const [aiMedium, setAiMedium] = useState(50)
+  const [aiHard, setAiHard] = useState(20)
   const [generatedQuestions, setGeneratedQuestions] = useState([])
   const [generating, setGenerating] = useState(false)
   const [savingGenerated, setSavingGenerated] = useState(false)
   const [aiError, setAiError] = useState(null)
+  const [aiStep, setAiStep] = useState(1)
 
   const [activeProfileExamId, setActiveProfileExamId] = useState(null)
   const [examProfile, setExamProfile] = useState(null)
@@ -496,19 +497,23 @@ export default function Exams() {
     setAiExamId(exam.id)
     setGeneratedQuestions([])
     setAiError(null)
-    setSelectedAiTopicIds([])
+    setAiTopicAllocations({})
+    setAiSelectedTopics({})
+    setAiChapterNames({})
+    setAiTotalQuestions('')
+    setAiStep(1)
+    setShowAIGenerator(true)
 
-    const subjectIds = exam.exam_subjects?.map((es) => es.subject_id) ?? []
+    const examSubjects = exam.exam_subjects ?? []
+    const subjectIds = examSubjects.map((es) => es.subject_id)
+
     if (subjectIds.length === 0) return
 
-    const { data } = await supabase
+    const { data: topicsData } = await supabase
       .from('topics')
-      .select('id, name, subject_id, subjects(name)')
+      .select('id, name, subject_id')
       .in('subject_id', subjectIds)
       .order('name')
-
-    setAiTopics(data ?? [])
-    setAiChapterNames({})
 
     const classId = exam.exam_classes?.[0]?.class_id
     if (classId) {
@@ -522,59 +527,53 @@ export default function Exams() {
       setAiClassLevel('')
     }
 
-    setShowAIGenerator(true)
+    const subjects = examSubjects.map((es) => ({
+      subject_id: es.subject_id,
+      subject_name: es.subjects?.name ?? '',
+      range_from: es.question_from,
+      range_to: es.question_to,
+      topics: topicsData?.filter((t) => t.subject_id === es.subject_id) ?? [],
+    }))
+
+    setAiExamSubjects(subjects)
   }
 
   async function handleGenerateQuestions() {
     setGenerating(true)
     setAiError(null)
-    setGeneratedQuestions([])
 
     try {
-      if (
-        aiDifficultyMix === 'custom' &&
-        aiCustomEasy + aiCustomMedium + aiCustomHard !== 100
-      ) {
-        setAiError('Difficulty percentages must add up to 100%')
-        setGenerating(false)
-        return
-      }
-
-      const selectedTopics = aiTopics.filter((t) =>
-        selectedAiTopicIds.includes(t.id)
-      )
-
-      const subjectGroups = {}
-      for (const t of selectedTopics) {
-        if (!subjectGroups[t.subject_id]) {
-          subjectGroups[t.subject_id] = {
-            subject_id: t.subject_id,
-            subject_name: t.subjects?.name ?? '',
-            chapter: aiChapterNames[t.subject_id] ?? '',
-            topics: [],
-          }
-        }
-        subjectGroups[t.subject_id].topics.push(t)
-      }
-
       const allQuestions = []
-      for (const group of Object.values(subjectGroups)) {
+
+      for (const subject of aiExamSubjects) {
+        const selectedTopics = subject.topics.filter(
+          (t) => aiSelectedTopics[t.id] && aiTopicAllocations[t.id] > 0
+        )
+        if (selectedTopics.length === 0) continue
+
+        const chapterInput = aiChapterNames[subject.subject_id]?.trim()
+        const topicNames = selectedTopics.map((t) => t.name)
+        const chapterContext = chapterInput || topicNames.join(', ')
+
+        const topicAllocList = selectedTopics.map((t) => ({
+          topic_id: t.id,
+          topic_name: t.name,
+          count: aiTopicAllocations[t.id] ?? 1,
+        }))
+
         const response = await fetch(
           `${import.meta.env.VITE_API_URL}/generate-questions`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              subject_id: group.subject_id,
-              subject_name: group.subject_name,
-              chapter_name: group.chapter,
-              topic_ids: group.topics.map((t) => t.id),
-              topic_names: group.topics.map((t) => t.name),
-              count_per_topic: aiCountPerTopic,
+              subject_name: subject.subject_name,
+              chapter_context: chapterContext,
+              topic_allocations: topicAllocList,
               difficulty_mix: {
-                easy: aiCustomEasy,
-                medium: aiCustomMedium,
-                hard: aiCustomHard,
+                easy: aiEasy,
+                medium: aiMedium,
+                hard: aiHard,
               },
               board: aiBoard,
               class_level: aiClassLevel,
@@ -588,6 +587,7 @@ export default function Exams() {
       }
 
       setGeneratedQuestions(allQuestions)
+      setAiStep(4)
     } catch (err) {
       setAiError(err.message)
     }
@@ -628,6 +628,8 @@ export default function Exams() {
 
       setGeneratedQuestions([])
       setShowAIGenerator(false)
+      setAiExamId(null)
+      setAiStep(1)
       setSuccessMessage(`${rows.length} AI questions saved to exam!`)
       await fetchExams()
       if (activeProfileExamId === aiExamId) {
@@ -1180,315 +1182,472 @@ export default function Exams() {
                 )}
 
                 {showAIGenerator && aiExamId === exam.id && (
-                  <div className="mt-2 bg-white rounded-xl border border-purple-200 p-6 shadow-sm">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-900">
-                🤖 Generate Questions with AI
-              </h2>
-              <button
-                type="button"
-                onClick={() => { setShowAIGenerator(false); setAiExamId(null); setGeneratedQuestions([]) }}
-                className="text-sm text-gray-500 hover:text-gray-700"
-              >
-                Close
-              </button>
-            </div>
+                  <div className="mt-2 bg-white rounded-xl border border-purple-200 p-5 shadow-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <h2 className="text-sm font-semibold text-gray-900">
+                        🤖 Generate Questions with AI
+                      </h2>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowAIGenerator(false)
+                          setAiExamId(null)
+                          setGeneratedQuestions([])
+                          setAiStep(1)
+                        }}
+                        className="text-sm text-gray-400 hover:text-gray-600"
+                      >
+                        ✕
+                      </button>
+                    </div>
 
-            <div className="mb-4">
-              <label className="block text-xs font-medium text-gray-600 mb-2">
-                Select Topics
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {aiTopics.map((t) => (
-                  <label
-                    key={t.id}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
-                      selectedAiTopicIds.includes(t.id)
-                        ? 'border-purple-600 bg-purple-50 text-purple-700'
-                        : 'border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedAiTopicIds.includes(t.id)}
-                      onChange={() =>
-                        setSelectedAiTopicIds((prev) =>
-                          prev.includes(t.id)
-                            ? prev.filter((id) => id !== t.id)
-                            : [...prev, t.id]
-                        )
-                      }
-                      className="hidden"
-                    />
-                    {t.subjects?.name} — {t.name}
-                  </label>
-                ))}
-              </div>
-              {selectedAiTopicIds.length > 5 && (
-                <p className="text-xs text-yellow-600 bg-yellow-50 px-3 py-2 rounded-lg mt-2">
-                  ⚠️ Selecting many topics uses more API quota. Consider generating 5 topics at a time for best results.
-                </p>
-              )}
-            </div>
+                    <div className="flex gap-2 mb-5">
+                      {['Questions', 'Topics', 'Settings', 'Review'].map((s, i) => (
+                        <div key={s} className="flex items-center gap-1">
+                          <span
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                              aiStep > i + 1
+                                ? 'bg-green-500 text-white'
+                                : aiStep === i + 1
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-gray-200 text-gray-500'
+                            }`}
+                          >
+                            {aiStep > i + 1 ? '✓' : i + 1}
+                          </span>
+                          <span
+                            className={`text-xs ${
+                              aiStep === i + 1 ? 'text-purple-600 font-medium' : 'text-gray-400'
+                            }`}
+                          >
+                            {s}
+                          </span>
+                          {i < 3 && <span className="text-gray-300 text-xs">›</span>}
+                        </div>
+                      ))}
+                    </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Questions per topic
-                </label>
-                <select
-                  value={aiCountPerTopic}
-                  onChange={(e) => setAiCountPerTopic(Number(e.target.value))}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
-                >
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Exam Board / Style
-                </label>
-                <select
-                  value={aiBoard}
-                  onChange={(e) => setAiBoard(e.target.value)}
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
-                >
-                  {['CBSE', 'ICSE', 'State Board', 'JEE', 'NEET', 'Internal Test'].map((b) => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
-                  Class Level
-                </label>
-                <input
-                  type="text"
-                  value={aiClassLevel}
-                  onChange={(e) => setAiClassLevel(e.target.value)}
-                  placeholder="e.g. Class 10"
-                  className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm w-32"
-                />
-              </div>
-
-              <div className="sm:col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-2">
-                  Difficulty Mix
-                </label>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  {[
-                    { id: 'balanced', label: 'Balanced', easy: 30, medium: 50, hard: 20 },
-                    { id: 'easy', label: 'Easy Focus', easy: 60, medium: 30, hard: 10 },
-                    { id: 'hard', label: 'Tough', easy: 10, medium: 40, hard: 50 },
-                    { id: 'custom', label: 'Custom', easy: aiCustomEasy, medium: aiCustomMedium, hard: aiCustomHard },
-                  ].map((preset) => (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => {
-                        setAiDifficultyMix(preset.id)
-                        if (preset.id !== 'custom') {
-                          setAiCustomEasy(preset.easy)
-                          setAiCustomMedium(preset.medium)
-                          setAiCustomHard(preset.hard)
-                        }
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-                        aiDifficultyMix === preset.id
-                          ? 'border-purple-600 bg-purple-50 text-purple-700'
-                          : 'border-gray-300 text-gray-600'
-                      }`}
-                    >
-                      {preset.label}
-                      {preset.id !== 'custom' && (
-                        <span className="ml-1 text-gray-400">
-                          {preset.easy}/{preset.medium}/{preset.hard}
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-
-                {aiDifficultyMix === 'custom' && (
-                  <div className="grid grid-cols-3 gap-3 mt-2">
-                    {[
-                      { label: 'Easy %', value: aiCustomEasy, setter: setAiCustomEasy, color: 'text-green-600' },
-                      { label: 'Medium %', value: aiCustomMedium, setter: setAiCustomMedium, color: 'text-yellow-600' },
-                      { label: 'Hard %', value: aiCustomHard, setter: setAiCustomHard, color: 'text-red-600' },
-                    ].map(({ label, value, setter, color }) => (
-                      <div key={label}>
-                        <label className={`block text-xs font-medium ${color} mb-1`}>
-                          {label}: {value}%
-                        </label>
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          value={value}
-                          onChange={(e) => setter(Number(e.target.value))}
-                          className="w-full"
-                        />
-                      </div>
-                    ))}
-                    {aiCustomEasy + aiCustomMedium + aiCustomHard !== 100 && (
-                      <p className="col-span-3 text-xs text-red-500">
-                        Total must equal 100% (currently {aiCustomEasy + aiCustomMedium + aiCustomHard}%)
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {Object.values(
-                aiTopics.reduce((acc, t) => {
-                  if (!acc[t.subject_id]) acc[t.subject_id] = t
-                  return acc
-                }, {})
-              ).map((t) => (
-                <div key={t.subject_id} className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">
-                    {t.subjects?.name} — Chapter Name (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={aiChapterNames[t.subject_id] ?? ''}
-                    onChange={(e) =>
-                      setAiChapterNames((prev) => ({
-                        ...prev,
-                        [t.subject_id]: e.target.value,
-                      }))
-                    }
-                    placeholder="e.g. Chapter 4: Quadratic Equations"
-                    className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
-                  />
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={handleGenerateQuestions}
-              disabled={generating || selectedAiTopicIds.length === 0}
-              className="bg-purple-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-40 mb-4"
-            >
-              {generating ? '⏳ Generating...' : '✨ Generate Questions'}
-            </button>
-
-            {aiError && (
-              <p className="text-sm text-red-600 mb-4">{aiError}</p>
-            )}
-
-            {generatedQuestions.length > 0 && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {generatedQuestions.length} questions generated — review and edit:
-                  </p>
-                </div>
-
-                <div className="space-y-4 max-h-96 overflow-y-auto mb-4">
-                  {generatedQuestions.map((q, index) => (
-                    <div key={index} className="border border-gray-200 rounded-xl p-4">
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="text-xs text-purple-600 font-medium">
-                          {q.topic_name}
-                        </p>
+                    {aiStep === 1 && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            How many total questions do you want to generate?
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={200}
+                            value={aiTotalQuestions}
+                            onChange={(e) => setAiTotalQuestions(e.target.value)}
+                            placeholder="e.g. 30"
+                            className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">
+                            Exam has {exam.total_questions} total questions
+                          </p>
+                        </div>
                         <button
                           type="button"
-                          onClick={() =>
-                            setGeneratedQuestions((prev) =>
-                              prev.filter((_, i) => i !== index)
-                            )
-                          }
-                          className="text-xs text-red-400 hover:text-red-600 shrink-0"
+                          disabled={!aiTotalQuestions || Number(aiTotalQuestions) < 1}
+                          onClick={() => setAiStep(2)}
+                          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
                         >
-                          Remove
+                          Next: Select Topics →
                         </button>
                       </div>
+                    )}
 
-                      <textarea
-                        value={q.question_text}
-                        onChange={(e) =>
-                          setGeneratedQuestions((prev) =>
-                            prev.map((item, i) =>
-                              i === index
-                                ? { ...item, question_text: e.target.value }
-                                : item
-                            )
+                    {aiStep === 2 && (
+                      <div className="space-y-5">
+                        {aiExamSubjects.map((subject) => {
+                          const subjectTotal = subject.range_to - subject.range_from + 1
+                          const subjectAllocated = subject.topics
+                            .filter((t) => aiSelectedTopics[t.id])
+                            .reduce((sum, t) => sum + (aiTopicAllocations[t.id] ?? 0), 0)
+                          const subjectRemaining = subjectTotal - subjectAllocated
+
+                          return (
+                            <div
+                              key={subject.subject_id}
+                              className="border border-gray-100 rounded-xl p-4"
+                            >
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-semibold text-gray-900">
+                                  {subject.subject_name}
+                                </h3>
+                                <span className="text-xs text-gray-500">
+                                  Q{subject.range_from}–Q{subject.range_to} ({subjectTotal} questions)
+                                </span>
+                              </div>
+
+                              <div className="mb-3">
+                                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                  <span>Allocated: {subjectAllocated}</span>
+                                  <span className={subjectRemaining < 0 ? 'text-red-500' : 'text-green-600'}>
+                                    Remaining: {subjectRemaining}
+                                  </span>
+                                </div>
+                                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${
+                                      subjectAllocated > subjectTotal ? 'bg-red-500' : 'bg-purple-500'
+                                    }`}
+                                    style={{
+                                      width: `${Math.min(100, (subjectAllocated / subjectTotal) * 100)}%`,
+                                    }}
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="space-y-2">
+                                {subject.topics.map((topic) => (
+                                  <div key={topic.id} className="flex items-center gap-3">
+                                    <input
+                                      type="checkbox"
+                                      checked={!!aiSelectedTopics[topic.id]}
+                                      onChange={(e) => {
+                                        setAiSelectedTopics((prev) => ({
+                                          ...prev,
+                                          [topic.id]: e.target.checked,
+                                        }))
+                                        if (!e.target.checked) {
+                                          setAiTopicAllocations((prev) => ({
+                                            ...prev,
+                                            [topic.id]: 0,
+                                          }))
+                                        }
+                                      }}
+                                      className="rounded border-gray-300 text-purple-600"
+                                    />
+                                    <span className="text-sm text-gray-900 flex-1">{topic.name}</span>
+                                    {aiSelectedTopics[topic.id] && (
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        max={subjectTotal}
+                                        value={aiTopicAllocations[topic.id] ?? ''}
+                                        onChange={(e) =>
+                                          setAiTopicAllocations((prev) => ({
+                                            ...prev,
+                                            [topic.id]: Number(e.target.value),
+                                          }))
+                                        }
+                                        placeholder="Q count"
+                                        className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm text-center"
+                                      />
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                           )
-                        }
-                        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 mb-2 resize-none"
-                        rows={2}
-                      />
+                        })}
 
-                      <div className="grid grid-cols-2 gap-2">
-                        {['a', 'b', 'c', 'd'].map((opt) => (
-                          <div key={opt} className="flex items-center gap-2">
-                            <span
-                              className={`text-xs font-bold w-5 shrink-0 ${
-                                q.correct_answer === opt.toUpperCase()
-                                  ? 'text-green-600'
-                                  : 'text-gray-400'
+                        {(() => {
+                          const totalAllocated = Object.values(aiTopicAllocations).reduce(
+                            (sum, v) => sum + (v || 0),
+                            0
+                          )
+                          const target = Number(aiTotalQuestions)
+                          return (
+                            <div
+                              className={`text-sm font-medium p-3 rounded-lg ${
+                                totalAllocated === target
+                                  ? 'bg-green-50 text-green-700'
+                                  : 'bg-yellow-50 text-yellow-700'
                               }`}
                             >
-                              {opt.toUpperCase()}
-                            </span>
+                              Total allocated: {totalAllocated} / {target}
+                              {totalAllocated === target && ' ✓ Ready!'}
+                              {totalAllocated > target && ' ⚠️ Over limit'}
+                              {totalAllocated < target && ` (${target - totalAllocated} more needed)`}
+                            </div>
+                          )
+                        })()}
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAiStep(1)}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600"
+                          >
+                            ← Back
+                          </button>
+                          <button
+                            type="button"
+                            disabled={
+                              Object.values(aiSelectedTopics).filter(Boolean).length === 0 ||
+                              Object.values(aiTopicAllocations).reduce((s, v) => s + (v || 0), 0) !==
+                                Number(aiTotalQuestions)
+                            }
+                            onClick={() => setAiStep(3)}
+                            className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                          >
+                            Next: Settings →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {aiStep === 3 && (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Exam Board
+                            </label>
+                            <select
+                              value={aiBoard}
+                              onChange={(e) => setAiBoard(e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                            >
+                              {['CBSE', 'ICSE', 'State Board', 'JEE', 'NEET', 'Internal Test'].map((b) => (
+                                <option key={b} value={b}>{b}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Class Level
+                            </label>
                             <input
                               type="text"
-                              value={q[`option_${opt}`]}
-                              onChange={(e) =>
-                                setGeneratedQuestions((prev) =>
-                                  prev.map((item, i) =>
-                                    i === index
-                                      ? { ...item, [`option_${opt}`]: e.target.value }
-                                      : item
-                                  )
-                                )
-                              }
-                              className="flex-1 text-xs border border-gray-200 rounded px-2 py-1"
+                              value={aiClassLevel}
+                              onChange={(e) => setAiClassLevel(e.target.value)}
+                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              placeholder="e.g. Class 10"
                             />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setGeneratedQuestions((prev) =>
-                                  prev.map((item, i) =>
-                                    i === index
-                                      ? { ...item, correct_answer: opt.toUpperCase() }
-                                      : item
-                                  )
-                                )
-                              }
-                              className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
-                                q.correct_answer === opt.toUpperCase()
-                                  ? 'bg-green-100 text-green-700'
-                                  : 'bg-gray-100 text-gray-400'
-                              }`}
-                            >
-                              ✓
-                            </button>
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                        </div>
 
-                <button
-                  type="button"
-                  onClick={handleSaveGeneratedQuestions}
-                  disabled={savingGenerated}
-                  className="w-full bg-gray-900 text-white font-medium py-2.5 rounded-lg disabled:opacity-40"
-                >
-                  {savingGenerated
-                    ? 'Saving...'
-                    : `Save ${generatedQuestions.length} Questions to Exam`}
-                </button>
-              </div>
-            )}
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-2">
+                            Difficulty Distribution
+                          </label>
+                          <div className="flex gap-2 mb-3">
+                            {[
+                              { label: 'Balanced', e: 30, m: 50, h: 20 },
+                              { label: 'Easy Focus', e: 60, m: 30, h: 10 },
+                              { label: 'Tough', e: 10, m: 40, h: 50 },
+                            ].map((p) => (
+                              <button
+                                key={p.label}
+                                type="button"
+                                onClick={() => {
+                                  setAiEasy(p.e)
+                                  setAiMedium(p.m)
+                                  setAiHard(p.h)
+                                }}
+                                className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
+                                  aiEasy === p.e && aiMedium === p.m && aiHard === p.h
+                                    ? 'border-purple-600 bg-purple-50 text-purple-700'
+                                    : 'border-gray-300 text-gray-600'
+                                }`}
+                              >
+                                {p.label}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="space-y-2">
+                            {[
+                              { label: 'Easy', value: aiEasy, setter: setAiEasy, color: 'text-green-600' },
+                              { label: 'Medium', value: aiMedium, setter: setAiMedium, color: 'text-yellow-600' },
+                              { label: 'Hard', value: aiHard, setter: setAiHard, color: 'text-red-600' },
+                            ].map(({ label, value, setter, color }) => (
+                              <div key={label} className="flex items-center gap-3">
+                                <span className={`text-xs font-medium w-12 ${color}`}>{label}</span>
+                                <input
+                                  type="range"
+                                  min={0}
+                                  max={100}
+                                  value={value}
+                                  onChange={(e) => setter(Number(e.target.value))}
+                                  className="flex-1"
+                                />
+                                <span className={`text-xs font-bold w-8 text-right ${color}`}>{value}%</span>
+                              </div>
+                            ))}
+                            {aiEasy + aiMedium + aiHard !== 100 && (
+                              <p className="text-xs text-red-500">
+                                Total: {aiEasy + aiMedium + aiHard}% (must be 100%)
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          {aiExamSubjects
+                            .filter((s) => s.topics.some((t) => aiSelectedTopics[t.id]))
+                            .map((subject) => {
+                              const selectedTopicNames = subject.topics
+                                .filter((t) => aiSelectedTopics[t.id])
+                                .map((t) => t.name)
+                                .join(', ')
+                              return (
+                                <div key={subject.subject_id}>
+                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                    {subject.subject_name} — Chapter/Topic context (optional)
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={aiChapterNames[subject.subject_id] ?? ''}
+                                    onChange={(e) =>
+                                      setAiChapterNames((prev) => ({
+                                        ...prev,
+                                        [subject.subject_id]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={selectedTopicNames}
+                                    className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                                  />
+                                  <p className="text-xs text-gray-400 mt-0.5">
+                                    Leave empty to use topic names: {selectedTopicNames}
+                                  </p>
+                                </div>
+                              )
+                            })}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAiStep(2)}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600"
+                          >
+                            ← Back
+                          </button>
+                          <button
+                            type="button"
+                            disabled={aiEasy + aiMedium + aiHard !== 100 || generating}
+                            onClick={handleGenerateQuestions}
+                            className="flex-1 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                          >
+                            {generating ? '⏳ Generating...' : '✨ Generate Questions'}
+                          </button>
+                        </div>
+
+                        {aiError && <p className="text-sm text-red-600">{aiError}</p>}
+                      </div>
+                    )}
+
+                    {aiStep === 4 && generatedQuestions.length > 0 && (
+                      <div className="space-y-4">
+                        <p className="text-sm font-semibold text-gray-900">
+                          {generatedQuestions.length} questions generated — review and edit:
+                        </p>
+
+                        <div className="space-y-3 max-h-96 overflow-y-auto">
+                          {generatedQuestions.map((q, index) => (
+                            <div key={index} className="border border-gray-200 rounded-xl p-4">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs text-purple-600 font-medium">
+                                  {q.topic_name}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded ${
+                                      q.difficulty === 'easy'
+                                        ? 'bg-green-50 text-green-600'
+                                        : q.difficulty === 'hard'
+                                          ? 'bg-red-50 text-red-600'
+                                          : 'bg-yellow-50 text-yellow-600'
+                                    }`}
+                                  >
+                                    {q.difficulty}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setGeneratedQuestions((prev) =>
+                                        prev.filter((_, i) => i !== index)
+                                      )
+                                    }
+                                    className="text-xs text-red-400 hover:text-red-600"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+
+                              <textarea
+                                value={q.question_text}
+                                onChange={(e) =>
+                                  setGeneratedQuestions((prev) =>
+                                    prev.map((item, i) =>
+                                      i === index
+                                        ? { ...item, question_text: e.target.value }
+                                        : item
+                                    )
+                                  )
+                                }
+                                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 mb-2 resize-none"
+                                rows={2}
+                              />
+
+                              <div className="grid grid-cols-2 gap-2">
+                                {['a', 'b', 'c', 'd'].map((opt) => (
+                                  <div key={opt} className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        setGeneratedQuestions((prev) =>
+                                          prev.map((item, i) =>
+                                            i === index
+                                              ? { ...item, correct_answer: opt.toUpperCase() }
+                                              : item
+                                          )
+                                        )
+                                      }
+                                      className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                        q.correct_answer === opt.toUpperCase()
+                                          ? 'bg-green-500 text-white'
+                                          : 'bg-gray-100 text-gray-400'
+                                      }`}
+                                    >
+                                      {opt.toUpperCase()}
+                                    </button>
+                                    <input
+                                      type="text"
+                                      value={q[`option_${opt}`]}
+                                      onChange={(e) =>
+                                        setGeneratedQuestions((prev) =>
+                                          prev.map((item, i) =>
+                                            i === index
+                                              ? { ...item, [`option_${opt}`]: e.target.value }
+                                              : item
+                                          )
+                                        )
+                                      }
+                                      className="flex-1 text-xs border border-gray-200 rounded px-2 py-1"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setAiStep(3)}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600"
+                          >
+                            ← Back
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveGeneratedQuestions}
+                            disabled={savingGenerated}
+                            className="flex-1 bg-gray-900 text-white font-medium py-2.5 rounded-lg disabled:opacity-40"
+                          >
+                            {savingGenerated
+                              ? 'Saving...'
+                              : `Save ${generatedQuestions.length} Questions`}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </li>
