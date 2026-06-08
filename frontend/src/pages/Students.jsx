@@ -47,8 +47,16 @@ export default function Students() {
         .select('class_id, classes(id, name)')
         .eq('teacher_id', session.user.id)
 
-      const classIds = tcData?.map((tc) => tc.class_id) ?? []
-      setTeacherClasses(tcData?.map((tc) => tc.classes).filter(Boolean) ?? [])
+      const seen = new Set()
+      const uniqueClasses = []
+      for (const row of tcData ?? []) {
+        if (row.classes && !seen.has(row.class_id)) {
+          seen.add(row.class_id)
+          uniqueClasses.push(row.classes)
+        }
+      }
+      setTeacherClasses(uniqueClasses)
+      const classIds = [...seen]
 
       if (classIds.length === 0) {
         setStudents([])
