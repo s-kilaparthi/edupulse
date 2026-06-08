@@ -31,8 +31,6 @@ export default function Schedule() {
   const [editingSlot, setEditingSlot] = useState(null)
   const [editSubjectId, setEditSubjectId] = useState('')
   const [editTeacherId, setEditTeacherId] = useState('')
-  const [classSubjects, setClassSubjects] = useState([])
-  const [subjectTeachers, setSubjectTeachers] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -76,12 +74,12 @@ export default function Schedule() {
               .order('name'),
             supabase
               .from('subjects')
-              .select('id, name')
+              .select('id, name, subject_classes(class_id)')
               .eq('institute_id', instituteId)
               .order('name'),
             supabase
               .from('users')
-              .select('id, name')
+              .select('id, name, class_teachers(class_id, subject_id)')
               .eq('role', 'teacher')
               .eq('institute_id', instituteId)
               .order('name'),
@@ -155,41 +153,6 @@ export default function Schedule() {
     fetchSlots()
   }, [fetchSlots])
 
-  useEffect(() => {
-    if (!selectedClassId) {
-      setClassSubjects([])
-      return
-    }
-
-    supabase
-      .from('subject_classes')
-      .select('subject_id, subjects(id, name)')
-      .eq('class_id', selectedClassId)
-      .then(({ data }) => {
-        setClassSubjects(
-          (data ?? []).map((sc) => sc.subjects).filter(Boolean)
-        )
-      })
-  }, [selectedClassId])
-
-  useEffect(() => {
-    if (!selectedClassId || !editSubjectId) {
-      setSubjectTeachers([])
-      return
-    }
-
-    supabase
-      .from('class_teachers')
-      .select('teacher_id, users(id, name)')
-      .eq('class_id', selectedClassId)
-      .eq('subject_id', editSubjectId)
-      .then(({ data }) => {
-        setSubjectTeachers(
-          (data ?? []).map((ct) => ct.users).filter(Boolean)
-        )
-      })
-  }, [selectedClassId, editSubjectId])
-
   function getSlot(day, periodNumber) {
     return scheduleSlots.find(
       (s) => s.day_of_week === day && s.period_number === periodNumber
@@ -197,7 +160,11 @@ export default function Schedule() {
   }
 
   function openEdit(day, periodNumber, slot) {
-    setEditingSlot({ day, period: periodNumber, slot })
+    setEditingSlot({
+      day,
+      period: periodNumber,
+      slotId: slot?.id ?? null,
+    })
     setEditSubjectId(slot?.subject_id ?? '')
     setEditTeacherId(slot?.teacher_id ?? '')
     setError(null)
@@ -272,6 +239,18 @@ export default function Schedule() {
   }
 
   const selectedClassName = classes.find((c) => c.id === selectedClassId)?.name
+
+  const editableSubjects = subjects.filter((s) =>
+    s.subject_classes?.some((sc) => sc.class_id === selectedClassId)
+  )
+
+  const editableTeachers = editSubjectId
+    ? teachers.filter((t) =>
+        t.class_teachers?.some(
+          (ct) => ct.class_id === selectedClassId && ct.subject_id === editSubjectId
+        )
+      )
+    : []
 
   return (
     <>
@@ -401,89 +380,96 @@ export default function Schedule() {
             </div>
           )}
 
-          {isAdmin && editingSlot && (
-            <div className="mt-6 bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-              <h2 className="text-sm font-semibold text-gray-900 mb-4">
-                Edit Slot — {DAY_LABELS[DAYS.indexOf(editingSlot.day)]},{' '}
-                {PERIODS.find((p) => p.number === editingSlot.period)?.label}
-              </h2>
-
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
-                  <select
-                    value={editSubjectId}
-                    onChange={(e) => {
-                      setEditSubjectId(e.target.value)
-                      setEditTeacherId('')
-                    }}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                  >
-                    <option value="">Select subject</option>
-                    {classSubjects.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
-                  {classSubjects.length === 0 && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      No subjects assigned to this class yet.
-                    </p>
-                  )}
-                </div>
-
-                <div className="flex-1">
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Teacher</label>
-                  <select
-                    value={editTeacherId}
-                    onChange={(e) => setEditTeacherId(e.target.value)}
-                    disabled={!editSubjectId}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 disabled:opacity-50"
-                  >
-                    <option value="">Select teacher</option>
-                    {subjectTeachers.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                  {editSubjectId && subjectTeachers.length === 0 && (
-                    <p className="text-xs text-gray-400 mt-1">
-                      No teacher assigned for this subject in this class.
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleSaveSlot(editingSlot.day, editingSlot.period, editSubjectId, editTeacherId)
-                  }
-                  disabled={saving || !editSubjectId || !editTeacherId}
-                  className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm"
-                >
-                  {saving ? 'Saving…' : 'Save'}
-                </button>
-                {editingSlot.slot && (
+          {editingSlot && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeEdit()
+              }}
+            >
+              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900">
+                    {DAY_LABELS[DAYS.indexOf(editingSlot.day)]} ·{' '}
+                    {PERIODS.find((p) => p.number === editingSlot.period)?.label}
+                  </h3>
                   <button
                     type="button"
-                    onClick={() => handleDeleteSlot(editingSlot.slot.id)}
-                    disabled={saving}
-                    className="text-red-600 font-medium px-4 py-2 rounded-lg border border-red-200 hover:bg-red-50 disabled:opacity-40 transition-colors text-sm"
+                    onClick={closeEdit}
+                    className="text-gray-400 hover:text-gray-600 text-lg"
                   >
-                    Clear
+                    ✕
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={closeEdit}
-                  className="text-gray-600 font-medium px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-sm"
-                >
-                  Cancel
-                </button>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Subject
+                    </label>
+                    <select
+                      value={editSubjectId}
+                      onChange={(e) => {
+                        setEditSubjectId(e.target.value)
+                        setEditTeacherId('')
+                      }}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      <option value="">Select subject...</option>
+                      {editableSubjects.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Teacher
+                    </label>
+                    <select
+                      value={editTeacherId}
+                      onChange={(e) => setEditTeacherId(e.target.value)}
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    >
+                      <option value="">Select teacher...</option>
+                      {editableTeachers.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex gap-2 mt-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleSaveSlot(
+                          editingSlot.day,
+                          editingSlot.period,
+                          editSubjectId,
+                          editTeacherId
+                        )
+                      }
+                      disabled={saving || !editSubjectId || !editTeacherId}
+                      className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                    >
+                      {saving ? 'Saving…' : 'Save'}
+                    </button>
+                    {editingSlot.slotId && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSlot(editingSlot.slotId)}
+                        disabled={saving}
+                        className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 disabled:opacity-40"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
