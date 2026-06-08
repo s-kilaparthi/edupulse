@@ -112,11 +112,14 @@ async def generate_questions(request: Request):
     try:
         body = await request.json()
         subject_id = body.get('subject_id')
-        topic_ids = body.get('topic_ids', [])
-        count_per_topic = body.get('count_per_topic', 2)
-        difficulty = body.get('difficulty', 'medium')
         subject_name = body.get('subject_name', '')
+        chapter_name = body.get('chapter_name', '')
+        topic_ids = body.get('topic_ids', [])
         topic_names = body.get('topic_names', [])
+        count_per_topic = body.get('count_per_topic', 2)
+        difficulty_mix = body.get('difficulty_mix', {'easy': 30, 'medium': 50, 'hard': 20})
+        board = body.get('board', 'CBSE')
+        class_level = body.get('class_level', '')
 
         if not topic_ids or not topic_names:
             raise HTTPException(
@@ -128,22 +131,48 @@ async def generate_questions(request: Request):
         if not gemini_key:
             raise HTTPException(status_code=500, detail="Gemini API key not configured")
 
-        topics_text = ', '.join(topic_names)
-        prompt = f"""You are an expert teacher creating MCQ questions.
-Generate {count_per_topic} multiple choice questions for EACH of these topics: {topics_text}
+        easy_pct = difficulty_mix.get('easy', 30)
+        medium_pct = difficulty_mix.get('medium', 50)
+        hard_pct = difficulty_mix.get('hard', 20)
+
+        all_questions = []
+
+        for topic_id, topic_name in zip(topic_ids, topic_names):
+            total = count_per_topic
+            easy_count = max(1, round(total * easy_pct / 100))
+            medium_count = max(1, round(total * medium_pct / 100))
+            hard_count = total - easy_count - medium_count
+            if hard_count < 0:
+                hard_count = 0
+
+            chapter_context = f"Chapter: {chapter_name}" if chapter_name else ""
+
+            prompt = f"""You are an expert {board} teacher for {class_level}.
+Generate MCQ questions for a {board} exam.
+
 Subject: {subject_name}
-Difficulty: {difficulty}
+{chapter_context}
+Topic: {topic_name}
 
-Rules:
-- Each question must have exactly 4 options (A, B, C, D)
-- One correct answer per question
-- Questions should be clear and unambiguous
-- Match the difficulty level: easy=basic recall, medium=application, hard=analysis
+Generate EXACTLY:
+- {easy_count} EASY question(s): factual recall, definitions, direct formulas
+- {medium_count} MEDIUM question(s): application, short calculations, concept application
+- {hard_count} HARD question(s): analysis, multi-step problems, higher order thinking
 
-Return ONLY a JSON array, no explanation. Format:
+STRICT RULES:
+- ALL questions must be about "{topic_name}" in "{subject_name}" ONLY
+- Do NOT mix topics or subjects
+- Each question has exactly 4 options (A, B, C, D)
+- Wrong options must be plausible and related to the topic
+- One unambiguous correct answer
+- Appropriate for {board} {class_level} students
+- Questions must be different from each other
+
+Return ONLY a JSON array, no explanation:
 [
   {{
-    "topic_name": "topic name here",
+    "topic_name": "{topic_name}",
+    "difficulty": "easy|medium|hard",
     "question_text": "question here?",
     "option_a": "option A",
     "option_b": "option B",
@@ -153,38 +182,38 @@ Return ONLY a JSON array, no explanation. Format:
   }}
 ]"""
 
-        models_to_try = [
-            'gemini-2.5-flash',
-            'gemini-2.0-flash-lite',
-            'gemini-2.0-flash-001',
-        ]
+            models_to_try = [
+                'gemini-2.5-flash',
+                'gemini-2.0-flash-lite',
+                'gemini-2.0-flash-001',
+            ]
 
-        data = None
-        last_error = None
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            for model in models_to_try:
-                response = await client.post(
-                    f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}',
-                    json={"contents": [{"parts": [{"text": prompt}]}]},
-                )
-                data = response.json()
-                if 'candidates' in data:
-                    break
-                last_error = data.get('error', {}).get('message', 'Unknown')
+            data = None
+            last_error = None
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                for model in models_to_try:
+                    response = await client.post(
+                        f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={gemini_key}',
+                        json={"contents": [{"parts": [{"text": prompt}]}]},
+                    )
+                    data = response.json()
+                    if 'candidates' in data:
+                        break
+                    last_error = data.get('error', {}).get('message', 'Unknown')
 
-        if not data or 'candidates' not in data:
-            raise ValueError(f"Gemini unavailable: {last_error}")
+            if not data or 'candidates' not in data:
+                raise ValueError(f"Gemini unavailable: {last_error}")
 
-        text = data['candidates'][0]['content']['parts'][0]['text']
-        clean = text.replace('```json', '').replace('```', '').strip()
+            text = data['candidates'][0]['content']['parts'][0]['text']
+            clean = text.replace('```json', '').replace('```', '').strip()
+            questions = json.loads(clean)
 
-        questions = json.loads(clean)
+            for q in questions:
+                q['topic_id'] = topic_id
 
-        topic_name_to_id = dict(zip(topic_names, topic_ids))
-        for q in questions:
-            q['topic_id'] = topic_name_to_id.get(q.get('topic_name'), topic_ids[0])
+            all_questions.extend(questions)
 
-        return {"questions": questions}
+        return {"questions": all_questions}
 
     except HTTPException:
         raise
