@@ -25,6 +25,7 @@ export default function Students() {
 
   const [selectedFilterClass, setSelectedFilterClass] = useState('')
   const [teacherClasses, setTeacherClasses] = useState([])
+  const [teacherSearch, setTeacherSearch] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
   const [adminFilterClassId, setAdminFilterClassId] = useState('')
   const [allClasses, setAllClasses] = useState([])
@@ -227,8 +228,15 @@ export default function Students() {
     await fetchStudents()
   }
 
-  const displayedStudents = selectedFilterClass
-    ? students.filter((s) => s.class_id === selectedFilterClass)
+  const displayedStudents = isTeacher
+    ? students
+        .filter((s) => !selectedFilterClass || s.class_id === selectedFilterClass)
+        .filter(
+          (s) =>
+            !teacherSearch ||
+            String(s.roll_number).includes(teacherSearch) ||
+            s.name?.toLowerCase().includes(teacherSearch.toLowerCase())
+        )
     : students
 
   const adminDisplayedStudents = isAdmin
@@ -378,6 +386,18 @@ export default function Students() {
                 {c.name}
               </button>
             ))}
+          </div>
+        )}
+
+        {isTeacher && (
+          <div className="mb-4">
+            <input
+              type="text"
+              value={teacherSearch}
+              onChange={(e) => setTeacherSearch(e.target.value)}
+              placeholder="Search by roll number or name..."
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+            />
           </div>
         )}
 
