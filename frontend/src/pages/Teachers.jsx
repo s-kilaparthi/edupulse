@@ -219,44 +219,16 @@ export default function Teachers() {
 
   async function handleDeleteTeacher(teacherId, teacherName) {
     if (!window.confirm(`Delete teacher "${teacherName}"?`)) return
-
-    setDeletingTeacherId(teacherId)
-    setError(null)
-
     try {
-      await supabase.from('class_teachers')
-        .delete().eq('teacher_id', teacherId)
-
-      await supabase.from('schedule_slots')
-        .delete().eq('teacher_id', teacherId)
-
-      await supabase.from('attendance')
-        .delete().eq('teacher_id', teacherId)
-
-      await supabase.from('announcements')
-        .update({ created_by: null })
-        .eq('created_by', teacherId)
-
-      await supabase.from('subjects')
-        .update({ teacher_id: null })
-        .eq('teacher_id', teacherId)
-
-      const { error } = await supabase.from('users')
-        .delete().eq('id', teacherId)
-
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', teacherId)
       if (error) throw new Error(error.message)
-
-      if (expandedTeacherId === teacherId) {
-        setExpandedTeacherId(null)
-        setAssignments([])
-      }
-      if (editingTeacherId === teacherId) setEditingTeacherId(null)
       await fetchTeachers()
     } catch (err) {
       alert('Error deleting teacher: ' + err.message)
     }
-
-    setDeletingTeacherId(null)
   }
 
   async function handleRemoveAssignment(assignmentId) {

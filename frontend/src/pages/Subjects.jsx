@@ -405,51 +405,12 @@ export default function Subjects() {
 
   async function handleDeleteSubject(subjectId, subjectName) {
     if (!window.confirm(`Delete "${subjectName}"?`)) return
-
     try {
-      const { data: topicData } = await supabase
-        .from('topics')
-        .select('id')
-        .eq('subject_id', subjectId)
-
-      const topicIds = topicData?.map((t) => t.id) ?? []
-
-      if (topicIds.length > 0) {
-        await supabase.from('topic_scores')
-          .delete().in('topic_id', topicIds)
-
-        await supabase.from('omr_results')
-          .delete().in('topic_id', topicIds)
-
-        await supabase.from('questions')
-          .delete().in('topic_id', topicIds)
-      }
-
-      await supabase.from('topics')
-        .delete().eq('subject_id', subjectId)
-
-      await supabase.from('subject_classes')
-        .delete().eq('subject_id', subjectId)
-
-      await supabase.from('class_teachers')
-        .delete().eq('subject_id', subjectId)
-
-      await supabase.from('schedule_slots')
-        .delete().eq('subject_id', subjectId)
-
-      await supabase.from('attendance')
-        .delete().eq('subject_id', subjectId)
-
-      await supabase.from('exam_subjects')
-        .delete().eq('subject_id', subjectId)
-
-      const { error } = await supabase.from('subjects')
-        .delete().eq('id', subjectId)
-
+      const { error } = await supabase
+        .from('subjects')
+        .delete()
+        .eq('id', subjectId)
       if (error) throw new Error(error.message)
-
-      if (manageClassesSubjectId === subjectId) setManageClassesSubjectId(null)
-      if (showAddTopic === subjectId) setShowAddTopic(null)
       await fetchSubjects()
     } catch (err) {
       alert('Error deleting subject: ' + err.message)

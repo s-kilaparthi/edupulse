@@ -182,27 +182,12 @@ export default function Students() {
 
   async function handleDeleteStudent(studentId) {
     if (!window.confirm('Delete this student?')) return
-
     try {
-      await supabase.from('attendance')
-        .delete().eq('student_id', studentId)
-
-      await supabase.from('omr_results')
-        .delete().eq('student_id', studentId)
-
-      await supabase.from('topic_scores')
-        .delete().eq('student_id', studentId)
-
-      await supabase.from('notifications')
-        .delete().eq('user_id', studentId)
-
-      const { error } = await supabase.from('users')
-        .delete().eq('id', studentId)
-
+      const { error } = await supabase
+        .from('users')
+        .delete()
+        .eq('id', studentId)
       if (error) throw new Error(error.message)
-
-      if (editingId === studentId) setEditingId(null)
-      setLoading(true)
       await fetchStudents()
     } catch (err) {
       alert('Error deleting student: ' + err.message)
