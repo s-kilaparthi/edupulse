@@ -404,25 +404,41 @@ export default function Subjects() {
   }
 
   async function handleDeleteSubject(subjectId, subjectName) {
-    if (!window.confirm(
-      `Delete "${subjectName}"? This will delete all topics and assignments for this subject.`
-    )) return
+    if (!window.confirm(`Delete "${subjectName}"?`)) return
 
-    await supabase.from('topics')
-      .delete().eq('subject_id', subjectId)
+    try {
+      await supabase.from('topic_scores')
+        .delete().eq('subject_id', subjectId)
 
-    await supabase.from('subject_classes')
-      .delete().eq('subject_id', subjectId)
+      await supabase.from('topics')
+        .delete().eq('subject_id', subjectId)
 
-    await supabase.from('class_teachers')
-      .delete().eq('subject_id', subjectId)
+      await supabase.from('subject_classes')
+        .delete().eq('subject_id', subjectId)
 
-    await supabase.from('subjects')
-      .delete().eq('id', subjectId)
+      await supabase.from('class_teachers')
+        .delete().eq('subject_id', subjectId)
 
-    if (manageClassesSubjectId === subjectId) setManageClassesSubjectId(null)
-    if (showAddTopic === subjectId) setShowAddTopic(null)
-    await fetchSubjects()
+      await supabase.from('schedule_slots')
+        .delete().eq('subject_id', subjectId)
+
+      await supabase.from('attendance')
+        .delete().eq('subject_id', subjectId)
+
+      await supabase.from('exam_subjects')
+        .delete().eq('subject_id', subjectId)
+
+      const { error } = await supabase.from('subjects')
+        .delete().eq('id', subjectId)
+
+      if (error) throw new Error(error.message)
+
+      if (manageClassesSubjectId === subjectId) setManageClassesSubjectId(null)
+      if (showAddTopic === subjectId) setShowAddTopic(null)
+      await fetchSubjects()
+    } catch (err) {
+      alert('Error deleting subject: ' + err.message)
+    }
   }
 
   const showSubjectList = isStudent || isAdmin || selectedClassId
