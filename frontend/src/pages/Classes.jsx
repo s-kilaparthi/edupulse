@@ -22,7 +22,9 @@ export default function Classes() {
   const [activeTab, setActiveTab] = useState('students')
 
   const [classStudents, setClassStudents] = useState([])
-  const [unassignedStudents, setUnassignedStudents] = useState([])
+  const [studentSearch, setStudentSearch] = useState('')
+  const [searchResults, setSearchResults] = useState([])
+  const [searchingStudents, setSearchingStudents] = useState(false)
   const [classTeachers, setClassTeachers] = useState([])
   const [allTeachers, setAllTeachers] = useState([])
   const [allSubjects, setAllSubjects] = useState([])
@@ -108,18 +110,12 @@ export default function Classes() {
   }, [role, instituteId])
 
   async function loadClassDetails(classId) {
-    const [studentsRes, unassignedRes, teachersRes] = await Promise.all([
+    const [studentsRes, teachersRes] = await Promise.all([
       supabase
         .from('users')
         .select('id, name, roll_number')
         .eq('class_id', classId)
         .eq('role', 'student')
-        .order('roll_number'),
-      supabase
-        .from('users')
-        .select('id, name, roll_number')
-        .eq('role', 'student')
-        .is('class_id', null)
         .order('roll_number'),
       supabase
         .from('class_teachers')
@@ -128,12 +124,33 @@ export default function Classes() {
     ])
 
     setClassStudents(studentsRes.data ?? [])
-    setUnassignedStudents(unassignedRes.data ?? [])
     setClassTeachers(teachersRes.data ?? [])
     setSelectedStudentIds([])
+    setStudentSearch('')
+    setSearchResults([])
     setAddTeacherId('')
     setAddSubjectId('')
     setAddClassSubjectId('')
+  }
+
+  async function searchUnassignedStudents(query, classId) {
+    if (!query || query.trim().length < 2) {
+      setSearchResults([])
+      return
+    }
+    setSearchingStudents(true)
+
+    const { data } = await supabase
+      .from('users')
+      .select('id, name, roll_number')
+      .eq('role', 'student')
+      .is('class_id', null)
+      .or(`name.ilike.%${query}%,roll_number.ilike.%${query}%`)
+      .order('roll_number')
+      .limit(20)
+
+    setSearchResults(data ?? [])
+    setSearchingStudents(false)
   }
 
   async function handleCreateClass(e) {
@@ -242,6 +259,8 @@ export default function Classes() {
 
     if (!error) {
       setSelectedStudentIds([])
+      setStudentSearch('')
+      setSearchResults([])
       await loadClassDetails(classId)
       await fetchClasses()
     }
@@ -602,35 +621,32 @@ export default function Classes() {
                           </ul>
                         )}
 
-                        {unassignedStudents.length > 0 && (
-                          <div className="mt-3 border-t border-gray-100 pt-3">
-                            <p className="text-xs font-medium text-gray-600 mb-2">
-                              Add Students to Class:
-                            </p>
-                            <div className="flex gap-2 mb-2">
-                              <button
-                                type="button"
-                                onClick={() => setSelectedStudentIds(
-                                  unassignedStudents.map((s) => s.id)
-                                )}
-                                className="text-xs text-blue-600 hover:text-blue-700"
-                              >
-                                Select All
-                              </button>
-                              <span className="text-gray-300 text-xs">|</span>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedStudentIds([])}
-                                className="text-xs text-gray-500 hover:text-gray-700"
-                              >
-                                Clear
-                              </button>
-                            </div>
-                            <div className="max-h-40 overflow-y-auto space-y-1 mb-2">
-                              {unassignedStudents.map((s) => (
+                        <div className="mt-3 border-t border-gray-100 pt-3">
+                          <p className="text-xs font-medium text-gray-600 mb-2">
+                            Add Students to Class
+                          </p>
+
+                          <input
+                            type="text"
+                            value={studentSearch}
+                            onChange={(e) => {
+                              setStudentSearch(e.target.value)
+                              searchUnassignedStudents(e.target.value, cls.id)
+                            }}
+                            placeholder="Search by name or roll number..."
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-2"
+                          />
+
+                          {searchingStudents && (
+                            <p className="text-xs text-gray-400 mb-2">Searching...</p>
+                          )}
+
+                          {searchResults.length > 0 && (
+                            <div className="max-h-48 overflow-y-auto space-y-1 mb-2 border border-gray-100 rounded-lg p-2">
+                              {searchResults.map((s) => (
                                 <label
                                   key={s.id}
-                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${
+                                  className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm transition-colors ${
                                     selectedStudentIds.includes(s.id)
                                       ? 'bg-blue-50 text-blue-700'
                                       : 'hover:bg-gray-50 text-gray-700'
@@ -646,26 +662,39 @@ export default function Classes() {
                                     )}
                                     className="rounded border-gray-300 text-blue-600"
                                   />
-                                  <span className="font-medium">{s.name}</span>
-                                  <span className="text-gray-400 text-xs">
+                                  <span className="font-medium flex-1">{s.name}</span>
+                                  <span className="text-gray-400 text-xs shrink-0">
                                     Roll #{s.roll_number}
                                   </span>
                                 </label>
                               ))}
                             </div>
+                          )}
 
-                            {selectedStudentIds.length > 0 && (
+                          {studentSearch.length >= 2
+                            && searchResults.length === 0
+                            && !searchingStudents && (
+                            <p className="text-xs text-gray-400 mb-2">
+                              No unassigned students found.
+                            </p>
+                          )}
+
+                          {selectedStudentIds.length > 0 && (
+                            <div className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2">
+                              <span className="text-xs text-blue-700 font-medium">
+                                {selectedStudentIds.length} student
+                                {selectedStudentIds.length > 1 ? 's' : ''} selected
+                              </span>
                               <button
                                 type="button"
                                 onClick={() => handleAddMultipleStudents(cls.id)}
-                                className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium"
+                                className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-medium"
                               >
-                                Add {selectedStudentIds.length} Student
-                                {selectedStudentIds.length > 1 ? 's' : ''} to Class
+                                Add to Class
                               </button>
-                            )}
-                          </div>
-                        )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 
