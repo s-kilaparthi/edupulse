@@ -323,7 +323,12 @@ async def delete_user(user_id: str):
             os.environ.get('SUPABASE_SERVICE_KEY')
         )
 
-        supabase_admin.auth.admin.delete_user(user_id)
+        try:
+            supabase_admin.auth.admin.delete_user(user_id)
+        except Exception as auth_err:
+            print(f"Auth delete skipped (user may not exist): {auth_err}")
+
+        supabase_admin.from_('users').delete().eq('id', user_id).execute()
 
         return {"success": True}
 
