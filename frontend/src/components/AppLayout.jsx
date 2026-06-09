@@ -54,12 +54,17 @@ export default function AppLayout({ session }) {
 
   useEffect(() => {
     if (!session?.user?.id) return
+
     supabase
       .from('users')
-      .select('name, role')
+      .select('is_active, role, name, institute_id')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
+        if (data?.is_active === false) {
+          await supabase.auth.signOut()
+          return
+        }
         if (data) {
           setDisplayName(data.name || session.user.email)
           setUserRole(data.role)

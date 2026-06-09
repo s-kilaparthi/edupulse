@@ -50,7 +50,7 @@ export default function Login() {
 
       if (userData?.is_active === false) {
         await supabase.auth.signOut()
-        setError('Your account has been disabled. Please contact your institute admin.')
+        setError('Your account has been temporarily blocked. Please contact your institute admin or help desk for assistance.')
         setLoading(false)
         return
       }
@@ -79,7 +79,7 @@ export default function Login() {
 
     if (userData?.is_active === false) {
       await supabase.auth.signOut()
-      setError('Your account has been disabled. Please contact your institute admin.')
+      setError('Your account has been temporarily blocked. Please contact your institute admin or help desk for assistance.')
       setLoading(false)
       return
     }
@@ -175,8 +175,8 @@ export default function Login() {
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              <p className="text-red-700 text-sm">{error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700 text-center">
+              {error}
             </div>
           )}
 
