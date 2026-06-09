@@ -34,12 +34,16 @@ export default function Schedule() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  const [showMyPeriodsOnly, setShowMyPeriodsOnly] = useState(true)
+  const [userId, setUserId] = useState(null)
 
   const isAdmin = userRole === 'admin'
+  const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
 
   useEffect(() => {
     if (!session?.user?.id) return
+    setUserId(session.user.id)
 
     supabase
       .from('users')
@@ -299,6 +303,33 @@ export default function Schedule() {
           )}
 
           {selectedClassId && (
+            <>
+            {isTeacher && (
+              <div className="flex gap-2 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setShowMyPeriodsOnly(true)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    showMyPeriodsOnly
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 text-gray-600'
+                  }`}
+                >
+                  My Periods Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowMyPeriodsOnly(false)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                    !showMyPeriodsOnly
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'border-gray-300 text-gray-600'
+                  }`}
+                >
+                  Full Class Schedule
+                </button>
+              </div>
+            )}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
               <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
                 <div className="min-w-[640px]">
@@ -341,10 +372,16 @@ export default function Schedule() {
                       ) : (
                         DAYS.map((day) => {
                           const slot = getSlot(day, period.number)
+                          const isMyPeriod = slot && slot.teacher_id === userId
+                          const hideOtherTeacherSlot = isTeacher && showMyPeriodsOnly && slot && !isMyPeriod
 
                           return (
                             <td key={day} className="min-w-[90px] p-1.5 align-top">
-                              {slot ? (
+                              {hideOtherTeacherSlot || (isTeacher && showMyPeriodsOnly && !slot) ? (
+                                <span className="text-xs text-gray-300 block min-h-12 px-2 py-2">
+                                  —
+                                </span>
+                              ) : slot ? (
                                 <div className="p-1.5 bg-blue-50 rounded-lg text-xs min-h-12">
                                   <p className="text-xs font-medium text-blue-800">
                                     {slot.subjects?.name}
@@ -384,6 +421,7 @@ export default function Schedule() {
                 </div>
               </div>
             </div>
+            </>
           )}
 
           {editingSlot && (

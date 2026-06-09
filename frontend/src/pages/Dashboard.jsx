@@ -191,7 +191,7 @@ export default function Dashboard() {
           examsCreated: examCount ?? 0,
         })
       } else if (userRole === 'admin' && instituteId) {
-        const [studentsRes, teachersRes, examsRes, scoresRes] = await Promise.all([
+        const [studentsRes, teachersRes, scoresRes] = await Promise.all([
           supabase
             .from('users')
             .select('*', { count: 'exact', head: true })
@@ -202,12 +202,24 @@ export default function Dashboard() {
             .select('*', { count: 'exact', head: true })
             .eq('role', 'teacher')
             .eq('institute_id', instituteId),
-          supabase
-            .from('exams')
-            .select('*', { count: 'exact', head: true })
-            .eq('institute_id', instituteId),
           supabase.from('topic_scores').select('percentage'),
         ])
+
+        const { data: classData } = await supabase
+          .from('classes')
+          .select('id')
+          .eq('institute_id', instituteId)
+
+        const classIds = classData?.map((c) => c.id) ?? []
+
+        let examCount = 0
+        if (classIds.length > 0) {
+          const { count } = await supabase
+            .from('exam_classes')
+            .select('exam_id', { count: 'exact', head: true })
+            .in('class_id', classIds)
+          examCount = count ?? 0
+        }
 
         const pcts = (scoresRes.data ?? [])
           .map((r) => r.percentage)
@@ -220,7 +232,7 @@ export default function Dashboard() {
         setAdminStats({
           students: studentsRes.count ?? 0,
           teachers: teachersRes.count ?? 0,
-          exams: examsRes.count ?? 0,
+          exams: examCount,
           avg,
         })
       }

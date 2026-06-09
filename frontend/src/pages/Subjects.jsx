@@ -32,6 +32,7 @@ export default function Subjects() {
   const [manageClassesSubjectId, setManageClassesSubjectId] = useState(null)
   const [manageClassIds, setManageClassIds] = useState([])
   const [savingClassAssignments, setSavingClassAssignments] = useState(false)
+  const [subjectTeacherMap, setSubjectTeacherMap] = useState({})
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -111,7 +112,7 @@ export default function Subjects() {
 
       const { data, error: fetchError } = await supabase
         .from('subjects')
-        .select('id, name, topics(id, name, class_id)')
+        .select('id, name, notes_url, topics(id, name, class_id)')
         .in('id', subjectIds)
         .order('name')
 
@@ -128,6 +129,7 @@ export default function Subjects() {
     if (userRole === 'student') {
       if (!studentClassId) {
         setSubjects([])
+        setSubjectTeacherMap({})
         setLoading(false)
         return
       }
@@ -141,21 +143,34 @@ export default function Subjects() {
 
       if (subjectIds.length === 0) {
         setSubjects([])
+        setSubjectTeacherMap({})
         setLoading(false)
         return
       }
 
       const { data, error: fetchError } = await supabase
         .from('subjects')
-        .select('id, name, teacher_id, topics(id, name, class_id), users(name), subject_classes(class_id, classes(name))')
+        .select('id, name, notes_url, topics(id, name, class_id), subject_classes(class_id, classes(name))')
         .in('id', subjectIds)
         .order('name')
 
       if (fetchError) {
         setError(fetchError.message)
         setSubjects([])
+        setSubjectTeacherMap({})
       } else {
         setSubjects(data ?? [])
+
+        const { data: ctData } = await supabase
+          .from('class_teachers')
+          .select('subject_id, teacher_id, users(name, email)')
+          .eq('class_id', studentClassId)
+
+        const teacherMap = {}
+        for (const ct of ctData ?? []) {
+          teacherMap[ct.subject_id] = ct.users
+        }
+        setSubjectTeacherMap(teacherMap)
       }
       setLoading(false)
       return
@@ -456,7 +471,7 @@ export default function Subjects() {
             {availableClasses.length > 0 && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Assign to Classes
+                  Assign to Classes (optional)
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {availableClasses.map((c) => (
@@ -548,9 +563,11 @@ export default function Subjects() {
                   {isStudent ? (
                     <>
                       <p className="font-medium text-gray-900">{subject.name}</p>
-                      <p className="text-sm text-gray-500 mt-1">
-                        Teacher: {subject.users?.name ?? '—'}
-                      </p>
+                      {subjectTeacherMap[subject.id] && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Teacher: {subjectTeacherMap[subject.id].name}
+                        </p>
+                      )}
 
                       {classTopics.length > 0 && (
                         <ul className="mt-3 flex flex-wrap gap-2">
@@ -565,10 +582,16 @@ export default function Subjects() {
                         </ul>
                       )}
 
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <p className="text-sm font-semibold text-gray-900">Notes & Files</p>
-                        <p className="text-sm text-gray-400 mt-1">No files uploaded yet</p>
-                      </div>
+                      {subject.notes_url && (
+                        <a
+                          href={subject.notes_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 mt-2"
+                        >
+                          📎 View Notes / Files
+                        </a>
+                      )}
                     </>
                   ) : (
                     <>
@@ -687,6 +710,33 @@ export default function Subjects() {
                             </li>
                           ))}
                         </ul>
+                      )}
+
+                      {isTeacher && (
+                        <div className="mt-3 border-t border-gray-100 pt-3">
+                          <p className="text-xs font-medium text-gray-600 mb-2">
+                            Notes & Files
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            File upload coming soon.
+                            Share Google Drive or other links below:
+                          </p>
+                          <div className="flex gap-2 mt-2">
+                            <input
+                              type="url"
+                              placeholder="Paste link (Google Drive, PDF URL...)"
+                              className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs"
+                              onBlur={async (e) => {
+                                if (e.target.value) {
+                                  await supabase.from('subjects')
+                                    .update({ notes_url: e.target.value })
+                                    .eq('id', subject.id)
+                                }
+                              }}
+                              defaultValue={subject.notes_url ?? ''}
+                            />
+                          </div>
+                        </div>
                       )}
 
                       {suggestedTopics.length > 0 && extractedSubjectId === subject.id && (
