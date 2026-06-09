@@ -234,6 +234,7 @@ async def create_student(request: Request):
         name = body.get('name')
         roll_number = body.get('roll_number')
         institute_id = body.get('institute_id')
+        class_id = body.get('class_id', None)
 
         if not all([email, password, name, roll_number, institute_id]):
             raise HTTPException(status_code=400, detail="Missing required fields")
@@ -258,6 +259,7 @@ async def create_student(request: Request):
             "email": email,
             "role": "student",
             "institute_id": institute_id,
+            "class_id": class_id,
         }).execute()
 
         return {"success": True, "user_id": user_id}

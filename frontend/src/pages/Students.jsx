@@ -17,6 +17,7 @@ export default function Students() {
 
   const [studentName, setStudentName] = useState('')
   const [rollNumber, setRollNumber] = useState('')
+  const [newStudentClassId, setNewStudentClassId] = useState('')
 
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
@@ -159,6 +160,7 @@ export default function Students() {
             name,
             roll_number: roll,
             institute_id: instituteId,
+            class_id: newStudentClassId || null,
           }),
         }
       )
@@ -168,6 +170,7 @@ export default function Students() {
 
       setStudentName('')
       setRollNumber('')
+      setNewStudentClassId('')
       setSuccessMessage(`Student ${name} added. Login: Roll ${roll}, Password: ${roll}`)
       await fetchStudents()
     } catch (err) {
@@ -290,6 +293,19 @@ export default function Students() {
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
               />
             </div>
+
+            {isAdmin && allClasses.length > 0 && (
+              <select
+                value={newStudentClassId}
+                onChange={(e) => setNewStudentClassId(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">Assign to class (optional)</option>
+                {allClasses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            )}
 
             <div className="flex items-end">
               <button

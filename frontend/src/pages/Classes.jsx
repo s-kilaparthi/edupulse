@@ -249,6 +249,33 @@ export default function Classes() {
     await fetchClasses()
   }
 
+  const isAdmin = role === 'admin'
+
+  async function handleDeleteClass(classId, className) {
+    if (!window.confirm(
+      `Delete "${className}"? This will unassign all students and teachers from this class.`
+    )) return
+
+    await supabase.from('users')
+      .update({ class_id: null })
+      .eq('class_id', classId)
+
+    await supabase.from('class_teachers')
+      .delete().eq('class_id', classId)
+
+    await supabase.from('subject_classes')
+      .delete().eq('class_id', classId)
+
+    await supabase.from('schedule_slots')
+      .delete().eq('class_id', classId)
+
+    await supabase.from('classes')
+      .delete().eq('id', classId)
+
+    if (expandedClassId === classId) setExpandedClassId(null)
+    await fetchClasses()
+  }
+
   async function handleRemoveTeacher(classTeacherId) {
     const { error: deleteError } = await supabase
       .from('class_teachers')
@@ -393,7 +420,18 @@ export default function Classes() {
               >
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-gray-900">{cls.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-gray-900">{cls.name}</p>
+                      {isAdmin && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteClass(cls.id, cls.name)}
+                          className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500">
                       {cls.academic_year || '—'} · {studentCounts[cls.id] ?? 0} students
                     </p>

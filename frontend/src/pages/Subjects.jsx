@@ -403,6 +403,28 @@ export default function Subjects() {
     setExpandedSubjectId(subjectId)
   }
 
+  async function handleDeleteSubject(subjectId, subjectName) {
+    if (!window.confirm(
+      `Delete "${subjectName}"? This will delete all topics and assignments for this subject.`
+    )) return
+
+    await supabase.from('topics')
+      .delete().eq('subject_id', subjectId)
+
+    await supabase.from('subject_classes')
+      .delete().eq('subject_id', subjectId)
+
+    await supabase.from('class_teachers')
+      .delete().eq('subject_id', subjectId)
+
+    await supabase.from('subjects')
+      .delete().eq('id', subjectId)
+
+    if (manageClassesSubjectId === subjectId) setManageClassesSubjectId(null)
+    if (expandedSubjectId === subjectId) setExpandedSubjectId(null)
+    await fetchSubjects()
+  }
+
   const showSubjectList = isStudent || isAdmin || selectedClassId
 
   return (
@@ -560,7 +582,18 @@ export default function Subjects() {
                     <>
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                          <span className="font-medium text-gray-900">{subject.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{subject.name}</span>
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSubject(subject.id, subject.name)}
+                                className="text-xs text-red-500 hover:text-red-700 font-medium"
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
                           {subject.subject_classes?.length > 0 && (
                             <div className="flex flex-wrap gap-1.5 mt-2">
                               {subject.subject_classes.map((sc) => (

@@ -130,6 +130,38 @@ export default function Exams() {
     setExams(data ?? [])
   }
 
+  async function handleDeleteExam(examId, examName) {
+    if (!window.confirm(
+      `Delete "${examName}"? This will delete all questions and results for this exam.`
+    )) return
+
+    await supabase.from('topic_scores')
+      .delete().eq('exam_id', examId)
+
+    await supabase.from('omr_results')
+      .delete().eq('exam_id', examId)
+
+    await supabase.from('questions')
+      .delete().eq('exam_id', examId)
+
+    await supabase.from('exam_subjects')
+      .delete().eq('exam_id', examId)
+
+    await supabase.from('exam_classes')
+      .delete().eq('exam_id', examId)
+
+    await supabase.from('exams')
+      .delete().eq('id', examId)
+
+    if (activeExam?.id === examId) closeQuestionsPanel()
+    if (activeProfileExamId === examId) setActiveProfileExamId(null)
+    if (aiExamId === examId) {
+      setShowAIGenerator(false)
+      setAiExamId(null)
+    }
+    await fetchExams()
+  }
+
   async function loadPageData() {
     setError(null)
     setLoading(true)
@@ -909,6 +941,13 @@ export default function Exams() {
                         className="text-sm font-medium text-purple-600 hover:text-purple-700"
                       >
                         🤖 Generate with AI
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExam(exam.id, exam.name)}
+                        className="text-xs text-red-500 hover:text-red-700 font-medium"
+                      >
+                        Delete
                       </button>
                     </div>
                   </div>
