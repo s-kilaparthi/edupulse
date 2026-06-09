@@ -27,11 +27,10 @@ export default function Classes() {
   const [allTeachers, setAllTeachers] = useState([])
   const [allSubjects, setAllSubjects] = useState([])
 
-  const [addStudentId, setAddStudentId] = useState('')
+  const [selectedStudentIds, setSelectedStudentIds] = useState([])
   const [addTeacherId, setAddTeacherId] = useState('')
   const [addSubjectId, setAddSubjectId] = useState('')
   const [addClassSubjectId, setAddClassSubjectId] = useState('')
-  const [addingStudent, setAddingStudent] = useState(false)
   const [addingTeacher, setAddingTeacher] = useState(false)
   const [addingClassSubject, setAddingClassSubject] = useState(false)
   const [editingClassId, setEditingClassId] = useState(null)
@@ -131,7 +130,7 @@ export default function Classes() {
     setClassStudents(studentsRes.data ?? [])
     setUnassignedStudents(unassignedRes.data ?? [])
     setClassTeachers(teachersRes.data ?? [])
-    setAddStudentId('')
+    setSelectedStudentIds([])
     setAddTeacherId('')
     setAddSubjectId('')
     setAddClassSubjectId('')
@@ -233,24 +232,19 @@ export default function Classes() {
     await fetchClasses()
   }
 
-  async function handleAddStudent(classId) {
-    if (!addStudentId) return
-    setAddingStudent(true)
+  async function handleAddMultipleStudents(classId) {
+    if (selectedStudentIds.length === 0) return
 
-    const { error: updateError } = await supabase
+    const { error } = await supabase
       .from('users')
       .update({ class_id: classId })
-      .eq('id', addStudentId)
+      .in('id', selectedStudentIds)
 
-    setAddingStudent(false)
-
-    if (updateError) {
-      setError(updateError.message)
-      return
+    if (!error) {
+      setSelectedStudentIds([])
+      await loadClassDetails(classId)
+      await fetchClasses()
     }
-
-    await loadClassDetails(classId)
-    await fetchClasses()
   }
 
   const isAdmin = role === 'admin'
@@ -608,28 +602,70 @@ export default function Classes() {
                           </ul>
                         )}
 
-                        <div className="flex flex-col sm:flex-row gap-2">
-                          <select
-                            value={addStudentId}
-                            onChange={(e) => setAddStudentId(e.target.value)}
-                            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
-                          >
-                            <option value="">Add student…</option>
-                            {unassignedStudents.map((s) => (
-                              <option key={s.id} value={s.id}>
-                                {s.roll_number} — {s.name}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={() => handleAddStudent(cls.id)}
-                            disabled={!addStudentId || addingStudent}
-                            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
-                          >
-                            {addingStudent ? 'Adding…' : 'Add'}
-                          </button>
-                        </div>
+                        {unassignedStudents.length > 0 && (
+                          <div className="mt-3 border-t border-gray-100 pt-3">
+                            <p className="text-xs font-medium text-gray-600 mb-2">
+                              Add Students to Class:
+                            </p>
+                            <div className="flex gap-2 mb-2">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStudentIds(
+                                  unassignedStudents.map((s) => s.id)
+                                )}
+                                className="text-xs text-blue-600 hover:text-blue-700"
+                              >
+                                Select All
+                              </button>
+                              <span className="text-gray-300 text-xs">|</span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedStudentIds([])}
+                                className="text-xs text-gray-500 hover:text-gray-700"
+                              >
+                                Clear
+                              </button>
+                            </div>
+                            <div className="max-h-40 overflow-y-auto space-y-1 mb-2">
+                              {unassignedStudents.map((s) => (
+                                <label
+                                  key={s.id}
+                                  className={`flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer text-sm transition-colors ${
+                                    selectedStudentIds.includes(s.id)
+                                      ? 'bg-blue-50 text-blue-700'
+                                      : 'hover:bg-gray-50 text-gray-700'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedStudentIds.includes(s.id)}
+                                    onChange={() => setSelectedStudentIds((prev) =>
+                                      prev.includes(s.id)
+                                        ? prev.filter((id) => id !== s.id)
+                                        : [...prev, s.id]
+                                    )}
+                                    className="rounded border-gray-300 text-blue-600"
+                                  />
+                                  <span className="font-medium">{s.name}</span>
+                                  <span className="text-gray-400 text-xs">
+                                    Roll #{s.roll_number}
+                                  </span>
+                                </label>
+                              ))}
+                            </div>
+
+                            {selectedStudentIds.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleAddMultipleStudents(cls.id)}
+                                className="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-medium"
+                              >
+                                Add {selectedStudentIds.length} Student
+                                {selectedStudentIds.length > 1 ? 's' : ''} to Class
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
