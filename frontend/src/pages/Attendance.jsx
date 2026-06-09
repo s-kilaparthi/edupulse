@@ -19,6 +19,7 @@ const ADMIN_TABS = [
 
 const TEACHER_TABS = [
   { id: 'mark', label: 'Mark Attendance' },
+  { id: 'reports', label: 'Reports' },
   { id: 'student', label: 'Student Report' },
 ]
 
@@ -614,6 +615,97 @@ export default function Attendance() {
     )
   }
 
+  function renderReportsTab(classList) {
+    return (
+      <>
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
+            <select
+              value={selectedClassId}
+              onChange={(e) => setSelectedClassId(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            >
+              <option value="">Select class…</option>
+              {classList.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
+            <input
+              type="date"
+              value={reportFromDate}
+              onChange={(e) => setReportFromDate(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
+            <input
+              type="date"
+              value={reportToDate}
+              max={todayStr()}
+              onChange={(e) => setReportToDate(e.target.value)}
+              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <div className="flex items-end">
+            <button
+              type="button"
+              onClick={fetchReports}
+              disabled={!selectedClassId || reportLoading}
+              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-40"
+            >
+              {reportLoading ? 'Loading…' : 'Generate Report'}
+            </button>
+          </div>
+        </div>
+
+        {reportRows.length > 0 && (
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Student</th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600">Present</th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600">Absent</th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600">Late</th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600">Total</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-600">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {reportRows.map((row) => (
+                  <tr key={row.name + row.roll_number} className="border-b border-gray-100">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-900">{row.name}</p>
+                      <p className="text-xs text-gray-400">Roll #{row.roll_number}</p>
+                    </td>
+                    <td className="text-center px-3 py-3 text-green-600">{row.present}</td>
+                    <td className="text-center px-3 py-3 text-red-600">{row.absent}</td>
+                    <td className="text-center px-3 py-3 text-yellow-600">{row.late}</td>
+                    <td className="text-center px-3 py-3 text-gray-700">{row.total}</td>
+                    <td
+                      className={`text-center px-4 py-3 font-bold ${
+                        row.pct >= 75 ? 'text-green-600' : 'text-red-600'
+                      }`}
+                    >
+                      {row.pct}%{row.pct < 75 && ' ⚠️'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </>
+    )
+  }
+
   function renderMarkAttendance(showClassSelector = false) {
     return (
       <>
@@ -714,6 +806,7 @@ export default function Attendance() {
           </div>
 
           {teacherTab === 'mark' && renderMarkAttendance(false)}
+          {teacherTab === 'reports' && renderReportsTab(teacherReportClasses)}
           {teacherTab === 'student' && renderStudentReport(teacherReportClasses)}
         </>
       )}
@@ -776,94 +869,7 @@ export default function Attendance() {
 
           {adminTab === 'mark' && renderMarkAttendance(true)}
 
-          {adminTab === 'reports' && (
-            <>
-              <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Class</label>
-                  <select
-                    value={selectedClassId}
-                    onChange={(e) => setSelectedClassId(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  >
-                    <option value="">Select class…</option>
-                    {classes.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">From</label>
-                  <input
-                    type="date"
-                    value={reportFromDate}
-                    onChange={(e) => setReportFromDate(e.target.value)}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">To</label>
-                  <input
-                    type="date"
-                    value={reportToDate}
-                    max={todayStr()}
-                    onChange={(e) => setReportToDate(e.target.value)}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                  />
-                </div>
-                <div className="flex items-end">
-                  <button
-                    type="button"
-                    onClick={fetchReports}
-                    disabled={!selectedClassId || reportLoading}
-                    className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-40"
-                  >
-                    {reportLoading ? 'Loading…' : 'Generate Report'}
-                  </button>
-                </div>
-              </div>
-
-              {reportRows.length > 0 && (
-                <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-gray-200 bg-gray-50">
-                        <th className="text-left px-4 py-3 font-medium text-gray-600">Student</th>
-                        <th className="text-center px-3 py-3 font-medium text-gray-600">Present</th>
-                        <th className="text-center px-3 py-3 font-medium text-gray-600">Absent</th>
-                        <th className="text-center px-3 py-3 font-medium text-gray-600">Late</th>
-                        <th className="text-center px-3 py-3 font-medium text-gray-600">Total</th>
-                        <th className="text-center px-4 py-3 font-medium text-gray-600">%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {reportRows.map((row) => (
-                        <tr key={row.name + row.roll_number} className="border-b border-gray-100">
-                          <td className="px-4 py-3">
-                            <p className="font-medium text-gray-900">{row.name}</p>
-                            <p className="text-xs text-gray-400">Roll #{row.roll_number}</p>
-                          </td>
-                          <td className="text-center px-3 py-3 text-green-600">{row.present}</td>
-                          <td className="text-center px-3 py-3 text-red-600">{row.absent}</td>
-                          <td className="text-center px-3 py-3 text-yellow-600">{row.late}</td>
-                          <td className="text-center px-3 py-3 text-gray-700">{row.total}</td>
-                          <td
-                            className={`text-center px-4 py-3 font-bold ${
-                              row.pct >= 75 ? 'text-green-600' : 'text-red-600'
-                            }`}
-                          >
-                            {row.pct}%{row.pct < 75 && ' ⚠️'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </>
-          )}
+          {adminTab === 'reports' && renderReportsTab(classes)}
 
           {adminTab === 'student' && renderStudentReport(classes)}
         </>
