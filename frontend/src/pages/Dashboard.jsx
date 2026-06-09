@@ -62,6 +62,7 @@ export default function Dashboard() {
   const [instituteId, setInstituteId] = useState(null)
   const [userLoaded, setUserLoaded] = useState(false)
   const [stats, setStats] = useState({})
+  const [studentInfo, setStudentInfo] = useState({})
   const [adminStats, setAdminStats] = useState({
     students: 0,
     teachers: 0,
@@ -129,16 +130,38 @@ export default function Dashboard() {
             : 0
         }
 
-        const { data: subjectRows } = await supabase
-          .from('topic_scores')
-          .select('subject_id')
-          .eq('student_id', session.user.id)
+        const { data: userData } = await supabase
+          .from('users')
+          .select('class_id, roll_number, classes(name)')
+          .eq('id', session.user.id)
+          .single()
 
-        const subjectsEnrolled = new Set(
-          (subjectRows ?? []).map((r) => r.subject_id).filter(Boolean)
-        ).size
+        const studentClassId = userData?.class_id
+        const studentRollNo = userData?.roll_number
+        const studentClassName = userData?.classes?.name
 
-        setStats({ lastExamName, lastExamScore, lastExamTotal, lastExamPct, subjectsEnrolled })
+        setStudentInfo({
+          classId: studentClassId,
+          rollNo: studentRollNo,
+          className: studentClassName,
+        })
+
+        let subjectsCount = 0
+        if (studentClassId) {
+          const { count } = await supabase
+            .from('subject_classes')
+            .select('id', { count: 'exact' })
+            .eq('class_id', studentClassId)
+          subjectsCount = count ?? 0
+        }
+
+        setStats({
+          lastExamName,
+          lastExamScore,
+          lastExamTotal,
+          lastExamPct,
+          subjectsEnrolled: subjectsCount,
+        })
       } else if (userRole === 'teacher') {
         const { data: teacherClassesData } = await supabase
           .from('class_teachers')
@@ -223,6 +246,18 @@ export default function Dashboard() {
           <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome back, {userName}!</h1>
+            <div className="flex flex-wrap gap-3 mt-2">
+              {studentInfo.className && (
+                <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
+                  📚 {studentInfo.className}
+                </span>
+              )}
+              {studentInfo.rollNo && (
+                <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
+                  🎓 Roll #{studentInfo.rollNo}
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
