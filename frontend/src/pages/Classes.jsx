@@ -34,6 +34,10 @@ export default function Classes() {
   const [addingStudent, setAddingStudent] = useState(false)
   const [addingTeacher, setAddingTeacher] = useState(false)
   const [addingClassSubject, setAddingClassSubject] = useState(false)
+  const [editingClassId, setEditingClassId] = useState(null)
+  const [editClassName, setEditClassName] = useState('')
+  const [editAcademicYear, setEditAcademicYear] = useState('')
+  const [savingClassName, setSavingClassName] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -253,27 +257,40 @@ export default function Classes() {
 
   async function handleDeleteClass(classId, className) {
     if (!window.confirm(
-      `Delete "${className}"? This will unassign all students and teachers from this class.`
+      `Delete "${className}"? Students and teachers will be unassigned.`
     )) return
 
-    await supabase.from('users')
-      .update({ class_id: null })
-      .eq('class_id', classId)
+    try {
+      await supabase.from('users')
+        .update({ class_id: null })
+        .eq('class_id', classId)
 
-    await supabase.from('class_teachers')
-      .delete().eq('class_id', classId)
+      await supabase.from('class_teachers')
+        .delete().eq('class_id', classId)
 
-    await supabase.from('subject_classes')
-      .delete().eq('class_id', classId)
+      await supabase.from('subject_classes')
+        .delete().eq('class_id', classId)
 
-    await supabase.from('schedule_slots')
-      .delete().eq('class_id', classId)
+      await supabase.from('schedule_slots')
+        .delete().eq('class_id', classId)
 
-    await supabase.from('classes')
-      .delete().eq('id', classId)
+      await supabase.from('attendance')
+        .delete().eq('class_id', classId)
 
-    if (expandedClassId === classId) setExpandedClassId(null)
-    await fetchClasses()
+      await supabase.from('exam_classes')
+        .delete().eq('class_id', classId)
+
+      const { error } = await supabase.from('classes')
+        .delete().eq('id', classId)
+
+      if (error) throw new Error(error.message)
+
+      if (expandedClassId === classId) setExpandedClassId(null)
+      if (editingClassId === classId) setEditingClassId(null)
+      await fetchClasses()
+    } catch (err) {
+      alert('Error deleting class: ' + err.message)
+    }
   }
 
   async function handleRemoveTeacher(classTeacherId) {
@@ -419,45 +436,111 @@ export default function Classes() {
                 className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-900">{cls.name}</p>
-                      {isAdmin && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteClass(cls.id, cls.name)}
-                          className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0"
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-sm text-gray-500">
-                      {cls.academic_year || '—'} · {studentCounts[cls.id] ?? 0} students
-                    </p>
-                    {cls.subject_classes?.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {cls.subject_classes.map((sc) => (
-                          <span
-                            key={sc.subject_id}
-                            className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200"
-                          >
-                            {sc.subjects?.name}
-                          </span>
-                        ))}
-                      </div>
+                  <div className="flex-1 min-w-0">
+                    {editingClassId !== cls.id && (
+                      <>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-gray-900">{cls.name}</p>
+                          {isAdmin && (
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingClassId(cls.id)
+                                  setEditClassName(cls.name)
+                                  setEditAcademicYear(cls.academic_year ?? '')
+                                }}
+                                className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteClass(cls.id, cls.name)}
+                                className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {cls.academic_year || '—'} · {studentCounts[cls.id] ?? 0} students
+                        </p>
+                        {cls.subject_classes?.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {cls.subject_classes.map((sc) => (
+                              <span
+                                key={sc.subject_id}
+                                className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200"
+                              >
+                                {sc.subjects?.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleClass(cls.id)}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
-                  >
-                    {isExpanded ? 'Collapse' : 'Manage'}
-                  </button>
+                  {editingClassId !== cls.id && (
+                    <button
+                      type="button"
+                      onClick={() => toggleClass(cls.id)}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
+                    >
+                      {isExpanded ? 'Collapse' : 'Manage'}
+                    </button>
+                  )}
                 </div>
 
-                {isExpanded && (
+                {editingClassId === cls.id && (
+                  <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+                    <input
+                      type="text"
+                      value={editClassName}
+                      onChange={(e) => setEditClassName(e.target.value)}
+                      placeholder="Class name"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={editAcademicYear}
+                      onChange={(e) => setEditAcademicYear(e.target.value)}
+                      placeholder="Academic year e.g. 2025-26"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setSavingClassName(true)
+                          await supabase.from('classes')
+                            .update({
+                              name: editClassName,
+                              academic_year: editAcademicYear,
+                            })
+                            .eq('id', cls.id)
+                          setEditingClassId(null)
+                          await fetchClasses()
+                          setSavingClassName(false)
+                        }}
+                        disabled={savingClassName}
+                        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
+                      >
+                        {savingClassName ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingClassId(null)}
+                        className="text-gray-500 text-sm px-3 py-1.5"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {isExpanded && editingClassId !== cls.id && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 mb-4">
                       <button
@@ -518,7 +601,7 @@ export default function Classes() {
                                   onClick={() => handleRemoveStudent(student.id)}
                                   className="text-xs text-red-500 hover:text-red-700"
                                 >
-                                  Remove
+                                  Unassign
                                 </button>
                               </li>
                             ))}
@@ -574,7 +657,7 @@ export default function Classes() {
                                   onClick={() => handleRemoveTeacher(ct.id)}
                                   className="text-xs text-red-500 hover:text-red-700"
                                 >
-                                  Remove
+                                  Unassign
                                 </button>
                               </li>
                             ))}
@@ -638,7 +721,7 @@ export default function Classes() {
                                     onClick={() => handleRemoveSubjectFromClass(cls.id, sc.subject_id)}
                                     className="text-xs text-red-500 hover:text-red-700"
                                   >
-                                    Remove
+                                    Unassign
                                   </button>
                                 </li>
                               ))}
