@@ -44,13 +44,13 @@ function StudentList({
         {students.map((student) => (
           <div
             key={student.id}
-            className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+            className="flex items-center justify-between min-h-[60px] py-3 border-b border-gray-50 last:border-0 gap-2"
           >
-            <div>
+            <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900">{student.name}</p>
               <p className="text-xs text-gray-400">Roll #{student.roll_number}</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 shrink-0">
               {STATUS_OPTIONS.map((status) => (
                 <button
                   key={status}
@@ -58,7 +58,7 @@ function StudentList({
                   onClick={() =>
                     setAttendanceMap((prev) => ({ ...prev, [student.id]: status }))
                   }
-                  className={`px-2 py-1 rounded-lg border text-xs font-medium transition-colors ${
+                  className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors min-w-[44px] flex items-center justify-center ${
                     attendanceMap[student.id] === status
                       ? STATUS_COLORS[status]
                       : 'bg-gray-50 text-gray-400 border-gray-200'
@@ -559,13 +559,28 @@ export default function Attendance() {
 
         {reportStudentId && (
           <>
-            <div className="flex flex-wrap gap-4 mb-4 p-4 bg-gray-50 rounded-xl">
-              <span className="text-green-600 font-semibold">✅ Present: {present}</span>
-              <span className="text-red-600 font-semibold">❌ Absent: {absent}</span>
-              <span className="text-yellow-600 font-semibold">🕐 Late: {late}</span>
-              <span className="font-bold text-gray-900">
-                Overall: {pct}%{pct < 75 && ' ⚠️'}
-              </span>
+            <div className="flex flex-wrap gap-3 mb-4 p-4 bg-gray-50 rounded-xl">
+              <div className="flex flex-col items-center min-w-[60px]">
+                <span className="text-lg">✅</span>
+                <span className="text-xs text-gray-500">Present</span>
+                <span className="text-sm font-semibold text-green-600">{present}</span>
+              </div>
+              <div className="flex flex-col items-center min-w-[60px]">
+                <span className="text-lg">❌</span>
+                <span className="text-xs text-gray-500">Absent</span>
+                <span className="text-sm font-semibold text-red-600">{absent}</span>
+              </div>
+              <div className="flex flex-col items-center min-w-[60px]">
+                <span className="text-lg">🕐</span>
+                <span className="text-xs text-gray-500">Late</span>
+                <span className="text-sm font-semibold text-yellow-600">{late}</span>
+              </div>
+              <div className="flex flex-col items-center min-w-[60px]">
+                <span className="text-xs text-gray-500">Overall</span>
+                <span className={`text-sm font-bold ${pct >= 75 ? 'text-green-600' : 'text-red-600'}`}>
+                  {pct}%{pct < 75 && ' ⚠️'}
+                </span>
+              </div>
             </div>
 
             {studentAttendance.length === 0 ? (
@@ -640,7 +655,7 @@ export default function Attendance() {
               type="date"
               value={reportFromDate}
               onChange={(e) => setReportFromDate(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full md:w-auto rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
           <div>
@@ -650,7 +665,7 @@ export default function Attendance() {
               value={reportToDate}
               max={todayStr()}
               onChange={(e) => setReportToDate(e.target.value)}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full md:w-auto rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
           <div className="flex items-end">
@@ -666,8 +681,9 @@ export default function Attendance() {
         </div>
 
         {reportRows.length > 0 && (
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-x-auto">
-            <table className="w-full text-sm">
+          <div className="bg-white rounded-2xl border border-gray-200">
+            <div className="overflow-x-auto">
+            <table className="min-w-[500px] w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Student</th>
@@ -700,6 +716,7 @@ export default function Attendance() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
       </>
@@ -740,7 +757,7 @@ export default function Attendance() {
                 setSelectedDate(e.target.value)
                 setActiveSlotId(null)
               }}
-              className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              className="w-full md:w-auto rounded-lg border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
         </div>
@@ -787,13 +804,13 @@ export default function Attendance() {
 
       {isTeacher && (
         <>
-          <div className="flex gap-1 border-b border-gray-200 mb-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 mb-6">
             {TEACHER_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setTeacherTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium relative ${
+                className={`shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium relative ${
                   teacherTab === tab.id ? 'text-gray-900' : 'text-gray-500'
                 }`}
               >
@@ -849,13 +866,13 @@ export default function Attendance() {
 
       {isAdmin && (
         <>
-          <div className="flex gap-1 border-b border-gray-200 mb-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 mb-6">
             {ADMIN_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setAdminTab(tab.id)}
-                className={`px-4 py-2 text-sm font-medium relative ${
+                className={`shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium relative ${
                   adminTab === tab.id ? 'text-gray-900' : 'text-gray-500'
                 }`}
               >
