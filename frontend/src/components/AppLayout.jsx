@@ -192,7 +192,7 @@ export default function AppLayout({ session }) {
             </button>
 
             {showNotifDropdown && (
-              <div className="absolute right-0 top-full mt-1 w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
+              <div className="fixed right-2 top-14 w-[calc(100vw-16px)] md:absolute md:right-0 md:top-full md:mt-1 md:w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                   <p className="text-sm font-semibold text-gray-900">Notifications</p>
                   {unreadCount > 0 && (

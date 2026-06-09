@@ -229,14 +229,14 @@ Return ONLY a JSON array, no explanation:
 async def create_student(request: Request):
     try:
         body = await request.json()
-        email = body.get('email')
         password = body.get('password')
         name = body.get('name')
         roll_number = body.get('roll_number')
         institute_id = body.get('institute_id')
         class_id = body.get('class_id', None)
+        email = f"roll{roll_number}@edupulse.com"
 
-        if not all([email, password, name, roll_number, institute_id]):
+        if not all([password, name, roll_number, institute_id]):
             raise HTTPException(status_code=400, detail="Missing required fields")
 
         supabase_admin = create_client(

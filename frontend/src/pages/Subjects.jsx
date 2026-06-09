@@ -749,7 +749,7 @@ export default function Subjects() {
                       )}
 
                       {expandedSubjectId === subject.id && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col sm:flex-row gap-2">
+                        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2 items-center">
                           <input
                             type="text"
                             value={topicInput}
@@ -761,7 +761,7 @@ export default function Subjects() {
                               }
                             }}
                             placeholder="Topic name"
-                            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                            className="flex-1 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                           />
                           <button
                             type="button"

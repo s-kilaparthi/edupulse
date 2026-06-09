@@ -355,7 +355,7 @@ export default function Announcements() {
           <button
             type="button"
             onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            className="text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-600 rounded-lg px-3 py-1.5"
           >
             {showForm ? 'Cancel' : '+ Create Announcement'}
           </button>

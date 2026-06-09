@@ -146,7 +146,7 @@ export default function Students() {
         .single()
 
       const instituteId = userData?.institute_id
-      const autoEmail = `roll${roll}@${instituteId}.edupulse.com`
+      const autoEmail = `roll${roll}@edupulse.com`
       const autoPassword = roll
 
       const response = await fetch(
@@ -494,7 +494,7 @@ export default function Students() {
                         {student.classes?.name ?? 'No class assigned'}
                       </p>
                       <p className="text-sm text-gray-500 mt-1">
-                        {student.email} · Roll {student.roll_number}
+                        roll{student.roll_number}@edupulse.com · Roll {student.roll_number}
                       </p>
                     </div>
                     {isAdmin && (

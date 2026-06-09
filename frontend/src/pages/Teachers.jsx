@@ -25,6 +25,7 @@ export default function Teachers() {
   const [teacherEmail, setTeacherEmail] = useState('')
   const [teacherPassword, setTeacherPassword] = useState('')
   const [loading, setLoading] = useState(true)
+  const [deletingTeacherId, setDeletingTeacherId] = useState(null)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -190,6 +191,34 @@ export default function Teachers() {
     await fetchAssignments(expandedTeacherId)
   }
 
+  async function handleDeleteTeacher(teacherId, teacherName) {
+    if (!window.confirm(
+      `Delete teacher "${teacherName}"? This will remove all their class assignments.`
+    )) return
+
+    setDeletingTeacherId(teacherId)
+    setError(null)
+
+    await supabase.from('class_teachers')
+      .delete().eq('teacher_id', teacherId)
+
+    const { error: deleteError } = await supabase.from('users')
+      .delete().eq('id', teacherId)
+
+    setDeletingTeacherId(null)
+
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+
+    if (expandedTeacherId === teacherId) {
+      setExpandedTeacherId(null)
+      setAssignments([])
+    }
+    await fetchTeachers()
+  }
+
   async function handleRemoveAssignment(assignmentId) {
     const { error: deleteError } = await supabase
       .from('class_teachers')
@@ -309,7 +338,17 @@ export default function Teachers() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="font-medium text-gray-900">{teacher.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-gray-900">{teacher.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteTeacher(teacher.id, teacher.name)}
+                        disabled={deletingTeacherId === teacher.id}
+                        className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
+                      >
+                        Delete
+                      </button>
+                    </div>
                     <p className="text-sm text-gray-500 mt-1">{teacher.email}</p>
                   </div>
                   <button

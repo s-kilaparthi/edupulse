@@ -903,31 +903,15 @@ export default function Exams() {
             {exams.map((exam) => (
               <li key={exam.id}>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                  <div className="flex flex-wrap items-start gap-2 justify-between">
-                    <div className="flex-1 min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => toggleExamProfile(exam)}
-                        className="font-medium text-gray-900 hover:text-blue-600 text-left flex-1 min-w-0 transition-colors"
-                      >
-                        {exam.name}
-                      </button>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {exam.exam_subjects?.map((es) => {
-                          const name = es.subjects?.name
-                          const range = es.question_from && es.question_to
-                            ? ` (Q${es.question_from}–Q${es.question_to})`
-                            : ''
-                          return name ? name + range : null
-                        }).filter(Boolean).join(', ') || 'No subjects'}{' '}
-                        · {formatDate(exam.exam_date)} · {exam.total_questions} questions
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {exam.scope === 'institute' ? 'Whole Institute' :
-                          exam.exam_classes?.map((ec) => ec.classes?.name).filter(Boolean).join(', ') || 'No class'}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 shrink-0 flex-wrap">
+                  <div className="flex flex-col gap-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleExamProfile(exam)}
+                      className="font-semibold text-gray-900 hover:text-blue-600 text-left text-sm"
+                    >
+                      {exam.name}
+                    </button>
+                    <div className="flex gap-3 flex-wrap">
                       <button
                         type="button"
                         onClick={() => activeExam?.id === exam.id ? closeQuestionsPanel() : openQuestionsPanel(exam)}
@@ -950,6 +934,21 @@ export default function Exams() {
                         Delete
                       </button>
                     </div>
+                    <p className="text-xs text-gray-500">
+                      {exam.exam_subjects?.map((es) => {
+                        const name = es.subjects?.name
+                        const range = es.question_from && es.question_to
+                          ? ` (Q${es.question_from}–Q${es.question_to})`
+                          : ''
+                        return name ? name + range : null
+                      }).filter(Boolean).join(', ') || 'No subjects'}{' '}
+                      · {formatDate(exam.exam_date)} · {exam.total_questions} questions
+                      {exam.scope === 'institute'
+                        ? ' · Whole Institute'
+                        : exam.exam_classes?.length
+                          ? ` · ${exam.exam_classes.map((ec) => ec.classes?.name).filter(Boolean).join(', ')}`
+                          : ' · No class'}
+                    </p>
                   </div>
                 </div>
 
