@@ -307,7 +307,7 @@ export default function Teachers() {
                 key={teacher.id}
                 className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
               >
-                <div className="flex items-start justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-medium text-gray-900">{teacher.name}</p>
                     <p className="text-sm text-gray-500 mt-1">{teacher.email}</p>
@@ -331,7 +331,7 @@ export default function Teachers() {
                           <p className="text-sm text-gray-500 mb-4">No class assignments yet.</p>
                         ) : (
                           <div className="overflow-x-auto mb-4">
-                            <table className="w-full text-sm">
+                            <table className="min-w-[400px] w-full text-sm">
                               <thead>
                                 <tr className="border-b border-gray-200 bg-gray-50">
                                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Class</th>
@@ -360,8 +360,8 @@ export default function Teachers() {
                           </div>
                         )}
 
-                        <div className="flex flex-col sm:flex-row gap-3 items-end">
-                          <div className="flex-1 w-full">
+                        <div className="flex flex-col md:flex-row gap-3 items-end">
+                          <div className="w-full md:flex-1">
                             <label className="block text-xs font-medium text-gray-600 mb-1">Class</label>
                             <select
                               value={selectedClassId}
@@ -374,7 +374,7 @@ export default function Teachers() {
                               ))}
                             </select>
                           </div>
-                          <div className="flex-1 w-full">
+                          <div className="w-full md:flex-1">
                             <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
                             <select
                               value={selectedSubjectId}

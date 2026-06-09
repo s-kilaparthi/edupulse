@@ -298,7 +298,7 @@ export default function Students() {
               <select
                 value={newStudentClassId}
                 onChange={(e) => setNewStudentClassId(e.target.value)}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
               >
                 <option value="">Assign to class (optional)</option>
                 {allClasses.map((c) => (
@@ -376,7 +376,7 @@ export default function Students() {
 
       <section>
         {isTeacher && teacherClasses.length > 0 && (
-          <div className="flex gap-2 mb-4 flex-wrap">
+          <div className="flex gap-2 flex-wrap mb-4">
             <button
               type="button"
               onClick={() => setSelectedFilterClass('')}
@@ -443,14 +443,14 @@ export default function Students() {
                         value={editName}
                         onChange={(e) => setEditName(e.target.value)}
                         placeholder="Name"
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                       />
                       <input
                         type="text"
                         value={editRoll}
                         onChange={(e) => setEditRoll(e.target.value)}
                         placeholder="Roll number"
-                        className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                       />
                     </div>
                     <div className="flex gap-2">
@@ -472,8 +472,8 @@ export default function Students() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex-1 min-w-0">
                       <button
                         type="button"
                         onClick={() =>

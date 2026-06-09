@@ -311,17 +311,17 @@ export default function Announcements() {
     const pinnedCard = item.is_pinned
     return (
       <div
-        className={`rounded-2xl border border-gray-200 p-5 shadow-sm ${
+        className={`rounded-2xl border border-gray-200 p-5 shadow-sm overflow-hidden break-words ${
           pinnedCard ? 'bg-yellow-50' : 'bg-white'
         }`}
       >
-        <div className="flex items-start justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1 min-w-0">
             {pinnedCard && (
               <span className="text-xs text-yellow-600 font-medium">📌 Pinned</span>
             )}
-            <h3 className="font-semibold text-gray-900">{item.title}</h3>
-            <p className="text-sm text-gray-500 mt-1">{item.body}</p>
+            <h3 className="font-semibold text-gray-900 break-words">{item.title}</h3>
+            <p className="text-sm text-gray-500 mt-1 break-words">{item.body}</p>
           </div>
           {(userRole === 'admin' ||
             (userRole === 'teacher' && item.created_by === session.user.id)) && (

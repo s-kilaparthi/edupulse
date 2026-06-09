@@ -344,7 +344,7 @@ export default function Classes() {
             value={className}
             onChange={(e) => setClassName(e.target.value)}
             placeholder="Class 11A or JEE Batch 2026"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
             required
           />
           <input
@@ -352,7 +352,7 @@ export default function Classes() {
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
             placeholder="2025-26"
-            className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
 
@@ -418,7 +418,7 @@ export default function Classes() {
                 key={cls.id}
                 className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-gray-900">{cls.name}</p>
@@ -459,11 +459,11 @@ export default function Classes() {
 
                 {isExpanded && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="flex gap-1 border-b border-gray-200 mb-4">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 mb-4">
                       <button
                         type="button"
                         onClick={() => setActiveTab('students')}
-                        className={`px-4 py-2 text-sm font-medium relative ${
+                        className={`shrink-0 px-4 py-2 text-sm font-medium relative ${
                           activeTab === 'students' ? 'text-gray-900' : 'text-gray-500'
                         }`}
                       >
@@ -475,7 +475,7 @@ export default function Classes() {
                       <button
                         type="button"
                         onClick={() => setActiveTab('teachers')}
-                        className={`px-4 py-2 text-sm font-medium relative ${
+                        className={`shrink-0 px-4 py-2 text-sm font-medium relative ${
                           activeTab === 'teachers' ? 'text-gray-900' : 'text-gray-500'
                         }`}
                       >
@@ -487,7 +487,7 @@ export default function Classes() {
                       <button
                         type="button"
                         onClick={() => setActiveTab('subjects')}
-                        className={`px-4 py-2 text-sm font-medium relative ${
+                        className={`shrink-0 px-4 py-2 text-sm font-medium relative ${
                           activeTab === 'subjects' ? 'text-gray-900' : 'text-gray-500'
                         }`}
                       >
