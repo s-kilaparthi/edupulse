@@ -61,19 +61,17 @@ function OverallScoreCard({ result }) {
 
 function SubjectTabs({ subjects, active, onChange }) {
   return (
-    <div className="-mx-1 overflow-x-auto">
-      <div className="flex min-w-max gap-1 border-b border-gray-200 px-1">
+    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 border-b border-gray-200">
         {subjects.map((s) => {
           const isActive = s.subject_id === active
           return (
             <button key={s.subject_id} type="button" onClick={() => onChange(s.subject_id)}
-              className={`relative whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>
+              className={`relative shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}>
               {s.name}
               {isActive && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-green-500" />}
             </button>
           )
         })}
-      </div>
     </div>
   )
 }
@@ -109,7 +107,7 @@ function TopicSummary({ subject }) {
   const strong = subject.topics.filter((t) => t.percentage >= 60)
   const weak = subject.topics.filter((t) => t.percentage < 60)
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-green-700">
           <ArrowUp className="h-4 w-4" />Strong Topics
@@ -726,9 +724,9 @@ export default function Results() {
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
             <h1 className="text-2xl font-bold text-gray-900">My Performance</h1>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex flex-wrap gap-2 items-center">
             <select value={examId} onChange={(e) => setExamId(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500">
+              className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500">
               {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}
             </select>
             {isTeacher && activeTab === 'student' && classes.length > 0 && !navState?.classId && (
@@ -740,7 +738,7 @@ export default function Results() {
                   setExpandedStudentId(null)
                   setStudentSearch('')
                 }}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
               >
                 <option value="">All classes</option>
                 {classes.map((c) => (
@@ -843,7 +841,7 @@ export default function Results() {
                             setExpandedStudentId((prev) => (prev === s.id ? null : s.id))
                             setSelectedStudentId(s.id)
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left ${
+                          className={`w-full min-h-[56px] flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left ${
                             expandedStudentId === s.id ? 'bg-blue-50' : ''
                           }`}
                         >
@@ -863,8 +861,8 @@ export default function Results() {
                             {s.attended ? index + 1 : '—'}
                           </span>
 
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 text-sm">{s.name}</p>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-gray-900 text-sm truncate">{s.name}</p>
                             <p className="text-xs text-gray-400">
                               Roll #{s.roll_number}
                               {!selectedClassId && s.classes?.name && ` · ${s.classes.name}`}

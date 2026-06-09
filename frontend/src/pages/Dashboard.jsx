@@ -36,7 +36,7 @@ function AnnouncementsSection({ announcements, navigate }) {
           className="w-full text-left"
         >
           <div
-            className={`rounded-xl border p-4 mb-3 shadow-sm ${
+            className={`rounded-xl border p-4 mb-3 shadow-sm overflow-hidden ${
               a.is_pinned ? 'bg-yellow-50 border-yellow-200' : 'bg-white border-gray-200'
             }`}
           >
@@ -222,10 +222,10 @@ export default function Dashboard() {
         <>
           <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
-            <h1 className="text-2xl font-bold text-gray-900 mt-1">Welcome back, {userName}!</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome back, {userName}!</h1>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <StatCard
               label="Last Exam Score"
               value={`${stats.lastExamScore ?? 0} / ${stats.lastExamTotal ?? 0} (${stats.lastExamPct ?? 0}%)`}
@@ -253,10 +253,10 @@ export default function Dashboard() {
         <>
           <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse</p>
-            <h1 className="text-2xl font-bold text-gray-900 mt-1">Welcome, {userName}!</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome, {userName}!</h1>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             <button
               type="button"
               onClick={() => navigate('/subjects')}
@@ -280,25 +280,25 @@ export default function Dashboard() {
             </button>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               type="button"
               onClick={() => navigate('/attendance')}
-              className="flex-1 bg-green-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-green-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
             >
               ✅ Mark Attendance
             </button>
             <button
               type="button"
               onClick={() => navigate('/scan')}
-              className="flex-1 bg-blue-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
             >
               📷 Start Scanning
             </button>
             <button
               type="button"
               onClick={() => navigate('/results', { state: { tab: 'heatmap' } })}
-              className="flex-1 bg-purple-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-purple-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
             >
               📊 View Heatmap
             </button>
@@ -310,10 +310,10 @@ export default function Dashboard() {
         <>
           <div className="rounded-2xl bg-blue-50 border border-blue-100 p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse Admin</p>
-            <h1 className="text-2xl font-bold text-gray-900">Welcome, {userName}!</h1>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Welcome, {userName}!</h1>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <StatCard label="Total Students" value={adminStats.students} />
             <StatCard label="Total Teachers" value={adminStats.teachers} />
             <StatCard label="Total Exams" value={adminStats.exams} />
