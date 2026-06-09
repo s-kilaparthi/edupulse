@@ -31,34 +31,61 @@ export default function Login() {
         return
       }
 
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
         email: studentData.email,
         password: password,
       })
 
-      setLoading(false)
-
       if (signInError) {
+        setLoading(false)
         setError('Invalid roll number or password.')
         return
       }
 
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_active, role')
+        .eq('id', authData.user.id)
+        .single()
+
+      if (userData?.is_active === false) {
+        await supabase.auth.signOut()
+        setError('Your account has been disabled. Please contact your institute admin.')
+        setLoading(false)
+        return
+      }
+
+      setLoading(false)
       navigate('/dashboard', { replace: true })
       return
     }
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
-    setLoading(false)
-
     if (signInError) {
+      setLoading(false)
       setError(signInError.message)
-    } else {
-      navigate('/dashboard', { replace: true })
+      return
     }
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_active, role')
+      .eq('id', authData.user.id)
+      .single()
+
+    if (userData?.is_active === false) {
+      await supabase.auth.signOut()
+      setError('Your account has been disabled. Please contact your institute admin.')
+      setLoading(false)
+      return
+    }
+
+    setLoading(false)
+    navigate('/dashboard', { replace: true })
   }
 
   return (

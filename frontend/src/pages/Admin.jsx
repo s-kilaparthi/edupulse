@@ -2,6 +2,11 @@ import { Fragment, useEffect, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
+const ADMIN_TABS = [
+  { id: 'dashboard', label: 'Dashboard' },
+  { id: 'access', label: 'Access Control' },
+]
+
 function topicBadgeClass(pct) {
   if (pct >= 75) return 'bg-green-100 text-green-700'
   if (pct >= 50) return 'bg-yellow-100 text-yellow-700'
@@ -18,7 +23,14 @@ export default function Admin() {
   const { session } = useOutletContext()
   const navigate = useNavigate()
   const [role, setRole] = useState(null)
+  const [instituteId, setInstituteId] = useState(null)
   const [loadingRole, setLoadingRole] = useState(true)
+  const [activeTab, setActiveTab] = useState('dashboard')
+
+  const [accessSearch, setAccessSearch] = useState('')
+  const [accessResults, setAccessResults] = useState([])
+  const [searchingAccess, setSearchingAccess] = useState(false)
+  const [togglingId, setTogglingId] = useState(null)
 
   const [studentCount, setStudentCount] = useState(0)
   const [teacherCount, setTeacherCount] = useState(0)
@@ -48,11 +60,12 @@ export default function Admin() {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role')
+      .select('role, institute_id')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
         if (data?.role) setRole(data.role)
+        if (data?.institute_id) setInstituteId(data.institute_id)
       })
       .finally(() => setLoadingRole(false))
   }, [session])
@@ -305,6 +318,44 @@ export default function Admin() {
     setLoadingTopics(null)
   }
 
+  async function searchUsers(query) {
+    if (!query || query.trim().length < 2) {
+      setAccessResults([])
+      return
+    }
+    setSearchingAccess(true)
+
+    const { data } = await supabase
+      .from('users')
+      .select('id, name, role, roll_number, is_active, class_id, classes(name)')
+      .eq('institute_id', instituteId)
+      .in('role', ['teacher', 'student'])
+      .or(`name.ilike.%${query}%,roll_number.ilike.%${query}%`)
+      .order('role')
+      .limit(20)
+
+    setAccessResults(data ?? [])
+    setSearchingAccess(false)
+  }
+
+  async function handleToggleAccess(userId, currentStatus) {
+    setTogglingId(userId)
+
+    const { error } = await supabase
+      .from('users')
+      .update({ is_active: !currentStatus })
+      .eq('id', userId)
+
+    if (!error) {
+      setAccessResults((prev) => prev.map((u) =>
+        u.id === userId
+          ? { ...u, is_active: !currentStatus }
+          : u
+      ))
+    }
+    setTogglingId(null)
+  }
+
   if (loadingRole) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -328,6 +379,99 @@ export default function Admin() {
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
       </div>
 
+      <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200">
+        {ADMIN_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setActiveTab(tab.id)}
+            className={`shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium relative ${
+              activeTab === tab.id ? 'text-gray-900' : 'text-gray-500'
+            }`}
+          >
+            {tab.label}
+            {activeTab === tab.id && (
+              <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />
+            )}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === 'access' && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">
+            Access Control
+          </h2>
+
+          <input
+            type="text"
+            value={accessSearch}
+            onChange={(e) => {
+              setAccessSearch(e.target.value)
+              searchUsers(e.target.value)
+            }}
+            placeholder="Search teacher or student by name or roll number..."
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-4"
+          />
+
+          {searchingAccess && (
+            <p className="text-xs text-gray-400">Searching...</p>
+          )}
+
+          {accessResults.length > 0 && (
+            <div className="space-y-2">
+              {accessResults.map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center justify-between p-3 border border-gray-100 rounded-xl"
+                >
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900">
+                      {user.name}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {user.role === 'student'
+                        ? `Student · ${user.classes?.name ?? 'No class'} · Roll #${user.roll_number}`
+                        : 'Teacher'}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleToggleAccess(
+                      user.id,
+                      user.is_active ?? true
+                    )}
+                    disabled={togglingId === user.id}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors disabled:opacity-50 shrink-0 ml-3 ${
+                      (user.is_active ?? true)
+                        ? 'bg-green-500'
+                        : 'bg-gray-300'
+                    }`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      (user.is_active ?? true)
+                        ? 'translate-x-6'
+                        : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {accessSearch.length >= 2
+            && accessResults.length === 0
+            && !searchingAccess && (
+            <p className="text-sm text-gray-400 text-center py-4">
+              No users found.
+            </p>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'dashboard' && (
+      <>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Students', value: studentCount },
@@ -610,6 +754,8 @@ export default function Admin() {
           </div>
         )}
       </section>
+      </>
+      )}
     </div>
   )
 }
