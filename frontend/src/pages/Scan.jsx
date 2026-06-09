@@ -567,7 +567,7 @@ export default function Scan() {
           </select>
           {selectedExam && (
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4 text-sm">
-              <p className="font-medium text-gray-900">{selectedExam.name}</p>
+              <p className="font-medium text-gray-900 truncate max-w-[200px] md:max-w-none">{selectedExam.name}</p>
               <p className="text-gray-600">
                 Total questions: {selectedExam.total_questions ?? DEFAULT_QUESTION_COUNT}
               </p>
@@ -599,20 +599,23 @@ export default function Scan() {
             )}
           </div>
           <p className="text-sm text-gray-500">
-            Exam: <span className="font-medium text-gray-800">{selectedExam?.name}</span>
+            Exam:{' '}
+            <span className="font-medium text-gray-800 truncate max-w-[200px] md:max-w-none inline-block align-bottom">
+              {selectedExam?.name}
+            </span>
           </p>
 
-          <div className="flex rounded-lg border border-gray-200 p-1 mb-4">
+          <div className="grid grid-cols-3 gap-1 bg-gray-100 rounded-xl p-1 mb-4">
             {[
-              { id: 'class', label: '📋 By Class' },
-              { id: 'rollscan', label: '🔢 By Roll No' },
-              { id: 'absent', label: '❌ Mark Absent' },
+              { id: 'class', label: '📋 Class' },
+              { id: 'rollscan', label: '🔢 Roll No' },
+              { id: 'absent', label: '❌ Absent' },
             ].map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setScanTab(tab.id)}
-                className={`flex-1 py-2 text-xs font-medium rounded-md transition-colors ${
+                className={`py-2 text-xs font-medium rounded-lg transition-colors text-center ${
                   scanTab === tab.id
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-500 hover:text-gray-700'
@@ -685,7 +688,7 @@ export default function Scan() {
                 type="button"
                 disabled={!studentId || scanning}
                 onClick={() => fileRef.current?.click()}
-                className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-40"
               >
                 📷 Take Photo / Upload OMR
               </button>
@@ -699,6 +702,22 @@ export default function Scan() {
                 <p className="text-center text-green-700 font-semibold">Saved! ✓</p>
               )}
               {scanError && <p className="text-sm text-red-600">{scanError}</p>}
+
+              {sessionRecords.length > 0 && (
+                <div className="border-t pt-3">
+                  <p className="text-xs font-medium text-gray-600 mb-2">
+                    Scanned: {sessionRecords.length}
+                  </p>
+                  <ul className="space-y-1">
+                    {sessionRecords.map((r, i) => (
+                      <li key={i} className="flex items-center justify-between py-2 text-sm gap-2">
+                        <span className="flex-1 min-w-0 truncate text-gray-700">{r.studentName}</span>
+                        <span className="shrink-0 text-xs font-medium text-green-700">{r.score}%</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {sessionRecords.length > 0 && selectedClassId && !showReview && (
                 <button
@@ -747,7 +766,7 @@ export default function Scan() {
                 type="button"
                 disabled={!rollScanStudentId || scanning}
                 onClick={() => fileRefRoll.current?.click()}
-                className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+                className="w-full bg-blue-600 text-white py-3 rounded-xl font-medium disabled:opacity-40"
               >
                 📷 Upload OMR Photo
               </button>
@@ -762,11 +781,11 @@ export default function Scan() {
                   </p>
                   <ul className="space-y-1">
                     {rollScanRecords.map((r, i) => (
-                      <li key={i} className="flex justify-between text-sm">
-                        <span className="text-gray-700">
+                      <li key={i} className="flex items-center justify-between py-2 text-sm gap-2">
+                        <span className="flex-1 min-w-0 truncate text-gray-700">
                           {r.name} (#{r.roll})
                         </span>
-                        <span className="text-green-700 font-medium">{r.score}%</span>
+                        <span className="shrink-0 text-xs font-medium text-green-700">{r.score}%</span>
                       </li>
                     ))}
                   </ul>
@@ -893,14 +912,14 @@ export default function Scan() {
               return (
                 <div
                   key={student.id}
-                  className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
+                  className="flex items-center justify-between min-h-[52px] py-2 border-b border-gray-50 last:border-0 gap-2"
                 >
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{student.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">{student.name}</p>
                     <p className="text-xs text-gray-400">Roll #{student.roll_number}</p>
                   </div>
                   {scanned ? (
-                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-medium">
+                    <span className="shrink-0 text-xs bg-green-100 text-green-700 px-3 py-2 rounded-lg font-medium min-w-[44px] text-center">
                       ✅ {scanned.score}%
                     </span>
                   ) : (
@@ -914,7 +933,7 @@ export default function Scan() {
                           return next
                         })
                       }}
-                      className={`text-xs px-2 py-1 rounded-full font-medium border transition-colors ${
+                      className={`shrink-0 px-3 py-2 rounded-lg border text-xs font-medium min-w-[44px] transition-colors ${
                         isAbsent
                           ? 'bg-red-100 text-red-700 border-red-300'
                           : 'bg-gray-100 text-gray-500 border-gray-300'
