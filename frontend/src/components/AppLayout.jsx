@@ -62,6 +62,8 @@ export default function AppLayout({ session }) {
       .single()
       .then(async ({ data }) => {
         if (data?.is_active === false) {
+          localStorage.setItem('blocked_message',
+            'Your account has been temporarily blocked. Please contact your institute admin or help desk for assistance.')
           await supabase.auth.signOut()
           return
         }
