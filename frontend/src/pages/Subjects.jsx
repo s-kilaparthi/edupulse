@@ -33,6 +33,11 @@ export default function Subjects() {
   const [manageClassIds, setManageClassIds] = useState([])
   const [savingClassAssignments, setSavingClassAssignments] = useState(false)
   const [subjectTeacherMap, setSubjectTeacherMap] = useState({})
+  const [subjectNotes, setSubjectNotes] = useState({})
+  const [addingNoteFor, setAddingNoteFor] = useState(null)
+  const [noteTitle, setNoteTitle] = useState('')
+  const [noteUrl, setNoteUrl] = useState('')
+  const [savingNote, setSavingNote] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -95,6 +100,30 @@ export default function Subjects() {
     loadClasses()
   }, [userRole, instituteId, session])
 
+  async function fetchSubjectNotes(subjectIds, classId) {
+    if (!subjectIds.length) {
+      setSubjectNotes({})
+      return
+    }
+
+    let query = supabase
+      .from('subject_notes')
+      .select('id, subject_id, title, url, created_at')
+      .in('subject_id', subjectIds)
+      .order('created_at', { ascending: false })
+
+    if (classId) query = query.eq('class_id', classId)
+
+    const { data } = await query
+
+    const map = {}
+    for (const note of data ?? []) {
+      if (!map[note.subject_id]) map[note.subject_id] = []
+      map[note.subject_id].push(note)
+    }
+    setSubjectNotes(map)
+  }
+
   async function fetchSubjects() {
     setError(null)
     const { data: { user } } = await supabase.auth.getUser()
@@ -106,21 +135,25 @@ export default function Subjects() {
 
       if (subjectIds.length === 0) {
         setSubjects([])
+        setSubjectNotes({})
         setLoading(false)
         return
       }
 
       const { data, error: fetchError } = await supabase
         .from('subjects')
-        .select('id, name, notes_url, topics(id, name, class_id)')
+        .select('id, name, topics(id, name, class_id)')
         .in('id', subjectIds)
         .order('name')
 
       if (fetchError) {
         setError(fetchError.message)
         setSubjects([])
+        setSubjectNotes({})
       } else {
-        setSubjects(data ?? [])
+        const rows = data ?? []
+        setSubjects(rows)
+        await fetchSubjectNotes(rows.map((s) => s.id), selectedClassId)
       }
       setLoading(false)
       return
@@ -130,6 +163,7 @@ export default function Subjects() {
       if (!studentClassId) {
         setSubjects([])
         setSubjectTeacherMap({})
+        setSubjectNotes({})
         setLoading(false)
         return
       }
@@ -144,13 +178,14 @@ export default function Subjects() {
       if (subjectIds.length === 0) {
         setSubjects([])
         setSubjectTeacherMap({})
+        setSubjectNotes({})
         setLoading(false)
         return
       }
 
       const { data, error: fetchError } = await supabase
         .from('subjects')
-        .select('id, name, notes_url, topics(id, name, class_id), subject_classes(class_id, classes(name))')
+        .select('id, name, topics(id, name, class_id), subject_classes(class_id, classes(name))')
         .in('id', subjectIds)
         .order('name')
 
@@ -158,8 +193,10 @@ export default function Subjects() {
         setError(fetchError.message)
         setSubjects([])
         setSubjectTeacherMap({})
+        setSubjectNotes({})
       } else {
-        setSubjects(data ?? [])
+        const rows = data ?? []
+        setSubjects(rows)
 
         const { data: ctData } = await supabase
           .from('class_teachers')
@@ -171,6 +208,7 @@ export default function Subjects() {
           teacherMap[ct.subject_id] = ct.users
         }
         setSubjectTeacherMap(teacherMap)
+        await fetchSubjectNotes(rows.map((s) => s.id), studentClassId)
       }
       setLoading(false)
       return
@@ -186,8 +224,11 @@ export default function Subjects() {
     if (fetchError) {
       setError(fetchError.message)
       setSubjects([])
+      setSubjectNotes({})
     } else {
-      setSubjects(data ?? [])
+      const rows = data ?? []
+      setSubjects(rows)
+      await fetchSubjectNotes(rows.map((s) => s.id), selectedClassId)
     }
     setLoading(false)
   }
@@ -208,7 +249,7 @@ export default function Subjects() {
     if (userRole === 'admin' && !instituteId) return
     setLoading(true)
     fetchSubjects()
-  }, [userRole, instituteId, studentClassId, teacherAssignments, classesLoaded])
+  }, [userRole, instituteId, studentClassId, teacherAssignments, classesLoaded, selectedClassId])
 
   function getClassTopics(subject) {
     const classId = isStudent ? studentClassId : selectedClassId
@@ -583,18 +624,24 @@ export default function Subjects() {
                       )}
 
                       <div className="mt-3 border-t border-gray-100 pt-3">
-                        <p className="text-xs font-medium text-gray-600 mb-1">
+                        <p className="text-xs font-medium text-gray-600 mb-2">
                           📎 Notes & Files
                         </p>
-                        {subject.notes_url ? (
-                          <a
-                            href={subject.notes_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                          >
-                            📄 View Notes / Files →
-                          </a>
+                        {(subjectNotes[subject.id] ?? []).length > 0 ? (
+                          <div className="space-y-2">
+                            {(subjectNotes[subject.id] ?? []).map((note) => (
+                              <a
+                                key={note.id}
+                                href={note.url.startsWith('http') ? note.url : `https://${note.url}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700"
+                              >
+                                <span>📄</span>
+                                <span className="truncate font-medium">{note.title}</span>
+                              </a>
+                            ))}
+                          </div>
                         ) : (
                           <p className="text-xs text-gray-400">
                             No files uploaded yet.
@@ -721,59 +768,122 @@ export default function Subjects() {
                         </ul>
                       )}
 
-                      {isTeacher && (
+                      {!isStudent && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
-                          <p className="text-xs font-medium text-gray-600 mb-2">
-                            📎 Notes & Files
-                          </p>
-                          <div className="flex gap-2">
-                            <input
-                              key={`notes-${subject.id}-${subject.notes_url ?? ''}`}
-                              type="url"
-                              id={`notes-${subject.id}`}
-                              placeholder="Paste link (Google Drive, PDF URL...)"
-                              className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs"
-                              defaultValue={subject.notes_url ?? ''}
-                            />
-                            <button
-                              type="button"
-                              onClick={async () => {
-                                const input = document.getElementById(`notes-${subject.id}`)
-                                const url = input?.value?.trim()
-                                if (!url) return
-                                await supabase.from('subjects')
-                                  .update({ notes_url: url })
-                                  .eq('id', subject.id)
-                                await fetchSubjects()
-                              }}
-                              className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shrink-0"
-                            >
-                              Save
-                            </button>
-                          </div>
-                          {subject.notes_url && (
-                            <div className="flex items-center justify-between mt-2">
-                              <a
-                                href={subject.notes_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-xs text-blue-600 hover:text-blue-700"
-                              >
-                                📎 Current link: {subject.notes_url.slice(0, 40)}...
-                              </a>
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-xs font-medium text-gray-600">
+                              📎 Notes & Files
+                            </p>
+                            {isTeacher && (
                               <button
                                 type="button"
-                                onClick={async () => {
-                                  await supabase.from('subjects')
-                                    .update({ notes_url: null })
-                                    .eq('id', subject.id)
-                                  await fetchSubjects()
+                                onClick={() => {
+                                  setAddingNoteFor(subject.id)
+                                  setNoteTitle('')
+                                  setNoteUrl('')
                                 }}
-                                className="text-xs text-red-400 hover:text-red-600 ml-2"
+                                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                               >
-                                Remove
+                                + Upload Link
                               </button>
+                            )}
+                          </div>
+
+                          {addingNoteFor === subject.id && (
+                            <div className="flex flex-col gap-2 mb-3 p-3 bg-blue-50 rounded-lg">
+                              <input
+                                type="text"
+                                value={noteTitle}
+                                onChange={(e) => setNoteTitle(e.target.value)}
+                                placeholder="Title (e.g. Chapter 4 Notes, Practice Questions)"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs"
+                              />
+                              <input
+                                type="url"
+                                value={noteUrl}
+                                onChange={(e) => setNoteUrl(e.target.value)}
+                                placeholder="Paste link (Google Drive, YouTube, PDF URL...)"
+                                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs"
+                              />
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (!noteTitle.trim() || !noteUrl.trim()) return
+                                    setSavingNote(true)
+                                    const { data: userData } = await supabase.auth.getUser()
+                                    await supabase.from('subject_notes').insert({
+                                      subject_id: subject.id,
+                                      class_id: selectedClassId || null,
+                                      title: noteTitle.trim(),
+                                      url: noteUrl.trim(),
+                                      uploaded_by: userData.user.id,
+                                    })
+                                    setAddingNoteFor(null)
+                                    setNoteTitle('')
+                                    setNoteUrl('')
+                                    await fetchSubjectNotes(
+                                      subjects.map((s) => s.id),
+                                      selectedClassId
+                                    )
+                                    setSavingNote(false)
+                                  }}
+                                  disabled={savingNote || !noteTitle.trim() || !noteUrl.trim()}
+                                  className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
+                                >
+                                  {savingNote ? 'Saving...' : 'Upload'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setAddingNoteFor(null)}
+                                  className="text-gray-500 text-xs px-3 py-1.5"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
                             </div>
+                          )}
+
+                          {(subjectNotes[subject.id] ?? []).length > 0 ? (
+                            <div className="space-y-2">
+                              {(subjectNotes[subject.id] ?? []).map((note) => (
+                                <div
+                                  key={note.id}
+                                  className="flex items-center justify-between p-2 bg-gray-50 rounded-lg"
+                                >
+                                  <a
+                                    href={note.url.startsWith('http') ? note.url : `https://${note.url}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 text-xs text-blue-600 hover:text-blue-700 flex-1 min-w-0"
+                                  >
+                                    <span>📄</span>
+                                    <span className="truncate font-medium">{note.title}</span>
+                                  </a>
+                                  {isTeacher && (
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        await supabase.from('subject_notes')
+                                          .delete()
+                                          .eq('id', note.id)
+                                        await fetchSubjectNotes(
+                                          subjects.map((s) => s.id),
+                                          selectedClassId
+                                        )
+                                      }}
+                                      className="text-xs text-red-400 hover:text-red-600 shrink-0 ml-2"
+                                    >
+                                      Remove
+                                    </button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="text-xs text-gray-400">
+                              No files uploaded yet.
+                            </p>
                           )}
                         </div>
                       )}
