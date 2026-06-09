@@ -1,9 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 
+const BLOCKED_MESSAGE = 'Your account has been temporarily blocked. Please contact your institute admin or help desk for assistance.'
+
 export default function Login() {
   const navigate = useNavigate()
+  const blockedMessageRef = useRef(null)
   const [loginMode, setLoginMode] = useState('email')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -11,6 +14,13 @@ export default function Login() {
   const [instituteCode, setInstituteCode] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (blockedMessageRef.current && !error) {
+      setError(blockedMessageRef.current)
+      blockedMessageRef.current = null
+    }
+  }, [error])
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -49,8 +59,9 @@ export default function Login() {
         .single()
 
       if (userData?.is_active === false) {
+        blockedMessageRef.current = BLOCKED_MESSAGE
         await supabase.auth.signOut()
-        setError('Your account has been temporarily blocked. Please contact your institute admin or help desk for assistance.')
+        setError(BLOCKED_MESSAGE)
         setLoading(false)
         return
       }
@@ -78,8 +89,9 @@ export default function Login() {
       .single()
 
     if (userData?.is_active === false) {
+      blockedMessageRef.current = BLOCKED_MESSAGE
       await supabase.auth.signOut()
-      setError('Your account has been temporarily blocked. Please contact your institute admin or help desk for assistance.')
+      setError(BLOCKED_MESSAGE)
       setLoading(false)
       return
     }
