@@ -328,7 +328,7 @@ export default function Admin() {
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
           { label: 'Total Students', value: studentCount },
           { label: 'Total Teachers', value: teacherCount },
@@ -345,7 +345,8 @@ export default function Admin() {
       <section>
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Subject Performance</h2>
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="min-w-[400px] w-full text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Subject</th>
@@ -423,14 +424,15 @@ export default function Admin() {
               })}
             </tbody>
           </table>
+          </div>
         </div>
       </section>
 
       <section className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm">
         <h2 className="text-sm font-semibold text-gray-900 mb-4">Edit Student Marks</h2>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          <div>
+        <div className="flex flex-col md:flex-row gap-3 mb-6">
+          <div className="w-full md:w-auto md:flex-1">
             <label htmlFor="edit-exam" className="block text-sm text-gray-600 mb-1">
               Step 1 — Select Exam
             </label>
@@ -438,7 +440,7 @@ export default function Admin() {
               id="edit-exam"
               value={editExamId}
               onChange={(e) => setEditExamId(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full md:w-auto rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
             >
               <option value="">Choose an exam</option>
               {recentExams.map((exam) => (
@@ -447,24 +449,24 @@ export default function Admin() {
             </select>
           </div>
 
-          <div>
+          <div className="w-full md:w-auto md:flex-1">
             <label className="block text-sm text-gray-600 mb-1">
               Step 2 — Search by Roll Number
             </label>
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <input
                 type="text"
                 value={searchRoll}
                 onChange={(e) => setSearchRoll(e.target.value)}
                 placeholder="Enter roll number..."
                 disabled={!editExamId}
-                className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-50"
+                className="w-full md:w-auto flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm disabled:opacity-50"
               />
               <button
                 type="button"
                 onClick={handleSearchStudent}
                 disabled={!editExamId || searching}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
               >
                 {searching ? 'Searching…' : 'Search'}
               </button>
@@ -498,7 +500,7 @@ export default function Admin() {
         {!editingMarks && omrResults.length > 0 && (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="min-w-[500px] w-full text-sm border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Q#</th>
@@ -555,7 +557,7 @@ export default function Admin() {
               type="button"
               onClick={handleSaveMarks}
               disabled={saving}
-              className="mt-4 bg-green-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-40"
+              className="mt-4 w-full md:w-auto bg-green-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-green-700 disabled:opacity-40"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -568,40 +570,43 @@ export default function Admin() {
         {recentExams.length === 0 ? (
           <p className="text-sm text-gray-500">No exams found.</p>
         ) : (
-          <div className="flex flex-col gap-3">
-            {recentExams.map((exam) => {
-              const stats = examStats[exam.id] ?? { scanned: 0, avg: 0 }
-              const date = exam.exam_date
-                ? new Date(exam.exam_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-                : '—'
-              return (
-                <div
-                  key={exam.id}
-                  className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-                >
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/results', { state: { examId: exam.id, tab: 'heatmap' } })}
-                      className="font-semibold text-gray-900 hover:text-blue-600 transition-colors text-left"
-                    >
-                      {exam.name}
-                    </button>
-                    <p className="text-xs text-gray-500 mt-0.5">{date} · {exam.total_questions ?? '—'} questions</p>
-                  </div>
-                  <div className="flex items-center gap-6 text-sm">
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500">Scanned</p>
-                      <p className="font-bold text-gray-900">{stats.scanned}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500">Avg Score</p>
-                      <p className="font-bold text-gray-900">{stats.avg}%</p>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-white shadow-sm">
+            <table className="min-w-[500px] w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Exam</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500">Date</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">Questions</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">Scanned</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500">Avg Score</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentExams.map((exam) => {
+                  const stats = examStats[exam.id] ?? { scanned: 0, avg: 0 }
+                  const date = exam.exam_date
+                    ? new Date(exam.exam_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                    : '—'
+                  return (
+                    <tr key={exam.id} className="border-b border-gray-100 last:border-0">
+                      <td className="px-4 py-3">
+                        <button
+                          type="button"
+                          onClick={() => navigate('/results', { state: { examId: exam.id, tab: 'heatmap' } })}
+                          className="font-semibold text-gray-900 hover:text-blue-600 transition-colors text-left"
+                        >
+                          {exam.name}
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{date}</td>
+                      <td className="px-4 py-3 text-center text-gray-700">{exam.total_questions ?? '—'}</td>
+                      <td className="px-4 py-3 text-center font-bold text-gray-900">{stats.scanned}</td>
+                      <td className="px-4 py-3 text-center font-bold text-gray-900">{stats.avg}%</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </section>
