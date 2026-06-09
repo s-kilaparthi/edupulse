@@ -269,7 +269,7 @@ export default function Schedule() {
       ) : (
         <>
           {!isStudent && classes.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-6">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 mb-6">
               {classes.map((c) => (
                 <button
                   key={c.id}
@@ -278,7 +278,7 @@ export default function Schedule() {
                     setSelectedClassId(c.id)
                     closeEdit()
                   }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedClassId === c.id
                       ? 'bg-blue-600 text-white'
                       : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'
@@ -299,11 +299,13 @@ export default function Schedule() {
           )}
 
           {selectedClassId && (
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-x-auto">
-              <table className="w-full min-w-[640px] border-collapse">
+            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+              <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+                <div className="min-w-[640px]">
+              <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200">
-                    <th className="text-left text-xs font-semibold text-gray-500 px-3 py-3 w-28">
+                    <th className="sticky left-0 bg-white z-10 border-r border-gray-200 min-w-[80px] text-left text-xs font-semibold text-gray-500 px-3 py-3">
                       Period
                     </th>
                     {DAY_LABELS.map((label) => (
@@ -324,7 +326,9 @@ export default function Schedule() {
                         period.number === LUNCH_PERIOD ? 'bg-gray-50' : ''
                       }`}
                     >
-                      <td className="text-xs font-medium text-gray-600 px-3 py-3 align-top whitespace-nowrap">
+                      <td className={`sticky left-0 z-10 border-r border-gray-200 min-w-[80px] text-xs font-medium text-gray-600 px-3 py-3 align-top whitespace-nowrap ${
+                        period.number === LUNCH_PERIOD ? 'bg-gray-50' : 'bg-white'
+                      }`}>
                         {period.label}
                       </td>
                       {period.number === LUNCH_PERIOD ? (
@@ -339,13 +343,13 @@ export default function Schedule() {
                           const slot = getSlot(day, period.number)
 
                           return (
-                            <td key={day} className="px-2 py-2 align-top">
+                            <td key={day} className="min-w-[90px] p-1.5 align-top">
                               {slot ? (
-                                <div className="p-2 bg-blue-50 rounded-lg text-xs min-h-12">
-                                  <p className="font-medium text-blue-800">
+                                <div className="p-1.5 bg-blue-50 rounded-lg text-xs min-h-12">
+                                  <p className="text-xs font-medium text-blue-800">
                                     {slot.subjects?.name}
                                   </p>
-                                  <p className="text-blue-600">{slot.users?.name}</p>
+                                  <p className="text-xs text-blue-600">{slot.users?.name}</p>
                                   {isAdmin && (
                                     <button
                                       type="button"
@@ -377,6 +381,8 @@ export default function Schedule() {
                   ))}
                 </tbody>
               </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -387,7 +393,7 @@ export default function Schedule() {
                 if (e.target === e.currentTarget) closeEdit()
               }}
             >
-              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 md:mx-0">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900">
                     {DAY_LABELS[DAYS.indexOf(editingSlot.day)]} ·{' '}
