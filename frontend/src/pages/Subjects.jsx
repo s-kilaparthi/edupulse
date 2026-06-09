@@ -582,16 +582,25 @@ export default function Subjects() {
                         </ul>
                       )}
 
-                      {subject.notes_url && (
-                        <a
-                          href={subject.notes_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 mt-2"
-                        >
-                          📎 View Notes / Files
-                        </a>
-                      )}
+                      <div className="mt-3 border-t border-gray-100 pt-3">
+                        <p className="text-xs font-medium text-gray-600 mb-1">
+                          📎 Notes & Files
+                        </p>
+                        {subject.notes_url ? (
+                          <a
+                            href={subject.notes_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            📄 View Notes / Files →
+                          </a>
+                        ) : (
+                          <p className="text-xs text-gray-400">
+                            No files uploaded yet.
+                          </p>
+                        )}
+                      </div>
                     </>
                   ) : (
                     <>
@@ -715,27 +724,57 @@ export default function Subjects() {
                       {isTeacher && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
                           <p className="text-xs font-medium text-gray-600 mb-2">
-                            Notes & Files
+                            📎 Notes & Files
                           </p>
-                          <p className="text-xs text-gray-400">
-                            File upload coming soon.
-                            Share Google Drive or other links below:
-                          </p>
-                          <div className="flex gap-2 mt-2">
+                          <div className="flex gap-2">
                             <input
+                              key={`notes-${subject.id}-${subject.notes_url ?? ''}`}
                               type="url"
+                              id={`notes-${subject.id}`}
                               placeholder="Paste link (Google Drive, PDF URL...)"
                               className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-xs"
-                              onBlur={async (e) => {
-                                if (e.target.value) {
-                                  await supabase.from('subjects')
-                                    .update({ notes_url: e.target.value })
-                                    .eq('id', subject.id)
-                                }
-                              }}
                               defaultValue={subject.notes_url ?? ''}
                             />
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const input = document.getElementById(`notes-${subject.id}`)
+                                const url = input?.value?.trim()
+                                if (!url) return
+                                await supabase.from('subjects')
+                                  .update({ notes_url: url })
+                                  .eq('id', subject.id)
+                                await fetchSubjects()
+                              }}
+                              className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium shrink-0"
+                            >
+                              Save
+                            </button>
                           </div>
+                          {subject.notes_url && (
+                            <div className="flex items-center justify-between mt-2">
+                              <a
+                                href={subject.notes_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:text-blue-700"
+                              >
+                                📎 Current link: {subject.notes_url.slice(0, 40)}...
+                              </a>
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  await supabase.from('subjects')
+                                    .update({ notes_url: null })
+                                    .eq('id', subject.id)
+                                  await fetchSubjects()
+                                }}
+                                className="text-xs text-red-400 hover:text-red-600 ml-2"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
 
