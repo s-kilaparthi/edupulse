@@ -30,6 +30,7 @@ export default function Classes() {
   const [allSubjects, setAllSubjects] = useState([])
 
   const [selectedStudentIds, setSelectedStudentIds] = useState([])
+  const [selectedStudents, setSelectedStudents] = useState([])
   const [addTeacherId, setAddTeacherId] = useState('')
   const [addSubjectId, setAddSubjectId] = useState('')
   const [addClassSubjectId, setAddClassSubjectId] = useState('')
@@ -126,6 +127,7 @@ export default function Classes() {
     setClassStudents(studentsRes.data ?? [])
     setClassTeachers(teachersRes.data ?? [])
     setSelectedStudentIds([])
+    setSelectedStudents([])
     setStudentSearch('')
     setSearchResults([])
     setAddTeacherId('')
@@ -258,6 +260,7 @@ export default function Classes() {
       .in('id', selectedStudentIds)
 
     if (!error) {
+      setSelectedStudents([])
       setSelectedStudentIds([])
       setStudentSearch('')
       setSearchResults([])
@@ -655,11 +658,15 @@ export default function Classes() {
                                   <input
                                     type="checkbox"
                                     checked={selectedStudentIds.includes(s.id)}
-                                    onChange={() => setSelectedStudentIds((prev) =>
-                                      prev.includes(s.id)
-                                        ? prev.filter((id) => id !== s.id)
-                                        : [...prev, s.id]
-                                    )}
+                                    onChange={() => {
+                                      if (selectedStudentIds.includes(s.id)) {
+                                        setSelectedStudentIds((prev) => prev.filter((id) => id !== s.id))
+                                        setSelectedStudents((prev) => prev.filter((st) => st.id !== s.id))
+                                      } else {
+                                        setSelectedStudentIds((prev) => [...prev, s.id])
+                                        setSelectedStudents((prev) => [...prev, s])
+                                      }
+                                    }}
                                     className="rounded border-gray-300 text-blue-600"
                                   />
                                   <span className="font-medium flex-1">{s.name}</span>
@@ -677,6 +684,36 @@ export default function Classes() {
                             <p className="text-xs text-gray-400 mb-2">
                               No unassigned students found.
                             </p>
+                          )}
+
+                          {selectedStudents.length > 0 && (
+                            <div className="mt-2 mb-2">
+                              <p className="text-xs font-medium text-gray-600 mb-1">
+                                Selected ({selectedStudents.length}):
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {selectedStudents.map((s) => (
+                                  <span
+                                    key={s.id}
+                                    className="flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full"
+                                  >
+                                    {s.name} #{s.roll_number}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSelectedStudentIds((prev) =>
+                                          prev.filter((id) => id !== s.id))
+                                        setSelectedStudents((prev) =>
+                                          prev.filter((st) => st.id !== s.id))
+                                      }}
+                                      className="ml-1 text-blue-500 hover:text-blue-700 font-bold"
+                                    >
+                                      ×
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
                           )}
 
                           {selectedStudentIds.length > 0 && (
