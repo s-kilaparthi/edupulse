@@ -233,6 +233,10 @@ export default function Teachers() {
       await supabase.from('attendance')
         .delete().eq('teacher_id', teacherId)
 
+      await supabase.from('announcements')
+        .update({ created_by: null })
+        .eq('created_by', teacherId)
+
       await supabase.from('subjects')
         .update({ teacher_id: null })
         .eq('teacher_id', teacherId)

@@ -407,8 +407,23 @@ export default function Subjects() {
     if (!window.confirm(`Delete "${subjectName}"?`)) return
 
     try {
-      await supabase.from('topic_scores')
-        .delete().eq('subject_id', subjectId)
+      const { data: topicData } = await supabase
+        .from('topics')
+        .select('id')
+        .eq('subject_id', subjectId)
+
+      const topicIds = topicData?.map((t) => t.id) ?? []
+
+      if (topicIds.length > 0) {
+        await supabase.from('topic_scores')
+          .delete().in('topic_id', topicIds)
+
+        await supabase.from('omr_results')
+          .delete().in('topic_id', topicIds)
+
+        await supabase.from('questions')
+          .delete().in('topic_id', topicIds)
+      }
 
       await supabase.from('topics')
         .delete().eq('subject_id', subjectId)
