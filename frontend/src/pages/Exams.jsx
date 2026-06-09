@@ -725,11 +725,11 @@ export default function Exams() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Exam Scope
               </label>
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-2">
                 {['class', 'multiple', 'institute'].map((s) => (
                   <label
                     key={s}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                    className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                       scope === s
                         ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
                         : 'border-gray-300 text-gray-700'
@@ -804,8 +804,8 @@ export default function Exams() {
                 {filteredSubjects.map((s) => {
                   const selected = selectedSubjects.find((ss) => ss.subject_id === s.id)
                   return (
-                    <div key={s.id} className="flex flex-wrap items-center gap-3">
-                      <label className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                    <div key={s.id} className="flex flex-wrap items-center gap-2">
+                      <label className={`flex flex-1 min-w-[100px] text-sm items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                         selected
                           ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
                           : 'border-gray-300 text-gray-700 hover:border-gray-400'
@@ -814,12 +814,12 @@ export default function Exams() {
                           type="checkbox"
                           checked={!!selected}
                           onChange={() => toggleSubject(s)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-600 shrink-0"
                         />
                         {s.name}
                       </label>
                       {selected && (
-                        <div className="flex items-center gap-2">
+                        <>
                           <span className="text-xs text-gray-500">Q from</span>
                           <input
                             type="number"
@@ -838,7 +838,7 @@ export default function Exams() {
                             placeholder="30"
                             className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
                           />
-                        </div>
+                        </>
                       )}
                     </div>
                   )
@@ -903,12 +903,12 @@ export default function Exams() {
             {exams.map((exam) => (
               <li key={exam.id}>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
+                  <div className="flex flex-wrap items-start gap-2 justify-between">
+                    <div className="flex-1 min-w-0">
                       <button
                         type="button"
                         onClick={() => toggleExamProfile(exam)}
-                        className="font-medium text-gray-900 hover:text-blue-600 text-left transition-colors"
+                        className="font-medium text-gray-900 hover:text-blue-600 text-left flex-1 min-w-0 transition-colors"
                       >
                         {exam.name}
                       </button>
@@ -927,7 +927,7 @@ export default function Exams() {
                           exam.exam_classes?.map((ec) => ec.classes?.name).filter(Boolean).join(', ') || 'No class'}
                       </p>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex gap-2 shrink-0 flex-wrap">
                       <button
                         type="button"
                         onClick={() => activeExam?.id === exam.id ? closeQuestionsPanel() : openQuestionsPanel(exam)}
@@ -1007,7 +1007,7 @@ export default function Exams() {
                               ) : (
                                 <p className="text-sm text-gray-400 italic mb-2">No question text</p>
                               )}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                                 {['a', 'b', 'c', 'd'].map((opt) => {
                                   const letter = opt.toUpperCase()
                                   const value = q[`option_${opt}`]
@@ -1240,9 +1240,9 @@ export default function Exams() {
                       </button>
                     </div>
 
-                    <div className="flex gap-2 mb-5">
+                    <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 mb-4">
                       {['Questions', 'Topics', 'Settings', 'Review'].map((s, i) => (
-                        <div key={s} className="flex items-center gap-1">
+                        <div key={s} className="flex items-center gap-1 shrink-0">
                           <span
                             className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
                               aiStep > i + 1
@@ -1340,7 +1340,7 @@ export default function Exams() {
 
                               <div className="space-y-2">
                                 {subject.topics.map((topic) => (
-                                  <div key={topic.id} className="flex items-center gap-3">
+                                  <div key={topic.id} className="flex items-center gap-2 flex-wrap">
                                     <input
                                       type="checkbox"
                                       checked={!!aiSelectedTopics[topic.id]}
@@ -1356,9 +1356,9 @@ export default function Exams() {
                                           }))
                                         }
                                       }}
-                                      className="rounded border-gray-300 text-purple-600"
+                                      className="rounded border-gray-300 text-purple-600 shrink-0"
                                     />
-                                    <span className="text-sm text-gray-900 flex-1">{topic.name}</span>
+                                    <span className="flex-1 min-w-[120px] text-sm text-gray-900">{topic.name}</span>
                                     {aiSelectedTopics[topic.id] && (
                                       <input
                                         type="number"
@@ -1372,7 +1372,7 @@ export default function Exams() {
                                           }))
                                         }
                                         placeholder="Q count"
-                                        className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm text-center"
+                                        className="w-20 shrink-0 rounded-lg border border-gray-300 px-2 py-1 text-sm text-center"
                                       />
                                     )}
                                   </div>
