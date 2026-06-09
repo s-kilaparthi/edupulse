@@ -84,6 +84,8 @@ export default function Announcements() {
   const [teacherClassIds, setTeacherClassIds] = useState([])
   const [teacherSubjectIds, setTeacherSubjectIds] = useState([])
   const [teacherAssignmentsReady, setTeacherAssignmentsReady] = useState(false)
+  const [teacherClasses, setTeacherClasses] = useState([])
+  const [teacherTargetClassIds, setTeacherTargetClassIds] = useState([])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -159,6 +161,25 @@ export default function Announcements() {
         setTeacherClassIds(teacherAssignments?.map((a) => a.class_id) ?? [])
         setTeacherSubjectIds(teacherAssignments?.map((a) => a.subject_id) ?? [])
         setTeacherAssignmentsReady(true)
+      })
+  }, [userRole, session])
+
+  useEffect(() => {
+    if (userRole !== 'teacher' || !session?.user?.id) return
+    supabase
+      .from('class_teachers')
+      .select('class_id, classes(id, name)')
+      .eq('teacher_id', session.user.id)
+      .then(({ data }) => {
+        const seen = new Set()
+        const unique = []
+        for (const row of data ?? []) {
+          if (row.classes && !seen.has(row.class_id)) {
+            seen.add(row.class_id)
+            unique.push(row.classes)
+          }
+        }
+        setTeacherClasses(unique)
       })
   }, [userRole, session])
 
@@ -252,8 +273,12 @@ export default function Announcements() {
       is_pinned: isPinned,
       created_by: session.user.id,
       institute_id: instituteId,
-      target_type: isAdmin ? targetType : 'everyone',
-      target_ids: isAdmin ? targetIds : [],
+      target_type: isAdmin
+        ? targetType
+        : teacherTargetClassIds.length === 0
+          ? 'all_students'
+          : 'class_students',
+      target_ids: isAdmin ? targetIds : teacherTargetClassIds,
     }
 
     const { error: insertError } = await supabase.from('announcements').insert(insertPayload)
@@ -265,6 +290,7 @@ export default function Announcements() {
       setTargetType('everyone')
       setTargetIds([])
       setTargetSubjectIds([])
+      setTeacherTargetClassIds([])
       setShowForm(false)
       await loadAnnouncements()
     } else {
@@ -371,6 +397,55 @@ export default function Announcements() {
               placeholder="Write your announcement…"
             />
           </div>
+
+          {isTeacher && teacherClasses.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Send To
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <label
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
+                    teacherTargetClassIds.length === 0
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 text-gray-600'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    checked={teacherTargetClassIds.length === 0}
+                    onChange={() => setTeacherTargetClassIds([])}
+                    className="hidden"
+                  />
+                  🌐 All My Classes
+                </label>
+                {teacherClasses.map((c) => (
+                  <label
+                    key={c.id}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
+                      teacherTargetClassIds.includes(c.id)
+                        ? 'border-blue-600 bg-blue-50 text-blue-700'
+                        : 'border-gray-300 text-gray-600'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={teacherTargetClassIds.includes(c.id)}
+                      onChange={() =>
+                        setTeacherTargetClassIds((prev) =>
+                          prev.includes(c.id)
+                            ? prev.filter((id) => id !== c.id)
+                            : [...prev, c.id]
+                        )
+                      }
+                      className="hidden"
+                    />
+                    {c.name}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           {isAdmin && (
             <div>

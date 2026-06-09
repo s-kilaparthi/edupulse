@@ -125,7 +125,7 @@ export default function Exams() {
     const { data, error: fetchError } = await supabase
       .from('exams')
       .select('id, name, exam_date, total_questions, scope, exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
-      .order('exam_date', { ascending: false })
+      .order('created_at', { ascending: false })
     if (fetchError) throw new Error(fetchError.message)
     setExams(data ?? [])
   }

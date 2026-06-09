@@ -529,7 +529,7 @@ export default function Results() {
     supabase
       .from('exams')
       .select('id, name, exam_subjects(subject_id, subjects(name))')
-      .order('created_at', { ascending: true })
+      .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data && data.length > 0) {
           setExams(data)

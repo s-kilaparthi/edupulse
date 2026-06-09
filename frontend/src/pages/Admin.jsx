@@ -115,7 +115,7 @@ export default function Admin() {
       const { data: exams } = await supabase
         .from('exams')
         .select('id, name, exam_date, total_questions')
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
         .limit(10)
 
       setRecentExams(exams ?? [])
