@@ -361,7 +361,9 @@ export default function Announcements() {
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => {
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
                   setEditingAnnouncementId(item.id)
                   setEditTitle(item.title)
                   setEditBody(item.body ?? '')
@@ -373,7 +375,11 @@ export default function Announcements() {
               </button>
               <button
                 type="button"
-                onClick={() => handleDelete(item.id)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleDelete(item.id)
+                }}
                 className="text-xs text-red-500 hover:text-red-700"
               >
                 Delete
@@ -410,7 +416,11 @@ export default function Announcements() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => handleSaveEdit(item.id)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleSaveEdit(item.id)
+                }}
                 disabled={savingEdit}
                 className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
               >
@@ -418,7 +428,11 @@ export default function Announcements() {
               </button>
               <button
                 type="button"
-                onClick={() => setEditingAnnouncementId(null)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setEditingAnnouncementId(null)
+                }}
                 className="text-gray-500 text-sm px-3 py-1.5"
               >
                 Cancel

@@ -26,6 +26,10 @@ export default function Teachers() {
   const [teacherPassword, setTeacherPassword] = useState('')
   const [loading, setLoading] = useState(true)
   const [deletingTeacherId, setDeletingTeacherId] = useState(null)
+  const [editingTeacherId, setEditingTeacherId] = useState(null)
+  const [editTeacherName, setEditTeacherName] = useState('')
+  const [editTeacherEmail, setEditTeacherEmail] = useState('')
+  const [savingTeacher, setSavingTeacher] = useState(false)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -191,6 +195,28 @@ export default function Teachers() {
     await fetchAssignments(expandedTeacherId)
   }
 
+  async function handleSaveTeacherEdit(teacherId) {
+    setSavingTeacher(true)
+    setError(null)
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({
+        name: editTeacherName,
+        email: editTeacherEmail,
+      })
+      .eq('id', teacherId)
+
+    if (updateError) {
+      setError(updateError.message)
+    } else {
+      setEditingTeacherId(null)
+      await fetchTeachers()
+    }
+
+    setSavingTeacher(false)
+  }
+
   async function handleDeleteTeacher(teacherId, teacherName) {
     if (!window.confirm(
       `Delete teacher "${teacherName}"? This will remove all their class assignments.`
@@ -216,6 +242,7 @@ export default function Teachers() {
       setExpandedTeacherId(null)
       setAssignments([])
     }
+    if (editingTeacherId === teacherId) setEditingTeacherId(null)
     await fetchTeachers()
   }
 
@@ -337,30 +364,83 @@ export default function Teachers() {
                 className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium text-gray-900">{teacher.name}</p>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteTeacher(teacher.id, teacher.name)}
-                        disabled={deletingTeacherId === teacher.id}
-                        className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                    <p className="text-sm text-gray-500 mt-1">{teacher.email}</p>
+                  <div className="flex-1 min-w-0">
+                    {editingTeacherId !== teacher.id && (
+                      <>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-gray-900">{teacher.name}</p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingTeacherId(teacher.id)
+                              setEditTeacherName(teacher.name)
+                              setEditTeacherEmail(teacher.email)
+                            }}
+                            className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTeacher(teacher.id, teacher.name)}
+                            disabled={deletingTeacherId === teacher.id}
+                            className="text-xs text-red-500 hover:text-red-700 font-medium disabled:opacity-40"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                        <p className="text-sm text-gray-500 mt-1">{teacher.email}</p>
+                      </>
+                    )}
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => toggleTeacher(teacher.id)}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
-                  >
-                    {expandedTeacherId === teacher.id ? 'Hide Assignments' : 'Manage Assignments'}
-                  </button>
+                  {editingTeacherId !== teacher.id && (
+                    <button
+                      type="button"
+                      onClick={() => toggleTeacher(teacher.id)}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
+                    >
+                      {expandedTeacherId === teacher.id ? 'Hide Assignments' : 'Manage Assignments'}
+                    </button>
+                  )}
                 </div>
 
-                {expandedTeacherId === teacher.id && (
+                {editingTeacherId === teacher.id && (
+                  <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+                    <input
+                      type="text"
+                      value={editTeacherName}
+                      onChange={(e) => setEditTeacherName(e.target.value)}
+                      placeholder="Name"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="email"
+                      value={editTeacherEmail}
+                      onChange={(e) => setEditTeacherEmail(e.target.value)}
+                      placeholder="Email"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSaveTeacherEdit(teacher.id)}
+                        disabled={savingTeacher}
+                        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
+                      >
+                        {savingTeacher ? 'Saving...' : 'Save'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditingTeacherId(null)}
+                        className="text-gray-500 text-sm px-3 py-1.5"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {expandedTeacherId === teacher.id && editingTeacherId !== teacher.id && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
                     {loadingAssignments ? (
                       <p className="text-sm text-gray-500">Loading assignments…</p>
