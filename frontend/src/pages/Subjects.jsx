@@ -13,7 +13,7 @@ export default function Subjects() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
-  const [expandedSubjectId, setExpandedSubjectId] = useState(null)
+  const [showAddTopic, setShowAddTopic] = useState(null)
   const [topicInput, setTopicInput] = useState('')
   const [topicSaving, setTopicSaving] = useState(false)
   const [extractingId, setExtractingId] = useState(null)
@@ -266,8 +266,8 @@ export default function Subjects() {
     setSaving(false)
   }
 
-  function toggleTopics(subjectId) {
-    setExpandedSubjectId((prev) => (prev === subjectId ? null : subjectId))
+  function openAddTopic(subjectId) {
+    setShowAddTopic(subjectId)
     setManageClassesSubjectId(null)
     setTopicInput('')
   }
@@ -275,7 +275,7 @@ export default function Subjects() {
   function toggleManageClasses(subject) {
     setManageClassesSubjectId((prev) => (prev === subject.id ? null : subject.id))
     setManageClassIds(subject.subject_classes?.map((sc) => sc.class_id) ?? [])
-    setExpandedSubjectId(null)
+    setShowAddTopic(null)
   }
 
   async function handleSaveClassAssignments(subjectId) {
@@ -364,7 +364,7 @@ export default function Subjects() {
       setSuggestedTopics([])
       setSelectedTopics([])
       setExtractedSubjectId(null)
-      setExpandedSubjectId(subjectId)
+      setShowAddTopic(null)
       setLoading(true)
       await fetchSubjects()
     }
@@ -398,9 +398,9 @@ export default function Subjects() {
     }
 
     setTopicInput('')
+    setShowAddTopic(null)
     setLoading(true)
     await fetchSubjects()
-    setExpandedSubjectId(subjectId)
   }
 
   async function handleDeleteSubject(subjectId, subjectName) {
@@ -421,7 +421,7 @@ export default function Subjects() {
       .delete().eq('id', subjectId)
 
     if (manageClassesSubjectId === subjectId) setManageClassesSubjectId(null)
-    if (expandedSubjectId === subjectId) setExpandedSubjectId(null)
+    if (showAddTopic === subjectId) setShowAddTopic(null)
     await fetchSubjects()
   }
 
@@ -506,7 +506,7 @@ export default function Subjects() {
               type="button"
               onClick={() => {
                 setSelectedClassId(c.id)
-                setExpandedSubjectId(null)
+                setShowAddTopic(null)
                 setManageClassesSubjectId(null)
               }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -580,39 +580,37 @@ export default function Subjects() {
                     </>
                   ) : (
                     <>
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-gray-900">{subject.name}</span>
-                            {isAdmin && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteSubject(subject.id, subject.name)}
-                                className="text-xs text-red-500 hover:text-red-700 font-medium"
-                              >
-                                Delete
-                              </button>
-                            )}
-                          </div>
-                          {subject.subject_classes?.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {subject.subject_classes.map((sc) => (
-                                <span
-                                  key={sc.class_id}
-                                  className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-200"
-                                >
-                                  {sc.classes?.name}
-                                </span>
-                              ))}
-                            </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-gray-900">{subject.name}</span>
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSubject(subject.id, subject.name)}
+                              className="text-xs text-red-500 hover:text-red-700 font-medium"
+                            >
+                              Delete
+                            </button>
                           )}
                         </div>
-                        <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                        {subject.subject_classes?.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {subject.subject_classes.map((sc) => (
+                              <span
+                                key={sc.class_id}
+                                className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full border border-blue-200"
+                              >
+                                {sc.classes?.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <div className="flex flex-wrap gap-2 mt-2">
                           {isAdmin && (
                             <button
                               type="button"
                               onClick={() => toggleManageClasses(subject)}
-                              className="text-sm font-medium text-gray-600 hover:text-gray-800 shrink-0"
+                              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
                             >
                               {manageClassesSubjectId === subject.id
                                 ? 'Hide Classes'
@@ -626,18 +624,16 @@ export default function Subjects() {
                               pdfRef.current.click()
                             }}
                             disabled={extractingId === subject.id}
-                            className="text-sm font-medium text-purple-600 hover:text-purple-700 shrink-0 disabled:opacity-40"
+                            className="text-xs text-purple-600 hover:text-purple-800 font-medium disabled:opacity-40"
                           >
                             {extractingId === subject.id ? 'Extracting…' : '📄 Extract from PDF'}
                           </button>
                           <button
                             type="button"
-                            onClick={() => toggleTopics(subject.id)}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
+                            onClick={() => openAddTopic(subject.id)}
+                            className="text-xs text-green-600 hover:text-green-800 font-medium"
                           >
-                            {expandedSubjectId === subject.id
-                              ? 'Hide Topics'
-                              : `Add Topic to ${subject.name}`}
+                            + Add Topic
                           </button>
                         </div>
                       </div>
@@ -748,8 +744,8 @@ export default function Subjects() {
                         </div>
                       )}
 
-                      {expandedSubjectId === subject.id && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 flex flex-wrap gap-2 items-center">
+                      {showAddTopic === subject.id && (
+                        <div className="mt-3 flex flex-col gap-2">
                           <input
                             type="text"
                             value={topicInput}
@@ -761,16 +757,28 @@ export default function Subjects() {
                               }
                             }}
                             placeholder="Topic name"
-                            className="flex-1 min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                           />
-                          <button
-                            type="button"
-                            onClick={() => handleAddTopic(subject.id)}
-                            disabled={topicSaving}
-                            className="text-sm font-medium bg-gray-900 text-white px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
-                          >
-                            {topicSaving ? 'Adding…' : 'Add'}
-                          </button>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleAddTopic(subject.id)}
+                              disabled={topicSaving}
+                              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                            >
+                              {topicSaving ? 'Saving…' : 'Save Topic'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowAddTopic(null)
+                                setTopicInput('')
+                              }}
+                              className="text-gray-500 text-sm px-3 py-2"
+                            >
+                              Cancel
+                            </button>
+                          </div>
                         </div>
                       )}
                     </>

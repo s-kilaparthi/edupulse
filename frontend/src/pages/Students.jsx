@@ -22,6 +22,7 @@ export default function Students() {
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editRoll, setEditRoll] = useState('')
+  const [editEmail, setEditEmail] = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
   const [selectedFilterClass, setSelectedFilterClass] = useState('')
@@ -195,17 +196,20 @@ export default function Students() {
     setEditingId(student.id)
     setEditName(student.name ?? '')
     setEditRoll(String(student.roll_number ?? ''))
+    setEditEmail(student.email ?? '')
   }
 
   function handleCancelEdit() {
     setEditingId(null)
     setEditName('')
     setEditRoll('')
+    setEditEmail('')
   }
 
   async function handleSaveEdit(studentId) {
     const name = editName.trim()
     const roll = editRoll.trim()
+    const email = editEmail.trim()
     if (!name || !roll) {
       setError('Name and roll number are required.')
       return
@@ -216,7 +220,7 @@ export default function Students() {
 
     const { error: updateError } = await supabase
       .from('users')
-      .update({ name, roll_number: roll })
+      .update({ name, roll_number: roll, email })
       .eq('id', studentId)
 
     setEditSaving(false)
@@ -436,36 +440,41 @@ export default function Students() {
                 className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
               >
                 {editingId === student.id ? (
-                  <div className="flex flex-col gap-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        placeholder="Name"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                      />
-                      <input
-                        type="text"
-                        value={editRoll}
-                        onChange={(e) => setEditRoll(e.target.value)}
-                        placeholder="Roll number"
-                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
-                      />
-                    </div>
+                  <div className="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Name"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={editRoll}
+                      onChange={(e) => setEditRoll(e.target.value)}
+                      placeholder="Roll number"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="email"
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="Email"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => handleSaveEdit(student.id)}
                         disabled={editSaving}
-                        className="text-sm font-medium bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+                        className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-40"
                       >
                         {editSaving ? 'Saving…' : 'Save'}
                       </button>
                       <button
                         type="button"
                         onClick={handleCancelEdit}
-                        className="text-sm font-medium text-gray-500 px-4 py-2 rounded-lg hover:text-gray-700"
+                        className="text-gray-500 text-xs px-3 py-1.5"
                       >
                         Cancel
                       </button>

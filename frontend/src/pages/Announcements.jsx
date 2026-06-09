@@ -77,6 +77,11 @@ export default function Announcements() {
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [error, setError] = useState(null)
+  const [editingAnnouncementId, setEditingAnnouncementId] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editBody, setEditBody] = useState('')
+  const [editPinned, setEditPinned] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const [targetType, setTargetType] = useState('everyone')
   const [targetIds, setTargetIds] = useState([])
@@ -300,9 +305,34 @@ export default function Announcements() {
   }
 
   async function handleDelete(id) {
+    if (editingAnnouncementId === id) setEditingAnnouncementId(null)
     await supabase.from('announcements').delete().eq('id', id)
     await loadAnnouncements()
   }
+
+  async function handleSaveEdit(announcementId) {
+    setSavingEdit(true)
+    const { error: updateError } = await supabase
+      .from('announcements')
+      .update({
+        title: editTitle,
+        body: editBody,
+        is_pinned: editPinned,
+      })
+      .eq('id', announcementId)
+
+    if (!updateError) {
+      setEditingAnnouncementId(null)
+      await loadAnnouncements()
+    } else {
+      setError(updateError.message)
+    }
+    setSavingEdit(false)
+  }
+
+  const canEdit = (announcement) =>
+    userRole === 'admin' ||
+    (userRole === 'teacher' && announcement.created_by === session.user.id)
 
   const pinned = announcements.filter((a) => a.is_pinned)
   const regular = announcements.filter((a) => !a.is_pinned)
@@ -317,23 +347,86 @@ export default function Announcements() {
       >
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            {pinnedCard && (
-              <span className="text-xs text-yellow-600 font-medium">📌 Pinned</span>
+            {editingAnnouncementId !== item.id && (
+              <>
+                {pinnedCard && (
+                  <span className="text-xs text-yellow-600 font-medium">📌 Pinned</span>
+                )}
+                <h3 className="font-semibold text-gray-900 break-words">{item.title}</h3>
+                <p className="text-sm text-gray-500 mt-1 break-words">{item.body}</p>
+              </>
             )}
-            <h3 className="font-semibold text-gray-900 break-words">{item.title}</h3>
-            <p className="text-sm text-gray-500 mt-1 break-words">{item.body}</p>
           </div>
-          {(userRole === 'admin' ||
-            (userRole === 'teacher' && item.created_by === session.user.id)) && (
-            <button
-              type="button"
-              onClick={() => handleDelete(item.id)}
-              className="text-xs text-red-500 hover:text-red-700 shrink-0"
-            >
-              Delete
-            </button>
+          {canEdit(item) && editingAnnouncementId !== item.id && (
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingAnnouncementId(item.id)
+                  setEditTitle(item.title)
+                  setEditBody(item.body ?? '')
+                  setEditPinned(item.is_pinned ?? false)
+                }}
+                className="text-xs text-blue-500 hover:text-blue-700"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDelete(item.id)}
+                className="text-xs text-red-500 hover:text-red-700"
+              >
+                Delete
+              </button>
+            </div>
           )}
         </div>
+
+        {editingAnnouncementId === item.id && (
+          <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Title"
+            />
+            <textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
+              rows={3}
+              placeholder="Body"
+            />
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={editPinned}
+                onChange={(e) => setEditPinned(e.target.checked)}
+                className="rounded border-gray-300"
+              />
+              📌 Pin this announcement
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleSaveEdit(item.id)}
+                disabled={savingEdit}
+                className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
+              >
+                {savingEdit ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingAnnouncementId(null)}
+                className="text-gray-500 text-sm px-3 py-1.5"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
           <span>By {item.users?.name}</span>
           <span>· {getTargetLabel(item)}</span>
@@ -355,7 +448,7 @@ export default function Announcements() {
           <button
             type="button"
             onClick={() => setShowForm(!showForm)}
-            className="text-sm font-medium text-blue-600 hover:text-blue-700 border border-blue-600 rounded-lg px-3 py-1.5"
+            className="text-xs font-medium text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg px-2.5 py-1"
           >
             {showForm ? 'Cancel' : '+ Create Announcement'}
           </button>
