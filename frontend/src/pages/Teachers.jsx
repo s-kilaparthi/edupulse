@@ -220,11 +220,12 @@ export default function Teachers() {
   async function handleDeleteTeacher(teacherId, teacherName) {
     if (!window.confirm(`Delete teacher "${teacherName}"?`)) return
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', teacherId)
-      if (error) throw new Error(error.message)
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/delete-user/${teacherId}`,
+        { method: 'DELETE' }
+      )
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Failed')
       await fetchTeachers()
     } catch (err) {
       alert('Error deleting teacher: ' + err.message)

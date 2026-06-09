@@ -183,11 +183,12 @@ export default function Students() {
   async function handleDeleteStudent(studentId) {
     if (!window.confirm('Delete this student?')) return
     try {
-      const { error } = await supabase
-        .from('users')
-        .delete()
-        .eq('id', studentId)
-      if (error) throw new Error(error.message)
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/delete-user/${studentId}`,
+        { method: 'DELETE' }
+      )
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Failed')
       await fetchStudents()
     } catch (err) {
       alert('Error deleting student: ' + err.message)

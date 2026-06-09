@@ -315,6 +315,24 @@ async def create_teacher(request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.delete("/delete-user/{user_id}")
+async def delete_user(user_id: str):
+    try:
+        supabase_admin = create_client(
+            os.environ.get('SUPABASE_URL'),
+            os.environ.get('SUPABASE_SERVICE_KEY')
+        )
+
+        supabase_admin.auth.admin.delete_user(user_id)
+
+        return {"success": True}
+
+    except Exception as e:
+        import traceback
+        print("Delete user error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/gemini-models")
 async def list_gemini_models():
     import httpx
