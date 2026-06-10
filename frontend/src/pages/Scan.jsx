@@ -205,14 +205,14 @@ export default function Scan() {
       query = query.eq('institute_id', instituteId)
     }
 
-    query.single().then(({ data }) => {
-      if (data) {
-        setRollScanStudentId(data.id)
-        setRollScanStudentName(data.name)
-      } else {
+    query.maybeSingle().then(({ data }) => {
+      if (!data) {
         setRollScanStudentId('')
         setRollScanStudentName('Student not found')
+        return
       }
+      setRollScanStudentId(data.id)
+      setRollScanStudentName(data.name)
     })
   }, [rollScanRoll, instituteId])
 
@@ -232,14 +232,14 @@ export default function Scan() {
       query = query.eq('institute_id', instituteId)
     }
 
-    query.single().then(({ data }) => {
-      if (data) {
-        setAbsentStudentId(data.id)
-        setAbsentStudentName(data.name)
-      } else {
+    query.maybeSingle().then(({ data }) => {
+      if (!data) {
         setAbsentStudentId('')
         setAbsentStudentName('Student not found')
+        return
       }
+      setAbsentStudentId(data.id)
+      setAbsentStudentName(data.name)
     })
   }, [absentRoll, instituteId])
 
@@ -358,12 +358,17 @@ export default function Scan() {
   }
 
   const handleFileForRoll = async (e) => {
+    console.log('File handler called, rollScanStudentId:', rollScanStudentId, 'absentList:', absentList)
     const file = e.target.files?.[0]
     if (!file) return
 
-    const alreadyAbsent = absentList.some((s) => s.id === rollScanStudentId)
+    const alreadyAbsent = absentList.some(
+      (s) => s.id === rollScanStudentId
+    )
+    console.log('Already absent check:', alreadyAbsent, rollScanStudentId)
+
     if (alreadyAbsent) {
-      console.log('Absent warning triggered for roll scan:', rollScanStudentId)
+      console.log('Setting absent warning')
       setAbsentWarning({
         studentId: rollScanStudentId,
         studentName: rollScanStudentName,
