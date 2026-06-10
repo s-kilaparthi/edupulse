@@ -201,25 +201,31 @@ export default function Announcements() {
   const canSeeAnnouncement = useCallback((a) => {
     if (userRole !== 'teacher') return true
 
-    if (a.created_by === session.user.id) return true
-
     const ids = a.target_ids ?? []
+
+    if (a.created_by === session?.user?.id) return true
+
     switch (a.target_type) {
       case 'everyone':
+        return true
       case 'all_teachers':
         return true
-      case 'class_teachers':
-        return teacherClassIds.some((id) => ids.includes(id))
-      case 'specific_teacher':
-        return ids.includes(session.user.id)
       case 'all_students':
+        return false
       case 'class_students':
+        return false
       case 'specific_student':
         return false
+      case 'class_teachers':
+        return ids.some((id) => teacherClassIds.includes(id))
+      case 'subject_teachers':
+        return ids.some((id) => teacherSubjectIds.includes(id))
+      case 'specific_teacher':
+        return ids.includes(session?.user?.id)
       default:
-        return true
+        return false
     }
-  }, [userRole, session, teacherClassIds])
+  }, [userRole, session, teacherClassIds, teacherSubjectIds])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -330,10 +336,13 @@ export default function Announcements() {
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
-      if (userRole === 'teacher' && teacherAssignmentsReady) {
+      if (userRole === 'teacher') {
+        if (!teacherAssignmentsReady) {
+          setAnnouncements([])
+          setLoading(false)
+          return
+        }
         setAnnouncements((data ?? []).filter(canSeeAnnouncement))
-      } else if (userRole === 'teacher') {
-        setAnnouncements([])
       } else {
         setAnnouncements(data ?? [])
       }
@@ -363,19 +372,8 @@ export default function Announcements() {
   ])
 
   useEffect(() => {
-    if (!session?.user?.id || !instituteId) return
-    if (userRole === 'teacher' && !teacherAssignmentsReady) return
     loadAnnouncements()
-  }, [
-    session,
-    userRole,
-    studentClassId,
-    instituteId,
-    teacherClassIds,
-    teacherSubjectIds,
-    teacherAssignmentsReady,
-    loadAnnouncements,
-  ])
+  }, [loadAnnouncements, teacherAssignmentsReady])
 
   async function handlePost(e) {
     e.preventDefault()
@@ -411,15 +409,21 @@ export default function Announcements() {
     let finalTargetIds = targetIds
 
     if (userRole === 'teacher') {
-      if (teacherAnnouncementTarget === 'specific_student') {
-        finalTargetType = 'specific_student'
-        finalTargetIds = teacherSpecificStudent ? [teacherSpecificStudent.id] : []
+      if (teacherAnnouncementTarget === 'everyone') {
+        finalTargetType = 'class_students'
+        finalTargetIds = teacherClasses.map((c) => c.id)
+      } else if (teacherAnnouncementTarget === 'students') {
+        finalTargetType = 'class_students'
+        finalTargetIds =
+          teacherTargetClassIds.length === 0
+            ? teacherClasses.map((c) => c.id)
+            : teacherTargetClassIds
       } else if (teacherAnnouncementTarget === 'class_students') {
         finalTargetType = 'class_students'
         finalTargetIds = teacherTargetClassIds
-      } else {
-        finalTargetType = 'all_students'
-        finalTargetIds = []
+      } else if (teacherAnnouncementTarget === 'specific_student') {
+        finalTargetType = 'specific_student'
+        finalTargetIds = teacherSpecificStudent ? [teacherSpecificStudent.id] : []
       }
     }
 
