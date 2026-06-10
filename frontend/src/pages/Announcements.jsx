@@ -279,9 +279,32 @@ export default function Announcements() {
     if (error) {
       console.error('Announcements error:', error)
       setAnnouncements([])
-    } else {
-      setAnnouncements(data ?? [])
+      setLoading(false)
+      return
     }
+
+    const rows = data ?? []
+
+    const creatorIds = [...new Set(rows.map((a) => a.created_by).filter(Boolean))]
+
+    const creatorMap = {}
+    if (creatorIds.length > 0) {
+      const { data: creators } = await supabase
+        .from('users')
+        .select('id, name, role')
+        .in('id', creatorIds)
+
+      for (const c of creators ?? []) {
+        creatorMap[c.id] = c
+      }
+    }
+
+    const enriched = rows.map((a) => ({
+      ...a,
+      users: creatorMap[a.created_by] ?? null,
+    }))
+
+    setAnnouncements(enriched)
     setLoading(false)
   }, [session])
 
