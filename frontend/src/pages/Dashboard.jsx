@@ -94,23 +94,8 @@ export default function Dashboard() {
     async function loadDashboard() {
       setLoading(true)
 
-      if (instituteId) {
-        const { data: announcementData } = await supabase
-          .from('announcements')
-          .select('id, title, body, is_pinned, created_at, created_by, subjects(name)')
-          .eq('institute_id', instituteId)
-          .order('is_pinned', { ascending: false })
-          .order('created_at', { ascending: false })
-          .limit(userRole === 'teacher' ? 10 : 3)
-
-        if (announcementData) {
-          let items = announcementData
-          if (userRole === 'teacher') {
-            items = items.filter((a) => a.created_by !== session.user.id)
-          }
-          setRecentAnnouncements(items.slice(0, 3))
-        }
-      }
+      const { data: announcementData } = await supabase.rpc('get_my_announcements')
+      setRecentAnnouncements((announcementData ?? []).slice(0, 3))
 
       if (userRole === 'student') {
         const { data: scoreRows } = await supabase

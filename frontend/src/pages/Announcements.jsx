@@ -2,9 +2,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
-const SELECT_FIELDS =
-  'id, title, body, is_pinned, created_at, target_type, target_ids, created_by, users(name, role)'
-
 function getTargetLabel(announcement) {
   switch (announcement.target_type) {
     case 'everyone':
@@ -187,9 +184,6 @@ export default function Announcements() {
   const [targetType, setTargetType] = useState('everyone')
   const [targetIds, setTargetIds] = useState([])
   const [targetSubjectIds, setTargetSubjectIds] = useState([])
-  const [teacherClassIds, setTeacherClassIds] = useState([])
-  const [teacherSubjectIds, setTeacherSubjectIds] = useState([])
-  const [teacherAssignmentsReady, setTeacherAssignmentsReady] = useState(false)
   const [teacherClasses, setTeacherClasses] = useState([])
   const [teacherTargetClassIds, setTeacherTargetClassIds] = useState([])
   const [teacherAnnouncementTarget, setTeacherAnnouncementTarget] = useState('students')
@@ -258,25 +252,6 @@ export default function Announcements() {
   }, [userRole, session, instituteId])
 
   useEffect(() => {
-    if (userRole !== 'teacher' || !session?.user?.id) {
-      setTeacherClassIds([])
-      setTeacherSubjectIds([])
-      setTeacherAssignmentsReady(false)
-      return
-    }
-
-    supabase
-      .from('class_teachers')
-      .select('class_id, subject_id')
-      .eq('teacher_id', session.user.id)
-      .then(({ data: teacherAssignments }) => {
-        setTeacherClassIds(teacherAssignments?.map((a) => a.class_id) ?? [])
-        setTeacherSubjectIds(teacherAssignments?.map((a) => a.subject_id) ?? [])
-        setTeacherAssignmentsReady(true)
-      })
-  }, [userRole, session])
-
-  useEffect(() => {
     if (userRole !== 'teacher' || !session?.user?.id) return
     supabase
       .from('class_teachers')
@@ -296,35 +271,19 @@ export default function Announcements() {
   }, [userRole, session])
 
   const loadAnnouncements = useCallback(async () => {
-    if (!session?.user?.id || !instituteId) return
-
+    if (!session?.user?.id) return
     setLoading(true)
 
-    if (userRole === 'admin' || userRole === 'teacher') {
-      const { data } = await supabase
-        .from('announcements')
-        .select(SELECT_FIELDS)
-        .eq('institute_id', instituteId)
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
+    const { data, error } = await supabase.rpc('get_my_announcements')
 
+    if (error) {
+      console.error('Announcements error:', error)
+      setAnnouncements([])
+    } else {
       setAnnouncements(data ?? [])
-    } else if (userRole === 'student') {
-      const { data } = await supabase
-        .from('announcements')
-        .select(SELECT_FIELDS)
-        .eq('institute_id', instituteId)
-        .order('is_pinned', { ascending: false })
-        .order('created_at', { ascending: false })
-
-      const filtered = (data ?? []).filter((a) =>
-        studentCanSeeAnnouncement(a, studentClassId, session.user.id)
-      )
-      setAnnouncements(filtered)
     }
-
     setLoading(false)
-  }, [session, userRole, studentClassId, instituteId])
+  }, [session])
 
   useEffect(() => {
     loadAnnouncements()
@@ -446,11 +405,7 @@ export default function Announcements() {
     (userRole === 'teacher' && announcement.created_by === session.user.id)
 
   const instituteAnnouncements = announcements.filter(
-    (a) =>
-      a.created_by !== session?.user?.id &&
-      ['everyone', 'all_teachers', 'class_teachers', 'specific_teacher'].includes(
-        a.target_type
-      )
+    (a) => a.created_by !== session?.user?.id
   )
 
   const myAnnouncements = announcements.filter(
@@ -462,7 +417,11 @@ export default function Announcements() {
       ? teacherAnnouncementTab === 'institute'
         ? instituteAnnouncements
         : myAnnouncements
-      : announcements
+      : userRole === 'student'
+        ? announcements.filter((a) =>
+            studentCanSeeAnnouncement(a, studentClassId, session?.user?.id)
+          )
+        : announcements
 
   const pinned = displayedAnnouncements.filter((a) => a.is_pinned)
   const regular = displayedAnnouncements.filter((a) => !a.is_pinned)
