@@ -77,7 +77,6 @@ export default function Scan() {
   const [absentStudentId, setAbsentStudentId] = useState('')
   const [absentStudentName, setAbsentStudentName] = useState('')
   const [absentList, setAbsentList] = useState([])
-  const [absentWarning, setAbsentWarning] = useState(null)
   const [activeScanMode, setActiveScanMode] = useState('class')
   const fileRef = useRef(null)
   const fileRefRoll = useRef(null)
@@ -339,44 +338,12 @@ export default function Scan() {
   }
 
   const handleFile = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    const alreadyAbsent = absentList.some((s) => s.id === studentId)
-    if (alreadyAbsent) {
-      console.log('Absent warning triggered for:', studentId, studentName)
-      setAbsentWarning({
-        studentId,
-        studentName,
-        pendingFile: file,
-      })
-      if (fileRef.current) fileRef.current.value = ''
-      return
-    }
-
-    await processFile(file, { mode: 'class' })
+    await processFile(e.target.files?.[0], { mode: 'class' })
   }
 
   const handleFileForRoll = async (e) => {
-    console.log('File handler called, rollScanStudentId:', rollScanStudentId, 'absentList:', absentList)
     const file = e.target.files?.[0]
     if (!file) return
-
-    const alreadyAbsent = absentList.some(
-      (s) => s.id === rollScanStudentId
-    )
-    console.log('Already absent check:', alreadyAbsent, rollScanStudentId)
-
-    if (alreadyAbsent) {
-      console.log('Setting absent warning')
-      setAbsentWarning({
-        studentId: rollScanStudentId,
-        studentName: rollScanStudentName,
-        pendingFile: file,
-      })
-      if (fileRefRoll.current) fileRefRoll.current.value = ''
-      return
-    }
 
     await processFile(file, { studentId: rollScanStudentId, mode: 'rollscan' })
     if (fileRefRoll.current) fileRefRoll.current.value = ''
@@ -1140,53 +1107,6 @@ export default function Scan() {
         </section>
       )}
 
-      {absentWarning && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <div className="flex items-center gap-3 mb-3">
-              <span className="text-2xl">⚠️</span>
-              <h3 className="font-semibold text-gray-900">
-                Student Marked Absent
-              </h3>
-            </div>
-            <p className="text-sm text-gray-600 mb-5">
-              <span className="font-medium">{absentWarning.studentName}</span>
-              {' '}was already marked absent for this exam.
-              Are you sure you want to scan their OMR sheet?
-              This will remove them from the absent list.
-            </p>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={async () => {
-                  const { studentId: sid, studentName: sname, pendingFile } = absentWarning
-                  setAbsentList((prev) => prev.filter((s) => s.id !== sid))
-                  const mode = scanTab === 'rollscan' ? 'rollscan' : 'class'
-                  if (mode === 'rollscan') {
-                    setRollScanStudentId(sid)
-                    setRollScanStudentName(sname)
-                  } else {
-                    setStudentId(sid)
-                    setStudentName(sname)
-                  }
-                  await processFile(pendingFile, { studentId: sid, mode })
-                  setAbsentWarning(null)
-                }}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium"
-              >
-                Continue Scan
-              </button>
-              <button
-                type="button"
-                onClick={() => setAbsentWarning(null)}
-                className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-medium"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
