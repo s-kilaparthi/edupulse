@@ -487,8 +487,11 @@ export default function Scan() {
       }))
 
       if (notifRows.length > 0) {
-        const { error } = await supabase.from('notifications').insert(notifRows)
-        if (error) console.log('Notification error:', error)
+        const { error: notifError } = await supabase
+          .from('notifications')
+          .insert(notifRows)
+        console.log('Notification insert result:', notifError)
+        if (notifError) console.error('Notification error:', notifError)
       }
 
       setSavedFlash(true)
@@ -518,11 +521,11 @@ export default function Scan() {
       }))
 
       if (notifRows.length > 0) {
-        const { error } = await supabase
+        const { error: notifError } = await supabase
           .from('notifications')
           .insert(notifRows)
-
-        if (error) console.log('Notification error:', error)
+        console.log('Roll scan notification result:', notifError)
+        if (notifError) console.error('Notification error:', notifError)
       }
 
       setSavedFlash(true)
