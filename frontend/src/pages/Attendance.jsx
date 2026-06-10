@@ -185,6 +185,7 @@ export default function Attendance() {
   const [studentAttendance, setStudentAttendance] = useState([])
   const [teacherReportClasses, setTeacherReportClasses] = useState([])
   const [teacherTab, setTeacherTab] = useState('mark')
+  const [selectedAttendanceClassId, setSelectedAttendanceClassId] = useState('')
 
   const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
@@ -724,6 +725,12 @@ export default function Attendance() {
   }
 
   function renderMarkAttendance(showClassSelector = false) {
+    const displayedSlots = isTeacher
+      ? (selectedAttendanceClassId
+          ? todaySlots.filter((s) => s.class_id === selectedAttendanceClassId)
+          : [])
+      : todaySlots
+
     return (
       <>
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
@@ -762,17 +769,23 @@ export default function Attendance() {
           </div>
         </div>
 
+        {isTeacher && !selectedAttendanceClassId && (
+          <p className="text-sm text-gray-400 text-center py-8">
+            Select a class to mark attendance.
+          </p>
+        )}
+
         {loading ? (
           <p className="text-sm text-gray-500">Loading slots…</p>
         ) : showClassSelector && !selectedClassId ? (
           <p className="text-sm text-gray-500">Select a class to view schedule slots.</p>
-        ) : todaySlots.length === 0 ? (
+        ) : isTeacher && !selectedAttendanceClassId ? null : displayedSlots.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-8 text-center">
             <p className="text-gray-500">No scheduled classes for this day.</p>
           </div>
         ) : (
           <div className="space-y-3">
-            {todaySlots.map((slot) => (
+            {displayedSlots.map((slot) => (
               <SlotCard
                 key={slot.id}
                 slot={slot}
@@ -822,7 +835,37 @@ export default function Attendance() {
             ))}
           </div>
 
-          {teacherTab === 'mark' && renderMarkAttendance(false)}
+          {teacherTab === 'mark' && (
+            <>
+              {userRole === 'teacher' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Class
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {teacherReportClasses.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAttendanceClassId(c.id)
+                          setActiveSlotId(null)
+                        }}
+                        className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                          selectedAttendanceClassId === c.id
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'border-gray-300 text-gray-600'
+                        }`}
+                      >
+                        {c.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {renderMarkAttendance(false)}
+            </>
+          )}
           {teacherTab === 'reports' && renderReportsTab(teacherReportClasses)}
           {teacherTab === 'student' && renderStudentReport(teacherReportClasses)}
         </>

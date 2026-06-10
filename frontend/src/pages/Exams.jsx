@@ -66,7 +66,7 @@ export default function Exams() {
   const [generating, setGenerating] = useState(false)
   const [savingGenerated, setSavingGenerated] = useState(false)
   const [aiError, setAiError] = useState(null)
-  const [aiStep, setAiStep] = useState(1)
+  const [aiStep, setAiStep] = useState(2)
 
   const [activeProfileExamId, setActiveProfileExamId] = useState(null)
   const [examProfile, setExamProfile] = useState(null)
@@ -532,8 +532,8 @@ export default function Exams() {
     setAiTopicAllocations({})
     setAiSelectedTopics({})
     setAiChapterNames({})
-    setAiTotalQuestions('')
-    setAiStep(1)
+    setAiTotalQuestions(String(exam.total_questions ?? ''))
+    setAiStep(2)
     setShowAIGenerator(true)
 
     const examSubjects = exam.exam_subjects ?? []
@@ -661,7 +661,7 @@ export default function Exams() {
       setGeneratedQuestions([])
       setShowAIGenerator(false)
       setAiExamId(null)
-      setAiStep(1)
+      setAiStep(2)
       setSuccessMessage(`${rows.length} AI questions saved to exam!`)
       await fetchExams()
       if (activeProfileExamId === aiExamId) {
@@ -1231,7 +1231,7 @@ export default function Exams() {
                           setShowAIGenerator(false)
                           setAiExamId(null)
                           setGeneratedQuestions([])
-                          setAiStep(1)
+                          setAiStep(2)
                         }}
                         className="text-sm text-gray-400 hover:text-gray-600"
                       >
@@ -1240,60 +1240,33 @@ export default function Exams() {
                     </div>
 
                     <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 mb-4">
-                      {['Questions', 'Topics', 'Settings', 'Review'].map((s, i) => (
+                      {['Topics', 'Settings', 'Review'].map((s, i) => {
+                        const stepNum = i + 2
+                        return (
                         <div key={s} className="flex items-center gap-1 shrink-0">
                           <span
                             className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
-                              aiStep > i + 1
+                              aiStep > stepNum
                                 ? 'bg-green-500 text-white'
-                                : aiStep === i + 1
+                                : aiStep === stepNum
                                   ? 'bg-purple-600 text-white'
                                   : 'bg-gray-200 text-gray-500'
                             }`}
                           >
-                            {aiStep > i + 1 ? '✓' : i + 1}
+                            {aiStep > stepNum ? '✓' : i + 1}
                           </span>
                           <span
                             className={`text-xs ${
-                              aiStep === i + 1 ? 'text-purple-600 font-medium' : 'text-gray-400'
+                              aiStep === stepNum ? 'text-purple-600 font-medium' : 'text-gray-400'
                             }`}
                           >
                             {s}
                           </span>
-                          {i < 3 && <span className="text-gray-300 text-xs">›</span>}
+                          {i < 2 && <span className="text-gray-300 text-xs">›</span>}
                         </div>
-                      ))}
+                        )
+                      })}
                     </div>
-
-                    {aiStep === 1 && (
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            How many total questions do you want to generate?
-                          </label>
-                          <input
-                            type="number"
-                            min={1}
-                            max={200}
-                            value={aiTotalQuestions}
-                            onChange={(e) => setAiTotalQuestions(e.target.value)}
-                            placeholder="e.g. 30"
-                            className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          />
-                          <p className="text-xs text-gray-400 mt-1">
-                            Exam has {exam.total_questions} total questions
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          disabled={!aiTotalQuestions || Number(aiTotalQuestions) < 1}
-                          onClick={() => setAiStep(2)}
-                          className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
-                        >
-                          Next: Select Topics →
-                        </button>
-                      </div>
-                    )}
 
                     {aiStep === 2 && (
                       <div className="space-y-5">
@@ -1404,13 +1377,6 @@ export default function Exams() {
                         })()}
 
                         <div className="flex gap-2">
-                          <button
-                            type="button"
-                            onClick={() => setAiStep(1)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600"
-                          >
-                            ← Back
-                          </button>
                           <button
                             type="button"
                             disabled={

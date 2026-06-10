@@ -21,22 +21,30 @@ function getTargetLabel(announcement) {
       return '📖 Subject Teachers'
     case 'specific_teacher':
       return '👤 Specific Teacher'
+    case 'specific_student':
+      return '👤 Specific Student'
     default:
       return 'Institute-wide'
   }
 }
 
-function studentCanSeeAnnouncement(announcement, studentClassId) {
+function studentCanSeeAnnouncement(announcement, studentClassId, studentId) {
   const { target_type, target_ids } = announcement
+  const ids = target_ids ?? []
   if (target_type === 'everyone' || target_type === 'all_students') return true
   if (target_type === 'class_students' && studentClassId) {
-    return (target_ids ?? []).includes(studentClassId)
+    return ids.includes(studentClassId)
+  }
+  if (target_type === 'specific_student') {
+    return ids.includes(studentId)
   }
   if (!target_type) return true
   return false
 }
 
 function teacherCanSeeAnnouncement(announcement, teacherClassIds, teacherSubjectIds, userId) {
+  if (announcement.created_by === userId) return true
+
   const ids = announcement.target_ids ?? []
   switch (announcement.target_type) {
     case 'everyone':
@@ -91,6 +99,8 @@ export default function Announcements() {
   const [teacherAssignmentsReady, setTeacherAssignmentsReady] = useState(false)
   const [teacherClasses, setTeacherClasses] = useState([])
   const [teacherTargetClassIds, setTeacherTargetClassIds] = useState([])
+  const [studentSearchForAnnouncement, setStudentSearchForAnnouncement] = useState('')
+  const [foundAnnouncementStudent, setFoundAnnouncementStudent] = useState(null)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -223,7 +233,7 @@ export default function Announcements() {
         .order('created_at', { ascending: false })
 
       const filtered = (data ?? []).filter((a) =>
-        studentCanSeeAnnouncement(a, studentClassId)
+        studentCanSeeAnnouncement(a, studentClassId, session.user.id)
       )
       setAnnouncements(filtered)
     }
@@ -262,6 +272,7 @@ export default function Announcements() {
       'class_teachers',
       'subject_teachers',
       'specific_teacher',
+      'specific_student',
     ].includes(targetType)
 
     if (isAdmin && needsTargets && targetIds.length === 0) {
@@ -296,6 +307,8 @@ export default function Announcements() {
       setTargetIds([])
       setTargetSubjectIds([])
       setTeacherTargetClassIds([])
+      setStudentSearchForAnnouncement('')
+      setFoundAnnouncementStudent(null)
       setShowForm(false)
       await loadAnnouncements()
     } else {
@@ -569,6 +582,7 @@ export default function Announcements() {
                   { value: 'class_teachers', label: '🏫 Class Teachers' },
                   { value: 'subject_teachers', label: '📖 Subject Teachers' },
                   { value: 'specific_teacher', label: '👤 Specific Teacher' },
+                  { value: 'specific_student', label: '👤 Specific Student' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -577,6 +591,8 @@ export default function Announcements() {
                       setTargetType(opt.value)
                       setTargetIds([])
                       setTargetSubjectIds([])
+                      setStudentSearchForAnnouncement('')
+                      setFoundAnnouncementStudent(null)
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       targetType === opt.value
@@ -660,6 +676,40 @@ export default function Announcements() {
                     <option key={t.id} value={t.id}>{t.name}</option>
                   ))}
                 </select>
+              )}
+
+              {targetType === 'specific_student' && (
+                <div>
+                  <input
+                    type="text"
+                    value={studentSearchForAnnouncement}
+                    onChange={async (e) => {
+                      setStudentSearchForAnnouncement(e.target.value)
+                      if (e.target.value.trim().length >= 2) {
+                        const { data } = await supabase
+                          .from('users')
+                          .select('id, name, roll_number')
+                          .eq('role', 'student')
+                          .eq('institute_id', instituteId)
+                          .eq('roll_number', e.target.value.trim())
+                          .single()
+                        setFoundAnnouncementStudent(data)
+                        if (data) setTargetIds([data.id])
+                      } else {
+                        setFoundAnnouncementStudent(null)
+                        setTargetIds([])
+                      }
+                    }}
+                    placeholder="Enter student roll number..."
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  {foundAnnouncementStudent && (
+                    <p className="text-xs text-green-700 mt-1 font-medium">
+                      Found: {foundAnnouncementStudent.name}
+                      {' '}(Roll #{foundAnnouncementStudent.roll_number})
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           )}

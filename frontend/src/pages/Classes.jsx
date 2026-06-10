@@ -237,6 +237,8 @@ export default function Classes() {
   }
 
   async function handleRemoveStudent(studentId) {
+    if (!window.confirm('Unassign this student from the class?')) return
+
     const { error: updateError } = await supabase
       .from('users')
       .update({ class_id: null })
