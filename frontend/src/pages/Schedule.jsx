@@ -31,6 +31,7 @@ export default function Schedule() {
   const [editingSlot, setEditingSlot] = useState(null)
   const [editSubjectId, setEditSubjectId] = useState('')
   const [editTeacherId, setEditTeacherId] = useState('')
+  const [editDays, setEditDays] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -171,6 +172,7 @@ export default function Schedule() {
     })
     setEditSubjectId(slot?.subject_id ?? '')
     setEditTeacherId(slot?.teacher_id ?? '')
+    setEditDays([day])
     setError(null)
   }
 
@@ -178,9 +180,11 @@ export default function Schedule() {
     setEditingSlot(null)
     setEditSubjectId('')
     setEditTeacherId('')
+    setEditDays([])
   }
 
-  async function handleSaveSlot(day, periodNumber, subjectId, teacherId) {
+  async function handleSaveSlot(subjectId, teacherId) {
+    if (!editingSlot || editDays.length === 0) return
     if (!subjectId || !teacherId) {
       setError('Please select both a subject and a teacher.')
       return
@@ -190,27 +194,30 @@ export default function Schedule() {
     setError(null)
 
     try {
-      const existing = getSlot(day, periodNumber)
-      const period = PERIODS.find((p) => p.number === periodNumber)
+      const period = PERIODS.find((p) => p.number === editingSlot.period)
 
-      if (existing) {
-        const { error: updateError } = await supabase
-          .from('schedule_slots')
-          .update({ subject_id: subjectId, teacher_id: teacherId })
-          .eq('id', existing.id)
-        if (updateError) throw new Error(updateError.message)
-      } else {
-        const { error: insertError } = await supabase.from('schedule_slots').insert({
-          class_id: selectedClassId,
-          day_of_week: day,
-          period_number: periodNumber,
-          start_time: period?.start,
-          end_time: period?.end,
-          subject_id: subjectId,
-          teacher_id: teacherId,
-          institute_id: instituteId,
-        })
-        if (insertError) throw new Error(insertError.message)
+      for (const day of editDays) {
+        const existing = getSlot(day, editingSlot.period)
+
+        if (existing) {
+          const { error: updateError } = await supabase
+            .from('schedule_slots')
+            .update({ subject_id: subjectId, teacher_id: teacherId })
+            .eq('id', existing.id)
+          if (updateError) throw new Error(updateError.message)
+        } else {
+          const { error: insertError } = await supabase.from('schedule_slots').insert({
+            class_id: selectedClassId,
+            day_of_week: day,
+            period_number: editingSlot.period,
+            start_time: period?.start,
+            end_time: period?.end,
+            subject_id: subjectId,
+            teacher_id: teacherId,
+            institute_id: instituteId,
+          })
+          if (insertError) throw new Error(insertError.message)
+        }
       }
 
       await fetchSlots()
@@ -446,6 +453,36 @@ export default function Schedule() {
                   </button>
                 </div>
 
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-600 mb-2">
+                    Apply to Days:
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {DAYS.map((d, i) => (
+                      <label
+                        key={d}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
+                          editDays.includes(d)
+                            ? 'border-blue-600 bg-blue-50 text-blue-700'
+                            : 'border-gray-300 text-gray-600'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={editDays.includes(d)}
+                          onChange={() => setEditDays((prev) =>
+                            prev.includes(d)
+                              ? prev.filter((day) => day !== d)
+                              : [...prev, d]
+                          )}
+                          className="hidden"
+                        />
+                        {DAY_LABELS[i]}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex flex-col gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -489,15 +526,8 @@ export default function Schedule() {
                   <div className="flex gap-2 mt-2">
                     <button
                       type="button"
-                      onClick={() =>
-                        handleSaveSlot(
-                          editingSlot.day,
-                          editingSlot.period,
-                          editSubjectId,
-                          editTeacherId
-                        )
-                      }
-                      disabled={saving || !editSubjectId || !editTeacherId}
+                      onClick={() => handleSaveSlot(editSubjectId, editTeacherId)}
+                      disabled={saving || !editSubjectId || !editTeacherId || editDays.length === 0}
                       className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40"
                     >
                       {saving ? 'Saving…' : 'Save'}

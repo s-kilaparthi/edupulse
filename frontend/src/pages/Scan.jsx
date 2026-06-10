@@ -498,7 +498,10 @@ export default function Scan() {
         is_read: false,
       }))
 
-      await supabase.from('notifications').insert(notifRows)
+      if (notifRows.length > 0) {
+        const { error } = await supabase.from('notifications').insert(notifRows)
+        if (error) console.log('Notification error:', error)
+      }
 
       setSavedFlash(true)
       setShowReview(false)
@@ -512,6 +515,34 @@ export default function Scan() {
       setScanError('Failed to post results: ' + err.message)
     }
 
+    setPostingResults(false)
+  }
+
+  async function handlePostRollResults() {
+    setPostingResults(true)
+    try {
+      const notifRows = rollScanRecords.map((r) => ({
+        user_id: r.studentId,
+        title: 'Results Posted',
+        body: `Your results for ${selectedExam.name} are now available`,
+        type: 'results',
+        is_read: false,
+      }))
+
+      if (notifRows.length > 0) {
+        const { error } = await supabase
+          .from('notifications')
+          .insert(notifRows)
+
+        if (error) console.log('Notification error:', error)
+      }
+
+      setSavedFlash(true)
+      setRollScanRecords([])
+      setTimeout(() => setSavedFlash(false), 2000)
+    } catch (err) {
+      setScanError('Failed to post: ' + err.message)
+    }
     setPostingResults(false)
   }
 
@@ -788,20 +819,42 @@ export default function Scan() {
               {scanError && <p className="text-sm text-red-600">{scanError}</p>}
 
               {rollScanRecords.length > 0 && (
-                <div className="border-t pt-3">
-                  <p className="text-xs font-medium text-gray-600 mb-2">
-                    Scanned: {rollScanRecords.length}
-                  </p>
-                  <ul className="space-y-1">
+                <div className="border-t border-gray-100 pt-3 mt-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-semibold text-gray-700">
+                      Scanned: {rollScanRecords.length} students
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 max-h-48 overflow-y-auto mb-3">
                     {rollScanRecords.map((r, i) => (
-                      <li key={i} className="flex items-center justify-between py-2 text-sm gap-2">
-                        <span className="flex-1 min-w-0 truncate text-gray-700">
-                          {r.name} (#{r.roll})
+                      <div
+                        key={i}
+                        className="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0"
+                      >
+                        <span className="font-medium text-gray-900 flex-1 min-w-0 truncate">
+                          {r.name}
                         </span>
-                        <span className="shrink-0 text-xs font-medium text-green-700">{r.score}%</span>
-                      </li>
+                        <span className="text-xs text-gray-500 shrink-0 ml-2">
+                          Roll #{r.roll}
+                        </span>
+                        <span className="text-xs font-medium text-green-600 shrink-0 ml-2">
+                          {r.score}%
+                        </span>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handlePostRollResults}
+                    disabled={postingResults}
+                    className="w-full bg-green-600 text-white py-2.5 rounded-xl font-medium text-sm disabled:opacity-40"
+                  >
+                    {postingResults
+                      ? 'Posting...'
+                      : `Post Results & Notify ${rollScanRecords.length} Students`}
+                  </button>
                 </div>
               )}
             </div>

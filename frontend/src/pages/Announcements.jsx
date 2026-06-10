@@ -60,8 +60,123 @@ function teacherCanSeeAnnouncement(announcement, teacherClassIds, teacherSubject
     case 'class_students':
       return false
     default:
-      return true
+      return false
   }
+}
+
+function AnnouncementCard({
+  item,
+  editingAnnouncementId,
+  editTitle,
+  setEditTitle,
+  editBody,
+  setEditBody,
+  editPinned,
+  setEditPinned,
+  savingEdit,
+  canEditItem,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onDelete,
+}) {
+  const pinnedCard = item.is_pinned
+  const isEditing = editingAnnouncementId === item.id
+
+  return (
+    <div
+      className={`rounded-2xl border border-gray-200 p-5 shadow-sm overflow-hidden break-words ${
+        pinnedCard ? 'bg-yellow-50' : 'bg-white'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          {!isEditing && (
+            <>
+              {pinnedCard && (
+                <span className="text-xs text-yellow-600 font-medium">📌 Pinned</span>
+              )}
+              <h3 className="font-semibold text-gray-900 break-words">{item.title}</h3>
+              <p className="text-sm text-gray-500 mt-1 break-words">{item.body}</p>
+            </>
+          )}
+        </div>
+        {canEditItem && !isEditing && (
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onStartEdit}
+              className="text-xs text-blue-500 hover:text-blue-700"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="text-xs text-red-500 hover:text-red-700"
+            >
+              Delete
+            </button>
+          </div>
+        )}
+      </div>
+
+      {isEditing && (
+        <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+          <input
+            key={`edit-title-${editingAnnouncementId}`}
+            type="text"
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Title"
+            autoComplete="off"
+          />
+          <textarea
+            key={`edit-body-${editingAnnouncementId}`}
+            value={editBody}
+            onChange={(e) => setEditBody(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
+            rows={3}
+            placeholder="Body"
+            autoComplete="off"
+          />
+          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={editPinned}
+              onChange={(e) => setEditPinned(e.target.checked)}
+              className="rounded border-gray-300"
+            />
+            📌 Pin this announcement
+          </label>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onSaveEdit}
+              disabled={savingEdit}
+              className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
+            >
+              {savingEdit ? 'Saving...' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={onCancelEdit}
+              className="text-gray-500 text-sm px-3 py-1.5"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
+        <span>By {item.users?.name}</span>
+        <span>· {getTargetLabel(item)}</span>
+        <span>· {new Date(item.created_at).toLocaleDateString()}</span>
+      </div>
+    </div>
+  )
 }
 
 export default function Announcements() {
@@ -99,6 +214,7 @@ export default function Announcements() {
   const [teacherAssignmentsReady, setTeacherAssignmentsReady] = useState(false)
   const [teacherClasses, setTeacherClasses] = useState([])
   const [teacherTargetClassIds, setTeacherTargetClassIds] = useState([])
+  const [teacherAnnouncementTarget, setTeacherAnnouncementTarget] = useState('students')
   const [studentSearchForAnnouncement, setStudentSearchForAnnouncement] = useState('')
   const [foundAnnouncementStudent, setFoundAnnouncementStudent] = useState(null)
 
@@ -283,18 +399,29 @@ export default function Announcements() {
     setSaving(true)
     setError(null)
 
+    let finalTargetType = targetType
+    let finalTargetIds = targetIds
+
+    if (userRole === 'teacher') {
+      if (teacherAnnouncementTarget === 'everyone') {
+        finalTargetType = 'everyone'
+        finalTargetIds = []
+      } else {
+        finalTargetType = teacherTargetClassIds.length === 0
+          ? 'all_students'
+          : 'class_students'
+        finalTargetIds = teacherTargetClassIds
+      }
+    }
+
     const insertPayload = {
       title: newTitle,
       body: newBody,
       is_pinned: isPinned,
       created_by: session.user.id,
       institute_id: instituteId,
-      target_type: isAdmin
-        ? targetType
-        : teacherTargetClassIds.length === 0
-          ? 'all_students'
-          : 'class_students',
-      target_ids: isAdmin ? targetIds : teacherTargetClassIds,
+      target_type: finalTargetType,
+      target_ids: finalTargetIds,
     }
 
     const { error: insertError } = await supabase.from('announcements').insert(insertPayload)
@@ -307,6 +434,7 @@ export default function Announcements() {
       setTargetIds([])
       setTargetSubjectIds([])
       setTeacherTargetClassIds([])
+      setTeacherAnnouncementTarget('students')
       setStudentSearchForAnnouncement('')
       setFoundAnnouncementStudent(null)
       setShowForm(false)
@@ -350,116 +478,30 @@ export default function Announcements() {
   const pinned = announcements.filter((a) => a.is_pinned)
   const regular = announcements.filter((a) => !a.is_pinned)
 
-  function AnnouncementCard({ item }) {
-    const pinnedCard = item.is_pinned
+  function renderAnnouncementCard(item) {
     return (
-      <div
-        className={`rounded-2xl border border-gray-200 p-5 shadow-sm overflow-hidden break-words ${
-          pinnedCard ? 'bg-yellow-50' : 'bg-white'
-        }`}
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1 min-w-0">
-            {editingAnnouncementId !== item.id && (
-              <>
-                {pinnedCard && (
-                  <span className="text-xs text-yellow-600 font-medium">📌 Pinned</span>
-                )}
-                <h3 className="font-semibold text-gray-900 break-words">{item.title}</h3>
-                <p className="text-sm text-gray-500 mt-1 break-words">{item.body}</p>
-              </>
-            )}
-          </div>
-          {canEdit(item) && editingAnnouncementId !== item.id && (
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setEditingAnnouncementId(item.id)
-                  setEditTitle(item.title)
-                  setEditBody(item.body ?? '')
-                  setEditPinned(item.is_pinned ?? false)
-                }}
-                className="text-xs text-blue-500 hover:text-blue-700"
-              >
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleDelete(item.id)
-                }}
-                className="text-xs text-red-500 hover:text-red-700"
-              >
-                Delete
-              </button>
-            </div>
-          )}
-        </div>
-
-        {editingAnnouncementId === item.id && (
-          <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
-            <input
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-              placeholder="Title"
-            />
-            <textarea
-              value={editBody}
-              onChange={(e) => setEditBody(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
-              rows={3}
-              placeholder="Body"
-            />
-            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={editPinned}
-                onChange={(e) => setEditPinned(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              📌 Pin this announcement
-            </label>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  handleSaveEdit(item.id)
-                }}
-                disabled={savingEdit}
-                className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
-              >
-                {savingEdit ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setEditingAnnouncementId(null)
-                }}
-                className="text-gray-500 text-sm px-3 py-1.5"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
-          <span>By {item.users?.name}</span>
-          <span>· {getTargetLabel(item)}</span>
-          <span>· {new Date(item.created_at).toLocaleDateString()}</span>
-        </div>
-      </div>
+      <AnnouncementCard
+        key={item.id}
+        item={item}
+        editingAnnouncementId={editingAnnouncementId}
+        editTitle={editTitle}
+        setEditTitle={setEditTitle}
+        editBody={editBody}
+        setEditBody={setEditBody}
+        editPinned={editPinned}
+        setEditPinned={setEditPinned}
+        savingEdit={savingEdit}
+        canEditItem={canEdit(item)}
+        onStartEdit={() => {
+          setEditingAnnouncementId(item.id)
+          setEditTitle(item.title)
+          setEditBody(item.body ?? '')
+          setEditPinned(item.is_pinned ?? false)
+        }}
+        onCancelEdit={() => setEditingAnnouncementId(null)}
+        onSaveEdit={() => handleSaveEdit(item.id)}
+        onDelete={() => handleDelete(item.id)}
+      />
     )
   }
 
@@ -518,52 +560,79 @@ export default function Announcements() {
             />
           </div>
 
-          {isTeacher && teacherClasses.length > 0 && (
+          {userRole === 'teacher' && teacherClasses.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Send To
               </label>
-              <div className="flex flex-wrap gap-2">
-                <label
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
-                    teacherTargetClassIds.length === 0
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setTeacherAnnouncementTarget('students')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                    teacherAnnouncementTarget === 'students'
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
                       : 'border-gray-300 text-gray-600'
                   }`}
                 >
-                  <input
-                    type="radio"
-                    checked={teacherTargetClassIds.length === 0}
-                    onChange={() => setTeacherTargetClassIds([])}
-                    className="hidden"
-                  />
-                  🌐 All My Classes
-                </label>
-                {teacherClasses.map((c) => (
+                  My Students
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTeacherAnnouncementTarget('everyone')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                    teacherAnnouncementTarget === 'everyone'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 text-gray-600'
+                  }`}
+                >
+                  Everyone in My Classes
+                </button>
+              </div>
+
+              {teacherAnnouncementTarget === 'students' && (
+                <div className="flex flex-wrap gap-2">
                   <label
-                    key={c.id}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
-                      teacherTargetClassIds.includes(c.id)
+                      teacherTargetClassIds.length === 0
                         ? 'border-blue-600 bg-blue-50 text-blue-700'
                         : 'border-gray-300 text-gray-600'
                     }`}
                   >
                     <input
-                      type="checkbox"
-                      checked={teacherTargetClassIds.includes(c.id)}
-                      onChange={() =>
-                        setTeacherTargetClassIds((prev) =>
-                          prev.includes(c.id)
-                            ? prev.filter((id) => id !== c.id)
-                            : [...prev, c.id]
-                        )
-                      }
+                      type="radio"
+                      checked={teacherTargetClassIds.length === 0}
+                      onChange={() => setTeacherTargetClassIds([])}
                       className="hidden"
                     />
-                    {c.name}
+                    All My Classes
                   </label>
-                ))}
-              </div>
+                  {teacherClasses.map((c) => (
+                    <label
+                      key={c.id}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
+                        teacherTargetClassIds.includes(c.id)
+                          ? 'border-blue-600 bg-blue-50 text-blue-700'
+                          : 'border-gray-300 text-gray-600'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={teacherTargetClassIds.includes(c.id)}
+                        onChange={() =>
+                          setTeacherTargetClassIds((prev) =>
+                            prev.includes(c.id)
+                              ? prev.filter((id) => id !== c.id)
+                              : [...prev, c.id]
+                          )
+                        }
+                        className="hidden"
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -744,17 +813,13 @@ export default function Announcements() {
 
       {!loading && pinned.length > 0 && (
         <div className="flex flex-col gap-3">
-          {pinned.map((item) => (
-            <AnnouncementCard key={item.id} item={item} />
-          ))}
+          {pinned.map((item) => renderAnnouncementCard(item))}
         </div>
       )}
 
       {!loading && regular.length > 0 && (
         <div className="flex flex-col gap-3">
-          {regular.map((item) => (
-            <AnnouncementCard key={item.id} item={item} />
-          ))}
+          {regular.map((item) => renderAnnouncementCard(item))}
         </div>
       )}
     </div>
