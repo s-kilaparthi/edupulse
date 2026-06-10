@@ -344,6 +344,7 @@ export default function Scan() {
 
     const alreadyAbsent = absentList.some((s) => s.id === studentId)
     if (alreadyAbsent) {
+      console.log('Absent warning triggered for:', studentId, studentName)
       setAbsentWarning({
         studentId,
         studentName,
@@ -362,6 +363,7 @@ export default function Scan() {
 
     const alreadyAbsent = absentList.some((s) => s.id === rollScanStudentId)
     if (alreadyAbsent) {
+      console.log('Absent warning triggered for roll scan:', rollScanStudentId)
       setAbsentWarning({
         studentId: rollScanStudentId,
         studentName: rollScanStudentName,
