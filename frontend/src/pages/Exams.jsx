@@ -30,6 +30,7 @@ export default function Exams() {
 
   // Create exam form
   const [examName, setExamName] = useState('')
+  const [examType, setExamType] = useState('mcq')
   const [examDate, setExamDate] = useState('')
   const [totalQuestions, setTotalQuestions] = useState('')
   const [selectedSubjects, setSelectedSubjects] = useState([])
@@ -124,7 +125,7 @@ export default function Exams() {
   async function fetchExams() {
     const { data, error: fetchError } = await supabase
       .from('exams')
-      .select('id, name, exam_date, total_questions, scope, exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
+      .select('id, name, exam_date, total_questions, scope, exam_type, exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
       .order('created_at', { ascending: false })
     if (fetchError) throw new Error(fetchError.message)
     setExams(data ?? [])
@@ -289,7 +290,14 @@ export default function Exams() {
       const user = await getAuthUser()
       const { data: newExam, error: examErr } = await supabase
         .from('exams')
-        .insert({ name, exam_date: examDate, total_questions: total, created_by: user.id, scope: examScope })
+        .insert({
+          name,
+          exam_date: examDate,
+          total_questions: total,
+          created_by: user.id,
+          scope: examScope,
+          exam_type: examType,
+        })
         .select('id')
         .single()
       if (examErr) throw new Error(examErr.message)
@@ -313,6 +321,7 @@ export default function Exams() {
       }
 
       setExamName('')
+      setExamType('mcq')
       setExamDate('')
       setTotalQuestions('')
       setSelectedSubjects([])
@@ -474,21 +483,32 @@ export default function Exams() {
       setError(`${unassigned.length} question(s) still have no topic: Q${unassigned.join(', Q')}`)
       return
     }
-    const noAnswer = allNums.filter((n) => !questionMap[n]?.correct_answer)
-    if (noAnswer.length > 0) {
-      setError(`${noAnswer.length} question(s) still have no answer: Q${noAnswer.join(', Q')}`)
-      return
+    const isWritten = activeExam.exam_type === 'written'
+    if (!isWritten) {
+      const noAnswer = allNums.filter((n) => !questionMap[n]?.correct_answer)
+      if (noAnswer.length > 0) {
+        setError(`${noAnswer.length} question(s) still have no answer: Q${noAnswer.join(', Q')}`)
+        return
+      }
     }
 
     setSavingQuestions(true)
     setError(null)
 
-    const payload = allNums.map((num) => ({
-      exam_id: activeExam.id,
-      question_number: num,
-      topic_id: questionMap[num].topic_id,
-      correct_answer: questionMap[num].correct_answer,
-    }))
+    const payload = allNums.map((num) => {
+      const row = {
+        exam_id: activeExam.id,
+        question_number: num,
+        topic_id: questionMap[num].topic_id,
+      }
+      if (isWritten) {
+        row.correct_answer = null
+        row.question_text = null
+      } else {
+        row.correct_answer = questionMap[num].correct_answer
+      }
+      return row
+    })
 
     const { data, error: insertError } = await supabase
       .from('questions')
@@ -686,6 +706,7 @@ export default function Exams() {
   const allNums = activeExam ? getAllQuestionNums() : []
   const unassignedCount = activeExam ? getUnassignedCount() : 0
   const missingAnswerCount = activeExam ? getMissingAnswerCount() : 0
+  const isWrittenExam = activeExam?.exam_type === 'written'
   const relevantSubjectIds = userRole === 'teacher'
     ? teacherAssignments
         .filter((a) => selectedClassIds.includes(a.class_id))
@@ -718,6 +739,35 @@ export default function Exams() {
               placeholder="JEE Mains Mock Test 1"
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
             />
+          </div>
+
+          <div className="sm:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Exam Type</label>
+            <div className="flex flex-wrap gap-2">
+              {[
+                { value: 'mcq', label: 'MCQ' },
+                { value: 'written', label: 'Written' },
+              ].map((opt) => (
+                <label
+                  key={opt.value}
+                  className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                    examType === opt.value
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                      : 'border-gray-300 text-gray-700'
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="examType"
+                    value={opt.value}
+                    checked={examType === opt.value}
+                    onChange={() => setExamType(opt.value)}
+                    className="hidden"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
           </div>
 
           {userRole === 'admin' && (
@@ -1150,7 +1200,7 @@ export default function Exams() {
                           </>
                         )}
 
-                        {allNums.length > 0 && (
+                        {allNums.length > 0 && !isWrittenExam && (
                           <div className="border-t border-gray-100 pt-4 mb-4">
                             <div className="flex items-center justify-between mb-3">
                               <p className="text-sm font-medium text-gray-700">Correct Answers</p>
@@ -1194,6 +1244,19 @@ export default function Exams() {
                           </div>
                         )}
 
+                        {allNums.length > 0 && isWrittenExam && (
+                          <div className="border-t border-gray-100 pt-4 mb-4">
+                            <div className="flex gap-3 text-xs">
+                              {unassignedCount > 0 && (
+                                <span className="text-orange-600">{unassignedCount} unassigned</span>
+                              )}
+                              {unassignedCount === 0 && (
+                                <span className="text-green-600">All topics assigned ✓</span>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
                         {error && activeExam && (
                           <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
                             <p className="text-red-700 text-sm">{error}</p>
@@ -1203,14 +1266,18 @@ export default function Exams() {
                         <button
                           type="button"
                           onClick={handleSaveAllQuestions}
-                          disabled={savingQuestions || unassignedCount > 0 || missingAnswerCount > 0}
+                          disabled={
+                            savingQuestions
+                            || unassignedCount > 0
+                            || (!isWrittenExam && missingAnswerCount > 0)
+                          }
                           className="bg-gray-900 text-white font-medium px-4 py-2 rounded-lg hover:bg-gray-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         >
                           {savingQuestions
                             ? 'Saving…'
                             : unassignedCount > 0
                             ? `${unassignedCount} questions need topics`
-                            : missingAnswerCount > 0
+                            : !isWrittenExam && missingAnswerCount > 0
                             ? `${missingAnswerCount} questions need answers`
                             : 'Save All Questions'}
                         </button>
