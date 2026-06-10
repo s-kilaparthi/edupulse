@@ -77,7 +77,7 @@ export default function Scan() {
   const [absentStudentId, setAbsentStudentId] = useState('')
   const [absentStudentName, setAbsentStudentName] = useState('')
   const [absentList, setAbsentList] = useState([])
-  const [absentWarningStudent, setAbsentWarningStudent] = useState(null)
+  const [absentWarning, setAbsentWarning] = useState(null)
   const [activeScanMode, setActiveScanMode] = useState('class')
   const fileRef = useRef(null)
   const fileRefRoll = useRef(null)
@@ -339,7 +339,21 @@ export default function Scan() {
   }
 
   const handleFile = async (e) => {
-    await processFile(e.target.files?.[0], { mode: 'class' })
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    const alreadyAbsent = absentList.some((s) => s.id === studentId)
+    if (alreadyAbsent) {
+      setAbsentWarning({
+        studentId,
+        studentName,
+        pendingFile: file,
+      })
+      if (fileRef.current) fileRef.current.value = ''
+      return
+    }
+
+    await processFile(file, { mode: 'class' })
   }
 
   const handleFileForRoll = async (e) => {
@@ -348,10 +362,10 @@ export default function Scan() {
 
     const alreadyAbsent = absentList.some((s) => s.id === rollScanStudentId)
     if (alreadyAbsent) {
-      setAbsentWarningStudent({
-        id: rollScanStudentId,
-        name: rollScanStudentName,
-        file,
+      setAbsentWarning({
+        studentId: rollScanStudentId,
+        studentName: rollScanStudentName,
+        pendingFile: file,
       })
       if (fileRefRoll.current) fileRefRoll.current.value = ''
       return
@@ -1119,39 +1133,46 @@ export default function Scan() {
         </section>
       )}
 
-      {absentWarningStudent && (
-        <div className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4">
+      {absentWarning && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <p className="font-semibold text-gray-900 mb-2">
-              ⚠️ Student Marked Absent
+            <div className="flex items-center gap-3 mb-3">
+              <span className="text-2xl">⚠️</span>
+              <h3 className="font-semibold text-gray-900">
+                Student Marked Absent
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600 mb-5">
+              <span className="font-medium">{absentWarning.studentName}</span>
+              {' '}was already marked absent for this exam.
+              Are you sure you want to scan their OMR sheet?
+              This will remove them from the absent list.
             </p>
-            <p className="text-sm text-gray-600 mb-4">
-              {absentWarningStudent.name} was marked absent.
-              Are you sure you want to scan their OMR?
-            </p>
-            <div className="flex gap-2">
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={async () => {
-                  setAbsentList((prev) =>
-                    prev.filter((s) => s.id !== absentWarningStudent.id)
-                  )
-                  setRollScanStudentId(absentWarningStudent.id)
-                  setRollScanStudentName(absentWarningStudent.name)
-                  await processFile(absentWarningStudent.file, {
-                    studentId: absentWarningStudent.id,
-                    mode: 'rollscan',
-                  })
-                  setAbsentWarningStudent(null)
+                  const { studentId: sid, studentName: sname, pendingFile } = absentWarning
+                  setAbsentList((prev) => prev.filter((s) => s.id !== sid))
+                  const mode = scanTab === 'rollscan' ? 'rollscan' : 'class'
+                  if (mode === 'rollscan') {
+                    setRollScanStudentId(sid)
+                    setRollScanStudentName(sname)
+                  } else {
+                    setStudentId(sid)
+                    setStudentName(sname)
+                  }
+                  await processFile(pendingFile, { studentId: sid, mode })
+                  setAbsentWarning(null)
                 }}
-                className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium"
+                className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-medium"
               >
                 Continue Scan
               </button>
               <button
                 type="button"
-                onClick={() => setAbsentWarningStudent(null)}
-                className="flex-1 border border-gray-300 text-gray-600 py-2 rounded-lg text-sm font-medium"
+                onClick={() => setAbsentWarning(null)}
+                className="flex-1 border border-gray-300 text-gray-700 py-2.5 rounded-xl text-sm font-medium"
               >
                 Cancel
               </button>
