@@ -42,28 +42,6 @@ function studentCanSeeAnnouncement(announcement, studentClassId, studentId) {
   return false
 }
 
-function teacherCanSeeAnnouncement(announcement, teacherClassIds, teacherSubjectIds, userId) {
-  if (announcement.created_by === userId) return true
-
-  const ids = announcement.target_ids ?? []
-  switch (announcement.target_type) {
-    case 'everyone':
-    case 'all_teachers':
-      return true
-    case 'class_teachers':
-      return ids.some((id) => teacherClassIds.includes(id))
-    case 'subject_teachers':
-      return ids.some((id) => teacherSubjectIds.includes(id))
-    case 'specific_teacher':
-      return ids.includes(userId)
-    case 'all_students':
-    case 'class_students':
-      return false
-    default:
-      return false
-  }
-}
-
 function AnnouncementCard({
   item,
   editingAnnouncementId,
@@ -215,8 +193,33 @@ export default function Announcements() {
   const [teacherClasses, setTeacherClasses] = useState([])
   const [teacherTargetClassIds, setTeacherTargetClassIds] = useState([])
   const [teacherAnnouncementTarget, setTeacherAnnouncementTarget] = useState('students')
+  const [teacherSpecificStudentRoll, setTeacherSpecificStudentRoll] = useState('')
+  const [teacherSpecificStudent, setTeacherSpecificStudent] = useState(null)
   const [studentSearchForAnnouncement, setStudentSearchForAnnouncement] = useState('')
   const [foundAnnouncementStudent, setFoundAnnouncementStudent] = useState(null)
+
+  const canSeeAnnouncement = useCallback((a) => {
+    if (userRole !== 'teacher') return true
+
+    if (a.created_by === session.user.id) return true
+
+    const ids = a.target_ids ?? []
+    switch (a.target_type) {
+      case 'everyone':
+      case 'all_teachers':
+        return true
+      case 'class_teachers':
+        return teacherClassIds.some((id) => ids.includes(id))
+      case 'specific_teacher':
+        return ids.includes(session.user.id)
+      case 'all_students':
+      case 'class_students':
+      case 'specific_student':
+        return false
+      default:
+        return true
+    }
+  }, [userRole, session, teacherClassIds])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -327,16 +330,10 @@ export default function Announcements() {
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
-      if (userRole === 'teacher') {
-        const filtered = (data ?? []).filter((a) =>
-          teacherCanSeeAnnouncement(
-            a,
-            teacherClassIds,
-            teacherSubjectIds,
-            session.user.id
-          )
-        )
-        setAnnouncements(filtered)
+      if (userRole === 'teacher' && teacherAssignmentsReady) {
+        setAnnouncements((data ?? []).filter(canSeeAnnouncement))
+      } else if (userRole === 'teacher') {
+        setAnnouncements([])
       } else {
         setAnnouncements(data ?? [])
       }
@@ -361,7 +358,8 @@ export default function Announcements() {
     studentClassId,
     instituteId,
     teacherClassIds,
-    teacherSubjectIds,
+    teacherAssignmentsReady,
+    canSeeAnnouncement,
   ])
 
   useEffect(() => {
@@ -396,6 +394,16 @@ export default function Announcements() {
       return
     }
 
+    if (userRole === 'teacher' && teacherAnnouncementTarget === 'class_students' && teacherTargetClassIds.length === 0) {
+      setError('Please select at least one class.')
+      return
+    }
+
+    if (userRole === 'teacher' && teacherAnnouncementTarget === 'specific_student' && !teacherSpecificStudent) {
+      setError('Please find a student by roll number.')
+      return
+    }
+
     setSaving(true)
     setError(null)
 
@@ -403,14 +411,15 @@ export default function Announcements() {
     let finalTargetIds = targetIds
 
     if (userRole === 'teacher') {
-      if (teacherAnnouncementTarget === 'everyone') {
-        finalTargetType = 'everyone'
-        finalTargetIds = []
-      } else {
-        finalTargetType = teacherTargetClassIds.length === 0
-          ? 'all_students'
-          : 'class_students'
+      if (teacherAnnouncementTarget === 'specific_student') {
+        finalTargetType = 'specific_student'
+        finalTargetIds = teacherSpecificStudent ? [teacherSpecificStudent.id] : []
+      } else if (teacherAnnouncementTarget === 'class_students') {
+        finalTargetType = 'class_students'
         finalTargetIds = teacherTargetClassIds
+      } else {
+        finalTargetType = 'all_students'
+        finalTargetIds = []
       }
     }
 
@@ -435,6 +444,8 @@ export default function Announcements() {
       setTargetSubjectIds([])
       setTeacherTargetClassIds([])
       setTeacherAnnouncementTarget('students')
+      setTeacherSpecificStudentRoll('')
+      setTeacherSpecificStudent(null)
       setStudentSearchForAnnouncement('')
       setFoundAnnouncementStudent(null)
       setShowForm(false)
@@ -565,10 +576,13 @@ export default function Announcements() {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Send To
               </label>
-              <div className="flex gap-2 mb-3">
+              <div className="flex flex-wrap gap-2 mb-3">
                 <button
                   type="button"
-                  onClick={() => setTeacherAnnouncementTarget('students')}
+                  onClick={() => {
+                    setTeacherAnnouncementTarget('students')
+                    setTeacherTargetClassIds([])
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
                     teacherAnnouncementTarget === 'students'
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
@@ -579,34 +593,30 @@ export default function Announcements() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTeacherAnnouncementTarget('everyone')}
+                  onClick={() => setTeacherAnnouncementTarget('class_students')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
-                    teacherAnnouncementTarget === 'everyone'
+                    teacherAnnouncementTarget === 'class_students'
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
                       : 'border-gray-300 text-gray-600'
                   }`}
                 >
-                  Everyone in My Classes
+                  Specific Class Students
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTeacherAnnouncementTarget('specific_student')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                    teacherAnnouncementTarget === 'specific_student'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 text-gray-600'
+                  }`}
+                >
+                  👤 Specific Student
                 </button>
               </div>
 
-              {teacherAnnouncementTarget === 'students' && (
+              {teacherAnnouncementTarget === 'class_students' && (
                 <div className="flex flex-wrap gap-2">
-                  <label
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
-                      teacherTargetClassIds.length === 0
-                        ? 'border-blue-600 bg-blue-50 text-blue-700'
-                        : 'border-gray-300 text-gray-600'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      checked={teacherTargetClassIds.length === 0}
-                      onChange={() => setTeacherTargetClassIds([])}
-                      className="hidden"
-                    />
-                    All My Classes
-                  </label>
                   {teacherClasses.map((c) => (
                     <label
                       key={c.id}
@@ -631,6 +641,37 @@ export default function Announcements() {
                       {c.name}
                     </label>
                   ))}
+                </div>
+              )}
+
+              {teacherAnnouncementTarget === 'specific_student' && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    value={teacherSpecificStudentRoll}
+                    onChange={async (e) => {
+                      setTeacherSpecificStudentRoll(e.target.value)
+                      if (e.target.value.trim().length >= 1) {
+                        const { data } = await supabase
+                          .from('users')
+                          .select('id, name, roll_number')
+                          .eq('role', 'student')
+                          .eq('roll_number', e.target.value.trim())
+                          .single()
+                        setTeacherSpecificStudent(data ?? null)
+                      } else {
+                        setTeacherSpecificStudent(null)
+                      }
+                    }}
+                    placeholder="Enter roll number..."
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  {teacherSpecificStudent && (
+                    <p className="text-xs text-green-700 mt-1 font-medium">
+                      Found: {teacherSpecificStudent.name}
+                      {' '}(Roll #{teacherSpecificStudent.roll_number})
+                    </p>
+                  )}
                 </div>
               )}
             </div>
