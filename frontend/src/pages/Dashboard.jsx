@@ -97,13 +97,19 @@ export default function Dashboard() {
       if (instituteId) {
         const { data: announcementData } = await supabase
           .from('announcements')
-          .select('id, title, body, is_pinned, created_at, subjects(name)')
+          .select('id, title, body, is_pinned, created_at, created_by, subjects(name)')
           .eq('institute_id', instituteId)
           .order('is_pinned', { ascending: false })
           .order('created_at', { ascending: false })
-          .limit(3)
+          .limit(userRole === 'teacher' ? 10 : 3)
 
-        if (announcementData) setRecentAnnouncements(announcementData)
+        if (announcementData) {
+          let items = announcementData
+          if (userRole === 'teacher') {
+            items = items.filter((a) => a.created_by !== session.user.id)
+          }
+          setRecentAnnouncements(items.slice(0, 3))
+        }
       }
 
       if (userRole === 'student') {

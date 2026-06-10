@@ -197,35 +197,7 @@ export default function Announcements() {
   const [teacherSpecificStudent, setTeacherSpecificStudent] = useState(null)
   const [studentSearchForAnnouncement, setStudentSearchForAnnouncement] = useState('')
   const [foundAnnouncementStudent, setFoundAnnouncementStudent] = useState(null)
-
-  const canSeeAnnouncement = useCallback((a) => {
-    if (userRole !== 'teacher') return true
-
-    const ids = a.target_ids ?? []
-
-    if (a.created_by === session?.user?.id) return true
-
-    switch (a.target_type) {
-      case 'everyone':
-        return true
-      case 'all_teachers':
-        return true
-      case 'all_students':
-        return false
-      case 'class_students':
-        return false
-      case 'specific_student':
-        return false
-      case 'class_teachers':
-        return ids.some((id) => teacherClassIds.includes(id))
-      case 'subject_teachers':
-        return ids.some((id) => teacherSubjectIds.includes(id))
-      case 'specific_teacher':
-        return ids.includes(session?.user?.id)
-      default:
-        return false
-    }
-  }, [userRole, session, teacherClassIds, teacherSubjectIds])
+  const [teacherAnnouncementTab, setTeacherAnnouncementTab] = useState('institute')
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -336,16 +308,7 @@ export default function Announcements() {
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
-      if (userRole === 'teacher') {
-        if (!teacherAssignmentsReady) {
-          setAnnouncements([])
-          setLoading(false)
-          return
-        }
-        setAnnouncements((data ?? []).filter(canSeeAnnouncement))
-      } else {
-        setAnnouncements(data ?? [])
-      }
+      setAnnouncements(data ?? [])
     } else if (userRole === 'student') {
       const { data } = await supabase
         .from('announcements')
@@ -361,19 +324,11 @@ export default function Announcements() {
     }
 
     setLoading(false)
-  }, [
-    session,
-    userRole,
-    studentClassId,
-    instituteId,
-    teacherClassIds,
-    teacherAssignmentsReady,
-    canSeeAnnouncement,
-  ])
+  }, [session, userRole, studentClassId, instituteId])
 
   useEffect(() => {
     loadAnnouncements()
-  }, [loadAnnouncements, teacherAssignmentsReady])
+  }, [loadAnnouncements])
 
   async function handlePost(e) {
     e.preventDefault()
@@ -490,8 +445,27 @@ export default function Announcements() {
     userRole === 'admin' ||
     (userRole === 'teacher' && announcement.created_by === session.user.id)
 
-  const pinned = announcements.filter((a) => a.is_pinned)
-  const regular = announcements.filter((a) => !a.is_pinned)
+  const instituteAnnouncements = announcements.filter(
+    (a) =>
+      a.created_by !== session?.user?.id &&
+      ['everyone', 'all_teachers', 'class_teachers', 'specific_teacher'].includes(
+        a.target_type
+      )
+  )
+
+  const myAnnouncements = announcements.filter(
+    (a) => a.created_by === session?.user?.id
+  )
+
+  const displayedAnnouncements =
+    userRole === 'teacher'
+      ? teacherAnnouncementTab === 'institute'
+        ? instituteAnnouncements
+        : myAnnouncements
+      : announcements
+
+  const pinned = displayedAnnouncements.filter((a) => a.is_pinned)
+  const regular = displayedAnnouncements.filter((a) => !a.is_pinned)
 
   function renderAnnouncementCard(item) {
     return (
@@ -528,7 +502,7 @@ export default function Announcements() {
           <h1 className="text-2xl font-bold text-gray-900">Announcements</h1>
           <p className="text-sm text-gray-500">Welcome, {userName}</p>
         </div>
-        {isTeacher && (
+        {(userRole !== 'teacher' || teacherAnnouncementTab === 'mine') && isTeacher && (
           <button
             type="button"
             onClick={() => setShowForm(!showForm)}
@@ -539,7 +513,34 @@ export default function Announcements() {
         )}
       </div>
 
-      {isTeacher && showForm && (
+      {userRole === 'teacher' && (
+        <div className="flex gap-2 mb-4">
+          <button
+            type="button"
+            onClick={() => setTeacherAnnouncementTab('institute')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              teacherAnnouncementTab === 'institute'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'border-gray-300 text-gray-600'
+            }`}
+          >
+            📢 From Institute
+          </button>
+          <button
+            type="button"
+            onClick={() => setTeacherAnnouncementTab('mine')}
+            className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              teacherAnnouncementTab === 'mine'
+                ? 'bg-blue-600 text-white border-blue-600'
+                : 'border-gray-300 text-gray-600'
+            }`}
+          >
+            📝 My Announcements
+          </button>
+        </div>
+      )}
+
+      {(userRole !== 'teacher' || teacherAnnouncementTab === 'mine') && isTeacher && showForm && (
         <form
           onSubmit={handlePost}
           className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col gap-4"
@@ -852,7 +853,7 @@ export default function Announcements() {
         <p className="text-sm text-gray-500">Loading announcements…</p>
       )}
 
-      {!loading && announcements.length === 0 && (
+      {!loading && displayedAnnouncements.length === 0 && (
         <p className="text-sm text-gray-500">No announcements yet.</p>
       )}
 
