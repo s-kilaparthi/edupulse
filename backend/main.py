@@ -225,6 +225,64 @@ Return ONLY a JSON array, no explanation:
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.post("/register-institute")
+async def register_institute(request: Request):
+    try:
+        body = await request.json()
+        institute_name = body.get('institute_name')
+        city = body.get('city')
+        state = body.get('state')
+        admin_name = body.get('admin_name')
+        admin_email = body.get('admin_email')
+        password = body.get('password')
+
+        if not all([institute_name, city, state, admin_name, admin_email, password]):
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        supabase_url = os.environ.get('SUPABASE_URL')
+        supabase_service_key = os.environ.get('SUPABASE_SERVICE_KEY')
+        if not supabase_url or not supabase_service_key:
+            raise HTTPException(status_code=500, detail="Supabase service credentials not configured")
+
+        supabase_admin = create_client(supabase_url, supabase_service_key)
+
+        institute_response = supabase_admin.from_('institutes').insert({
+            "name": institute_name.strip(),
+            "city": city.strip(),
+            "state": state.strip(),
+        }).select('id').single().execute()
+
+        if not institute_response.data:
+            raise HTTPException(status_code=500, detail="Failed to create institute")
+
+        institute_id = institute_response.data['id']
+
+        auth_response = supabase_admin.auth.admin.create_user({
+            "email": admin_email.strip(),
+            "password": password,
+            "email_confirm": True,
+        })
+
+        user_id = auth_response.user.id
+
+        supabase_admin.from_('users').insert({
+            "id": user_id,
+            "name": admin_name.strip(),
+            "email": admin_email.strip(),
+            "role": "admin",
+            "institute_id": institute_id,
+        }).execute()
+
+        return {"success": True, "institute_id": institute_id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Register institute error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/create-student")
 async def create_student(request: Request):
     try:
