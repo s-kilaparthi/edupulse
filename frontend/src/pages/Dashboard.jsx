@@ -223,11 +223,36 @@ export default function Dashboard() {
           const latestExamId = scoreRows[0].exam_id
           const examRows = scoreRows.filter((r) => r.exam_id === latestExamId)
           lastExamName = examRows[0]?.exams?.name ?? '—'
-          lastExamScore = examRows.reduce((sum, r) => sum + r.score, 0)
-          lastExamTotal = examRows.reduce((sum, r) => sum + r.total, 0)
-          lastExamPct = lastExamTotal > 0
-            ? Math.round((lastExamScore / lastExamTotal) * 100)
-            : 0
+
+          const { data: examMeta } = await supabase
+            .from('exams')
+            .select('exam_type')
+            .eq('id', latestExamId)
+            .single()
+
+          if (examMeta?.exam_type === 'written') {
+            const { data: summary } = await supabase
+              .from('omr_results')
+              .select('marks_obtained, total_marks')
+              .eq('exam_id', latestExamId)
+              .eq('student_id', studentId)
+              .is('question_id', null)
+              .maybeSingle()
+
+            if (summary) {
+              lastExamScore = summary.marks_obtained ?? 0
+              lastExamTotal = summary.total_marks ?? 0
+              lastExamPct = lastExamTotal > 0
+                ? Math.round((lastExamScore / lastExamTotal) * 100)
+                : 0
+            }
+          } else {
+            lastExamScore = examRows.reduce((sum, r) => sum + r.score, 0)
+            lastExamTotal = examRows.reduce((sum, r) => sum + r.total, 0)
+            lastExamPct = lastExamTotal > 0
+              ? Math.round((lastExamScore / lastExamTotal) * 100)
+              : 0
+          }
         }
 
         setStudentInfo({

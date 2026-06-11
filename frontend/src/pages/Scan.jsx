@@ -42,6 +42,48 @@ function parseScanResponse(data, questionCount) {
   }
 }
 
+async function buildStudentAndParentNotifications({
+  studentId,
+  rollNumber,
+  title,
+  body,
+  type = 'results',
+  instituteId,
+}) {
+  const rows = [
+    {
+      user_id: studentId,
+      title,
+      body,
+      type,
+      is_read: false,
+    },
+  ]
+
+  if (!instituteId || rollNumber == null || rollNumber === '') return rows
+
+  const { data: parent } = await supabase
+    .from('users')
+    .select('id')
+    .eq('roll_number', String(rollNumber))
+    .eq('role', 'parent')
+    .eq('institute_id', instituteId)
+    .limit(1)
+    .maybeSingle()
+
+  if (parent) {
+    rows.push({
+      user_id: parent.id,
+      title,
+      body,
+      type,
+      is_read: false,
+    })
+  }
+
+  return rows
+}
+
 export default function Scan() {
   const { session } = useOutletContext()
   const [userRole, setUserRole] = useState('')
@@ -647,15 +689,18 @@ export default function Scan() {
     setPostingResults(true)
 
     try {
-      const allStudentIds = reviewStudents.map((s) => s.id)
-
-      const notifRows = allStudentIds.map((id) => ({
-        user_id: id,
-        title: 'Results Posted',
-        body: `Your results for ${selectedExam.name} are now available`,
-        type: 'results',
-        is_read: false,
-      }))
+      const notifRows = []
+      for (const student of reviewStudents) {
+        const rows = await buildStudentAndParentNotifications({
+          studentId: student.id,
+          rollNumber: student.roll_number,
+          title: 'Results Posted',
+          body: `Your results for ${selectedExam.name} are now available`,
+          type: 'results',
+          instituteId,
+        })
+        notifRows.push(...rows)
+      }
 
       if (notifRows.length > 0) {
         const { error: notifError } = await supabase
@@ -683,13 +728,18 @@ export default function Scan() {
   async function handlePostRollResults() {
     setPostingResults(true)
     try {
-      const notifRows = rollScanRecords.map((r) => ({
-        user_id: r.studentId,
-        title: 'Results Posted',
-        body: `Your results for ${selectedExam.name} are now available`,
-        type: 'results',
-        is_read: false,
-      }))
+      const notifRows = []
+      for (const record of rollScanRecords) {
+        const rows = await buildStudentAndParentNotifications({
+          studentId: record.studentId,
+          rollNumber: record.roll,
+          title: 'Results Posted',
+          body: `Your results for ${selectedExam.name} are now available`,
+          type: 'results',
+          instituteId,
+        })
+        notifRows.push(...rows)
+      }
 
       if (notifRows.length > 0) {
         const { error: notifError } = await supabase
@@ -855,13 +905,17 @@ export default function Scan() {
     try {
       await upsertWrittenExamSummary(studentId, marks)
 
-      const { error } = await supabase.from('notifications').insert({
-        user_id: studentId,
+      const student = writtenStudents.find((s) => s.id === studentId)
+      const notifRows = await buildStudentAndParentNotifications({
+        studentId,
+        rollNumber: student?.roll_number,
         title: `Results Posted — ${examName}`,
         body: `You scored ${marks}/${writtenQuestionCount}. Check your results for topic feedback.`,
         type: 'result',
-        is_read: false,
+        instituteId,
       })
+
+      const { error } = await supabase.from('notifications').insert(notifRows)
 
       if (error) throw error
 
@@ -893,16 +947,20 @@ export default function Scan() {
         await upsertWrittenExamSummary(studentId, marks)
       }
 
-      const notifRows = pending.map((studentId) => {
+      const notifRows = []
+      for (const studentId of pending) {
         const marks = parseInt(writtenMarks[studentId], 10)
-        return {
-          user_id: studentId,
+        const student = writtenStudents.find((s) => s.id === studentId)
+        const rows = await buildStudentAndParentNotifications({
+          studentId,
+          rollNumber: student?.roll_number,
           title: `Results Posted — ${examName}`,
           body: `You scored ${marks}/${writtenQuestionCount}. Check your results for topic feedback.`,
           type: 'result',
-          is_read: false,
-        }
-      })
+          instituteId,
+        })
+        notifRows.push(...rows)
+      }
 
       const { error } = await supabase.from('notifications').insert(notifRows)
       if (error) throw error

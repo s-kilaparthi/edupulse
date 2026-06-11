@@ -379,7 +379,8 @@ export default function Results() {
   const navigate = useNavigate()
   const navState = location.state
   const fromStudentsNav = !!navState?.studentName
-  const [userRole, setUserRole] = useState('student')
+  const [userRole, setUserRole] = useState('')
+  const [roleLoaded, setRoleLoaded] = useState(false)
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
 
   const [exams, setExams] = useState([])
@@ -399,10 +400,15 @@ export default function Results() {
   const [linkedStudentId, setLinkedStudentId] = useState(null)
 
   const effectiveStudentId =
-    userRole === 'parent' ? linkedStudentId : session?.user?.id
+    userRole === 'parent'
+      ? linkedStudentId
+      : userRole === 'student'
+        ? session?.user?.id
+        : null
 
   useEffect(() => {
     if (!session?.user?.id) return
+    setRoleLoaded(false)
     supabase
       .from('users')
       .select('role, roll_number, institute_id')
@@ -413,7 +419,10 @@ export default function Results() {
         if (data?.role === 'parent') {
           const linkedStudent = await fetchLinkedStudent(data)
           setLinkedStudentId(linkedStudent?.id ?? null)
+        } else {
+          setLinkedStudentId(null)
         }
+        setRoleLoaded(true)
       })
   }, [session])
 
@@ -589,7 +598,12 @@ export default function Results() {
       setLoading(false)
       return
     }
-    if (!isTeacher && !effectiveStudentId) return
+    if (!isTeacher) {
+      if (!roleLoaded) return
+      if (userRole === 'parent' && !linkedStudentId) return
+      if (userRole === 'student' && !session?.user?.id) return
+      if (!effectiveStudentId) return
+    }
 
     async function loadResults() {
       setLoading(true)
@@ -680,7 +694,7 @@ export default function Results() {
     }
 
     loadResults()
-  }, [examId, isTeacher, selectedStudentId, effectiveStudentId])
+  }, [examId, isTeacher, selectedStudentId, effectiveStudentId, roleLoaded, userRole, linkedStudentId, session])
 
   useEffect(() => {
     if (exams.length === 0) return
@@ -688,7 +702,12 @@ export default function Results() {
       setTrendData([])
       return
     }
-    if (!isTeacher && !effectiveStudentId) return
+    if (!isTeacher) {
+      if (!roleLoaded) return
+      if (userRole === 'parent' && !linkedStudentId) return
+      if (userRole === 'student' && !session?.user?.id) return
+      if (!effectiveStudentId) return
+    }
 
     setLoadingTrend(true)
     let query = supabase
@@ -732,7 +751,7 @@ export default function Results() {
         setTrendData(trend)
         setLoadingTrend(false)
       })
-  }, [exams, isTeacher, selectedStudentId, effectiveStudentId])
+  }, [exams, isTeacher, selectedStudentId, effectiveStudentId, roleLoaded, userRole, linkedStudentId, session])
 
   const subject = result?.subjects?.find((s) => s.subject_id === activeSubject) ?? result?.subjects?.[0]
 
