@@ -8,6 +8,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rollNumber, setRollNumber] = useState('')
+  const [parentPhone, setParentPhone] = useState('')
   const [instituteCode, setInstituteCode] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -47,6 +48,50 @@ export default function Login() {
       if (signInError) {
         setLoading(false)
         setError('Invalid roll number or password.')
+        return
+      }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_active, role')
+        .eq('id', authData.user.id)
+        .single()
+
+      if (userData?.is_active === false) {
+        localStorage.setItem('blocked_message',
+          'Your account has been temporarily blocked. Please contact your institute admin or help desk for assistance.')
+        await supabase.auth.signOut()
+        return
+      }
+
+      setLoading(false)
+      navigate('/dashboard', { replace: true })
+      return
+    }
+
+    if (loginMode === 'parent') {
+      const { data: parentData } = await supabase
+        .from('users')
+        .select('email')
+        .eq('parent_phone', parentPhone.trim())
+        .eq('role', 'parent')
+        .limit(1)
+        .maybeSingle()
+
+      if (!parentData) {
+        setError('No parent account found for this phone number')
+        setLoading(false)
+        return
+      }
+
+      const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: parentData.email,
+        password: password,
+      })
+
+      if (signInError) {
+        setLoading(false)
+        setError('Invalid phone number or password.')
         return
       }
 
@@ -117,7 +162,7 @@ export default function Login() {
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Teacher / Admin
+            Teacher
           </button>
           <button
             type="button"
@@ -129,6 +174,17 @@ export default function Login() {
             }`}
           >
             Student
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoginMode('parent')}
+            className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
+              loginMode === 'parent'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Parent
           </button>
         </div>
 
@@ -149,7 +205,7 @@ export default function Login() {
                 placeholder="you@example.com"
               />
             </div>
-          ) : (
+          ) : loginMode === 'student' ? (
             <div>
               <label htmlFor="roll-number" className="block text-sm font-medium text-gray-700 mb-1">
                 Roll number
@@ -162,6 +218,22 @@ export default function Login() {
                 onChange={(e) => setRollNumber(e.target.value)}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
                 placeholder="Your roll number e.g. 007"
+              />
+            </div>
+          ) : (
+            <div>
+              <label htmlFor="parent-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                Phone number
+              </label>
+              <input
+                id="parent-phone"
+                type="text"
+                required
+                value={parentPhone}
+                onChange={(e) => setParentPhone(e.target.value)}
+                maxLength={10}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                placeholder="Registered phone number"
               />
             </div>
           )}
@@ -178,7 +250,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
-              placeholder="••••••••"
+              placeholder={loginMode === 'parent' ? 'Student roll number' : '••••••••'}
             />
           </div>
 
