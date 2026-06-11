@@ -35,6 +35,24 @@ function ExamTypeBadge({ examType }) {
   )
 }
 
+function InstituteExamTypeBadge({ name }) {
+  if (!name) return null
+  return (
+    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+      {name}
+    </span>
+  )
+}
+
+function formatExamDate(dateStr) {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 function OverallScoreCard({ result }) {
   const { totalScore, totalMax, percentage, classTop, notGraded } = result
 
@@ -396,10 +414,11 @@ export default function Results() {
   const [allExams, setAllExams] = useState([])
   const [instituteExamTypes, setInstituteExamTypes] = useState([])
   const [selectedExamTypeId, setSelectedExamTypeId] = useState('')
-  const [studentClassId, setStudentClassId] = useState(null)
-  const [examId, setExamId] = useState(navState?.examId ?? '')
+  const [examId, setExamId] = useState('')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [examSummaries, setExamSummaries] = useState([])
+  const [loadingSummaries, setLoadingSummaries] = useState(false)
   const [activeSubject, setActiveSubject] = useState('')
   const [trendData, setTrendData] = useState([])
   const [loadingTrend, setLoadingTrend] = useState(false)
@@ -426,15 +445,10 @@ export default function Results() {
       list = list.filter((e) => e.exam_type_id === selectedExamTypeId)
     }
 
-    if (!isTeacher && selectedExamTypeId && studentClassId) {
-      list = list.filter((e) => {
-        if (e.scope === 'all') return true
-        return (e.exam_classes ?? []).some((ec) => ec.class_id === studentClassId)
-      })
-    }
-
     return list
-  }, [allExams, selectedExamTypeId, isTeacher, studentClassId])
+  }, [allExams, selectedExamTypeId])
+
+  const isStudentView = !isTeacher && roleLoaded
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -461,15 +475,18 @@ export default function Results() {
         if (data?.role === 'parent') {
           const linkedStudent = await fetchLinkedStudent(data)
           setLinkedStudentId(linkedStudent?.id ?? null)
-          setStudentClassId(linkedStudent?.class_id ?? null)
-        } else if (data?.role === 'student') {
-          setLinkedStudentId(null)
-          setStudentClassId(data.class_id ?? null)
         } else {
           setLinkedStudentId(null)
-          setStudentClassId(null)
         }
         setRoleLoaded(true)
+
+        if (data?.role === 'teacher' || data?.role === 'admin') {
+          if (navState?.examId) {
+            setExamId(navState.examId)
+          }
+        } else {
+          setExamId('')
+        }
       })
   }, [session])
 
@@ -626,7 +643,7 @@ export default function Results() {
   useEffect(() => {
     supabase
       .from('exams')
-      .select('id, name, exam_type, exam_type_id, scope, exam_subjects(subject_id, subjects(name)), exam_classes(class_id)')
+      .select('id, name, exam_date, exam_type, exam_type_id, scope, total_questions, total_marks, exam_types(name), exam_subjects(subject_id, subjects(name)), exam_classes(class_id)')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) {
@@ -636,6 +653,7 @@ export default function Results() {
   }, [])
 
   useEffect(() => {
+    if (!isTeacher) return
     if (exams.length === 0) {
       if (examId) setExamId('')
       return
@@ -643,7 +661,84 @@ export default function Results() {
     if (!exams.some((e) => e.id === examId)) {
       setExamId(exams[0].id)
     }
-  }, [exams])
+  }, [exams, isTeacher])
+
+  useEffect(() => {
+    if (isTeacher) return
+    if (examId && !exams.some((e) => e.id === examId)) {
+      setExamId('')
+    }
+  }, [exams, examId, isTeacher])
+
+  useEffect(() => {
+    if (isTeacher || examId) {
+      setExamSummaries([])
+      return
+    }
+    if (!roleLoaded) return
+    if (userRole === 'parent' && !linkedStudentId) return
+    if (userRole === 'student' && !session?.user?.id) return
+    if (!effectiveStudentId) return
+    if (exams.length === 0) {
+      setExamSummaries([])
+      return
+    }
+
+    async function loadSummaries() {
+      setLoadingSummaries(true)
+      const examIds = exams.map((e) => e.id)
+
+      const { data: writtenSummaries } = await supabase
+        .from('omr_results')
+        .select('exam_id, marks_obtained, total_marks')
+        .eq('student_id', effectiveStudentId)
+        .in('exam_id', examIds)
+        .is('question_id', null)
+
+      const { data: mcqResults } = await supabase
+        .from('omr_results')
+        .select('exam_id, is_correct, question_id')
+        .eq('student_id', effectiveStudentId)
+        .in('exam_id', examIds)
+        .not('question_id', 'is', null)
+
+      const writtenMap = {}
+      for (const row of writtenSummaries ?? []) {
+        writtenMap[row.exam_id] = row
+      }
+
+      const mcqMap = {}
+      for (const row of mcqResults ?? []) {
+        if (row.question_id == null) continue
+        if (!mcqMap[row.exam_id]) mcqMap[row.exam_id] = 0
+        if (row.is_correct) mcqMap[row.exam_id] += 1
+      }
+
+      const summaries = exams.map((exam) => {
+        if (exam.exam_type === 'written') {
+          const summary = writtenMap[exam.id]
+          if (!summary) {
+            return { exam, notGraded: true, score: 0, total: exam.total_marks ?? 0, percentage: 0, hasResult: false }
+          }
+          const score = summary.marks_obtained ?? 0
+          const total = summary.total_marks ?? exam.total_marks ?? 0
+          const percentage = total > 0 ? Math.round((score / total) * 100) : 0
+          return { exam, notGraded: false, score, total, percentage, hasResult: true }
+        }
+
+        const score = mcqMap[exam.id] ?? 0
+        const total = exam.total_questions ?? 0
+        const hasResult = (mcqResults ?? []).some((r) => r.exam_id === exam.id)
+        const percentage = total > 0 ? Math.round((score / total) * 100) : 0
+        return { exam, notGraded: false, score, total, percentage, hasResult }
+      })
+
+      setExamSummaries(summaries)
+      setLoadingSummaries(false)
+    }
+
+    loadSummaries()
+  }, [isTeacher, examId, exams, effectiveStudentId, roleLoaded, userRole, linkedStudentId, session])
 
   useEffect(() => {
     if (!examId) return
@@ -779,6 +874,10 @@ export default function Results() {
       return
     }
     if (!isTeacher) {
+      if (examId) {
+        setTrendData([])
+        return
+      }
       if (!roleLoaded) return
       if (userRole === 'parent' && !linkedStudentId) return
       if (userRole === 'student' && !session?.user?.id) return
@@ -903,52 +1002,54 @@ export default function Results() {
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
             <h1 className="text-2xl font-bold text-gray-900">My Performance</h1>
           </div>
-          <div className="flex flex-wrap gap-2 items-center">
-            <select
-              value={selectedExamTypeId}
-              onChange={(e) => setSelectedExamTypeId(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="">Select Exam Type</option>
-              {instituteExamTypes.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-            <div className="flex items-center gap-2 w-full md:w-auto">
+          {isTeacher && (
+            <div className="flex flex-wrap gap-2 items-center">
               <select
-                value={examId}
-                onChange={(e) => setExamId(e.target.value)}
-                disabled={exams.length === 0}
-                className="flex-1 md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                value={selectedExamTypeId}
+                onChange={(e) => setSelectedExamTypeId(e.target.value)}
+                className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
               >
-                {exams.length === 0 ? (
-                  <option value="">No exams found</option>
-                ) : (
-                  exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)
-                )}
-              </select>
-              {selectedExam && (
-                <ExamTypeBadge examType={selectedExam.exam_type} />
-              )}
-            </div>
-            {isTeacher && activeTab === 'student' && examId && classes.length > 0 && !navState?.classId && (
-              <select
-                value={selectedClassId}
-                onChange={(e) => {
-                  setSelectedClassId(e.target.value)
-                  setSelectedStudentId('')
-                  setExpandedStudentId(null)
-                  setStudentSearch('')
-                }}
-                className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
-              >
-                <option value="">All classes</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                <option value="">Select Exam Type</option>
+                {instituteExamTypes.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
-            )}
-          </div>
+              <div className="flex items-center gap-2 w-full md:w-auto">
+                <select
+                  value={examId}
+                  onChange={(e) => setExamId(e.target.value)}
+                  disabled={exams.length === 0}
+                  className="flex-1 md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {exams.length === 0 ? (
+                    <option value="">No exams found</option>
+                  ) : (
+                    exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)
+                  )}
+                </select>
+                {selectedExam && (
+                  <ExamTypeBadge examType={selectedExam.exam_type} />
+                )}
+              </div>
+              {activeTab === 'student' && examId && classes.length > 0 && !navState?.classId && (
+                <select
+                  value={selectedClassId}
+                  onChange={(e) => {
+                    setSelectedClassId(e.target.value)
+                    setSelectedStudentId('')
+                    setExpandedStudentId(null)
+                    setStudentSearch('')
+                  }}
+                  className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                >
+                  <option value="">All classes</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
         </header>
 
         {isTeacher && (
@@ -984,35 +1085,122 @@ export default function Results() {
           </div>
         )}
 
-        {!isTeacher && loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-            <span className="ml-3 text-sm text-gray-500">Loading results…</span>
-          </div>
-        )}
-
-        {!isTeacher && !loading && !result && examId && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-            <p className="text-gray-500 text-sm">No results found for this exam yet.</p>
-            <p className="text-gray-400 text-xs mt-1">Scan some OMR sheets first.</p>
-          </div>
-        )}
-
-        {!isTeacher && !loading && result && (
+        {isStudentView && (
           <>
-            <OverallScoreCard result={result} />
-            {subject && (
-              <div className="flex flex-col gap-5">
-                <SubjectTabs subjects={result.subjects} active={subject.subject_id} onChange={setActiveSubject} />
-                <TopicPerformance subject={subject} />
-                <TopicSummary subject={subject} />
+            <div className="flex flex-col gap-4">
+              <select
+                value={selectedExamTypeId}
+                onChange={(e) => setSelectedExamTypeId(e.target.value)}
+                className="w-full md:w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">All Exam Types</option>
+                {instituteExamTypes.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+
+              {examId && (
+                <button
+                  type="button"
+                  onClick={() => setExamId('')}
+                  className="self-start text-sm font-medium text-green-600 hover:text-green-800"
+                >
+                  ← Back
+                </button>
+              )}
+            </div>
+
+            {!examId && (
+              <>
+                {loadingSummaries && (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="ml-3 text-sm text-gray-500">Loading exams…</span>
+                  </div>
+                )}
+
+                {!loadingSummaries && exams.length === 0 && (
+                  <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                    <p className="text-gray-500 text-sm">No exams found.</p>
+                  </div>
+                )}
+
+                {!loadingSummaries && examSummaries.length > 0 && (
+                  <div className="flex flex-col gap-3">
+                    {examSummaries.map(({ exam, notGraded, score, total, percentage, hasResult }) => (
+                      <button
+                        key={exam.id}
+                        type="button"
+                        onClick={() => setExamId(exam.id)}
+                        className="w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-sm text-left hover:border-green-300 hover:shadow-md transition-all"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <p className="font-semibold text-gray-900 truncate">{exam.name}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{formatExamDate(exam.exam_date)}</p>
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              <ExamTypeBadge examType={exam.exam_type} />
+                              <InstituteExamTypeBadge name={exam.exam_types?.name} />
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {notGraded ? (
+                              <p className="text-sm font-medium text-gray-500">Not graded</p>
+                            ) : !hasResult ? (
+                              <p className="text-sm font-medium text-gray-400">No results</p>
+                            ) : (
+                              <>
+                                <p className="font-semibold text-gray-900 text-sm">{score} / {total}</p>
+                                <p className="text-xs text-green-600 font-medium">{percentage}%</p>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {!loadingTrend && trendData.length > 0 && (
+                  <PerformanceTrend trendData={trendData} totalExams={exams.length} />
+                )}
+              </>
+            )}
+
+            {examId && loading && (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                <span className="ml-3 text-sm text-gray-500">Loading results…</span>
               </div>
             )}
-          </>
-        )}
 
-        {!isTeacher && !loadingTrend && trendData.length > 0 && (
-          <PerformanceTrend trendData={trendData} totalExams={exams.length} />
+            {examId && !loading && !result && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                <p className="text-gray-500 text-sm">No results found for this exam yet.</p>
+                <p className="text-gray-400 text-xs mt-1">Scan some OMR sheets first.</p>
+              </div>
+            )}
+
+            {examId && !loading && result && (
+              <>
+                {selectedExam && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-lg font-semibold text-gray-900">{selectedExam.name}</h2>
+                    <ExamTypeBadge examType={selectedExam.exam_type} />
+                    <InstituteExamTypeBadge name={selectedExam.exam_types?.name} />
+                  </div>
+                )}
+                <OverallScoreCard result={result} />
+                {subject && (
+                  <div className="flex flex-col gap-5">
+                    <SubjectTabs subjects={result.subjects} active={subject.subject_id} onChange={setActiveSubject} />
+                    <TopicPerformance subject={subject} />
+                    <TopicSummary subject={subject} />
+                  </div>
+                )}
+              </>
+            )}
+          </>
         )}
 
         {isTeacher && activeTab === 'student' && examId && !fromStudentsNav && (
