@@ -459,6 +459,8 @@ export default function Results() {
   const isStudentView = userRole === 'student' && roleLoaded
   const isParentView = userRole === 'parent' && roleLoaded
   const isLearnerView = isStudentView || isParentView
+  const isTeacherStudentView = fromStudentsNav && isTeacher && roleLoaded
+  const isCardExamView = isLearnerView || isTeacherStudentView
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -501,8 +503,10 @@ export default function Results() {
         setRoleLoaded(true)
 
         if (data?.role === 'teacher' || data?.role === 'admin') {
-          if (navState?.examId) {
+          if (navState?.examId && !fromStudentsNav) {
             setExamId(navState.examId)
+          } else if (fromStudentsNav) {
+            setExamId('')
           }
         } else {
           setExamId('')
@@ -673,7 +677,7 @@ export default function Results() {
   }, [])
 
   useEffect(() => {
-    if (!isTeacher) return
+    if (!isTeacher || fromStudentsNav) return
     if (exams.length === 0) {
       if (examId) setExamId('')
       return
@@ -681,24 +685,27 @@ export default function Results() {
     if (!exams.some((e) => e.id === examId)) {
       setExamId(exams[0].id)
     }
-  }, [exams, isTeacher])
+  }, [exams, isTeacher, fromStudentsNav])
 
   useEffect(() => {
-    if (isTeacher) return
+    if (isTeacher && !fromStudentsNav) return
     if (examId && !exams.some((e) => e.id === examId)) {
       setExamId('')
     }
-  }, [exams, examId, isTeacher])
+  }, [exams, examId, isTeacher, fromStudentsNav])
 
   useEffect(() => {
-    if (isTeacher || examId) {
+    if (!isCardExamView || examId) {
       setExamSummaries([])
       return
     }
     if (!roleLoaded) return
-    if (userRole === 'parent' && !linkedStudentId) return
-    if (userRole === 'student' && !session?.user?.id) return
-    if (!effectiveStudentId) return
+    if (isParentView && !linkedStudentId) return
+    if (isStudentView && !session?.user?.id) return
+    if (isTeacherStudentView && !selectedStudentId) return
+
+    const summaryStudentId = isTeacherStudentView ? selectedStudentId : effectiveStudentId
+    if (!summaryStudentId) return
     if (exams.length === 0) {
       setExamSummaries([])
       return
@@ -711,14 +718,14 @@ export default function Results() {
       const { data: writtenSummaries } = await supabase
         .from('omr_results')
         .select('exam_id, marks_obtained, total_marks')
-        .eq('student_id', effectiveStudentId)
+        .eq('student_id', summaryStudentId)
         .in('exam_id', examIds)
         .is('question_id', null)
 
       const { data: mcqResults } = await supabase
         .from('omr_results')
         .select('exam_id, is_correct, question_id')
-        .eq('student_id', effectiveStudentId)
+        .eq('student_id', summaryStudentId)
         .in('exam_id', examIds)
         .not('question_id', 'is', null)
 
@@ -758,7 +765,7 @@ export default function Results() {
     }
 
     loadSummaries()
-  }, [isTeacher, examId, exams, effectiveStudentId, roleLoaded, userRole, linkedStudentId, session])
+  }, [isCardExamView, examId, exams, effectiveStudentId, selectedStudentId, isTeacherStudentView, isParentView, isStudentView, roleLoaded, linkedStudentId, session])
 
   useEffect(() => {
     if (!examId) return
@@ -893,15 +900,19 @@ export default function Results() {
       setTrendData([])
       return
     }
-    if (!isTeacher) {
+    if (!isTeacher || fromStudentsNav) {
       if (examId) {
         setTrendData([])
         return
       }
       if (!roleLoaded) return
-      if (userRole === 'parent' && !linkedStudentId) return
-      if (userRole === 'student' && !session?.user?.id) return
-      if (!effectiveStudentId) return
+      if (fromStudentsNav && isTeacher) {
+        if (!selectedStudentId) return
+      } else {
+        if (userRole === 'parent' && !linkedStudentId) return
+        if (userRole === 'student' && !session?.user?.id) return
+        if (!effectiveStudentId) return
+      }
     }
 
     setLoadingTrend(true)
@@ -946,7 +957,7 @@ export default function Results() {
         setTrendData(trend)
         setLoadingTrend(false)
       })
-  }, [exams, isTeacher, selectedStudentId, effectiveStudentId, roleLoaded, userRole, linkedStudentId, session])
+  }, [exams, isTeacher, fromStudentsNav, selectedStudentId, effectiveStudentId, roleLoaded, userRole, linkedStudentId, session, examId])
 
   const subject = result?.subjects?.find((s) => s.subject_id === activeSubject) ?? result?.subjects?.[0]
 
@@ -961,27 +972,118 @@ export default function Results() {
     String(s.roll_number).includes(studentSearch)
   )
 
-  const showTeacherPerformance = isTeacher && activeTab === 'student' && (
-    fromStudentsNav ? selectedStudentId : expandedStudentId
-  )
-
-  function renderPerformanceDashboard() {
+  function renderCardExamFlow({ blocked = false, blockedMessage = null }) {
     return (
       <>
-        {loading && (
+        <div className="flex flex-col gap-4">
+          <select
+            value={selectedExamTypeId}
+            onChange={(e) => setSelectedExamTypeId(e.target.value)}
+            className="w-full md:w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <option value="">All Exam Types</option>
+            {instituteExamTypes.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+
+          {examId && (
+            <button
+              type="button"
+              onClick={() => setExamId('')}
+              className="self-start text-sm font-medium text-green-600 hover:text-green-800"
+            >
+              ← Back
+            </button>
+          )}
+        </div>
+
+        {blocked && blockedMessage && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <p className="text-gray-500 text-sm">{blockedMessage}</p>
+          </div>
+        )}
+
+        {!examId && !blocked && (
+          <>
+            {loadingSummaries && (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                <span className="ml-3 text-sm text-gray-500">Loading exams…</span>
+              </div>
+            )}
+
+            {!loadingSummaries && exams.length === 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                <p className="text-gray-500 text-sm">No exams found.</p>
+              </div>
+            )}
+
+            {!loadingSummaries && examSummaries.length > 0 && (
+              <div className="flex flex-col gap-3">
+                {examSummaries.map(({ exam, notGraded, score, total, percentage, hasResult }) => (
+                  <button
+                    key={exam.id}
+                    type="button"
+                    onClick={() => setExamId(exam.id)}
+                    className="w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-sm text-left hover:border-green-300 hover:shadow-md transition-all"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 truncate">{exam.name}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">{formatExamDate(exam.exam_date)}</p>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          <ExamTypeBadge examType={exam.exam_type} />
+                          <InstituteExamTypeBadge name={exam.exam_types?.name} />
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {notGraded ? (
+                          <p className="text-sm font-medium text-gray-500">Not graded</p>
+                        ) : !hasResult ? (
+                          <p className="text-sm font-medium text-gray-400">No results</p>
+                        ) : (
+                          <>
+                            <p className="font-semibold text-gray-900 text-sm">{score} / {total}</p>
+                            <p className="text-xs text-green-600 font-medium">{percentage}%</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {!loadingTrend && trendData.length > 0 && (
+              <PerformanceTrend trendData={trendData} totalExams={exams.length} />
+            )}
+          </>
+        )}
+
+        {examId && !blocked && loading && (
           <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
             <span className="ml-3 text-sm text-gray-500">Loading results…</span>
           </div>
         )}
-        {!loading && !result && examId && (
+
+        {examId && !blocked && !loading && !result && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-gray-500 text-sm">No results found for this exam yet.</p>
             <p className="text-gray-400 text-xs mt-1">Scan some OMR sheets first.</p>
           </div>
         )}
-        {!loading && result && (
+
+        {examId && !blocked && !loading && result && (
           <>
+            {selectedExam && (
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-lg font-semibold text-gray-900">{selectedExam.name}</h2>
+                <ExamTypeBadge examType={selectedExam.exam_type} />
+                <InstituteExamTypeBadge name={selectedExam.exam_types?.name} />
+              </div>
+            )}
             <OverallScoreCard result={result} />
             {subject && (
               <div className="flex flex-col gap-5">
@@ -991,9 +1093,6 @@ export default function Results() {
               </div>
             )}
           </>
-        )}
-        {!loadingTrend && trendData.length > 0 && (
-          <PerformanceTrend trendData={trendData} totalExams={exams.length} />
         )}
       </>
     )
@@ -1022,7 +1121,7 @@ export default function Results() {
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
             <h1 className="text-2xl font-bold text-gray-900">My Performance</h1>
           </div>
-          {isTeacher && (
+          {isTeacher && !fromStudentsNav && (
             <div className="flex flex-wrap gap-2 items-center">
               <select
                 value={selectedExamTypeId}
@@ -1072,7 +1171,7 @@ export default function Results() {
           )}
         </header>
 
-        {isTeacher && (
+        {isTeacher && !fromStudentsNav && (
           <div className="flex gap-1 border-b border-gray-200 mb-5">
             <button onClick={() => setActiveTab('student')}
               className={`px-4 py-2.5 text-sm font-medium relative ${activeTab === 'student' ? 'text-gray-900' : 'text-gray-500'}`}>
@@ -1091,7 +1190,10 @@ export default function Results() {
           <ClassHeatmap examId={examId} exams={exams} />
         )}
 
-        {fromStudentsNav && showTeacherPerformance && renderPerformanceDashboard()}
+        {isCardExamView && renderCardExamFlow({
+          blocked: isParentView && !linkedStudentId,
+          blockedMessage: 'No linked student found for this parent account.',
+        })}
 
         {isTeacher && activeTab === 'student' && examId && !fromStudentsNav && displayedRankings.length === 0 && studentRankings.length > 0 && selectedClassId && (
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
@@ -1103,130 +1205,6 @@ export default function Results() {
           <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
             <p className="text-gray-500 text-sm">No students found for this exam</p>
           </div>
-        )}
-
-        {isLearnerView && (
-          <>
-            <div className="flex flex-col gap-4">
-              <select
-                value={selectedExamTypeId}
-                onChange={(e) => setSelectedExamTypeId(e.target.value)}
-                className="w-full md:w-64 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
-              >
-                <option value="">All Exam Types</option>
-                {instituteExamTypes.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
-
-              {examId && (
-                <button
-                  type="button"
-                  onClick={() => setExamId('')}
-                  className="self-start text-sm font-medium text-green-600 hover:text-green-800"
-                >
-                  ← Back
-                </button>
-              )}
-            </div>
-
-            {isParentView && !linkedStudentId && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-                <p className="text-gray-500 text-sm">No linked student found for this parent account.</p>
-              </div>
-            )}
-
-            {!examId && !(isParentView && !linkedStudentId) && (
-              <>
-                {loadingSummaries && (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="ml-3 text-sm text-gray-500">Loading exams…</span>
-                  </div>
-                )}
-
-                {!loadingSummaries && exams.length === 0 && (
-                  <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-                    <p className="text-gray-500 text-sm">No exams found.</p>
-                  </div>
-                )}
-
-                {!loadingSummaries && examSummaries.length > 0 && (
-                  <div className="flex flex-col gap-3">
-                    {examSummaries.map(({ exam, notGraded, score, total, percentage, hasResult }) => (
-                      <button
-                        key={exam.id}
-                        type="button"
-                        onClick={() => setExamId(exam.id)}
-                        className="w-full rounded-2xl border border-gray-200 bg-white p-4 shadow-sm text-left hover:border-green-300 hover:shadow-md transition-all"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-gray-900 truncate">{exam.name}</p>
-                            <p className="text-xs text-gray-400 mt-0.5">{formatExamDate(exam.exam_date)}</p>
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              <ExamTypeBadge examType={exam.exam_type} />
-                              <InstituteExamTypeBadge name={exam.exam_types?.name} />
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            {notGraded ? (
-                              <p className="text-sm font-medium text-gray-500">Not graded</p>
-                            ) : !hasResult ? (
-                              <p className="text-sm font-medium text-gray-400">No results</p>
-                            ) : (
-                              <>
-                                <p className="font-semibold text-gray-900 text-sm">{score} / {total}</p>
-                                <p className="text-xs text-green-600 font-medium">{percentage}%</p>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {!loadingTrend && trendData.length > 0 && (
-                  <PerformanceTrend trendData={trendData} totalExams={exams.length} />
-                )}
-              </>
-            )}
-
-            {examId && !(isParentView && !linkedStudentId) && loading && (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-sm text-gray-500">Loading results…</span>
-              </div>
-            )}
-
-            {examId && !(isParentView && !linkedStudentId) && !loading && !result && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-                <p className="text-gray-500 text-sm">No results found for this exam yet.</p>
-                <p className="text-gray-400 text-xs mt-1">Scan some OMR sheets first.</p>
-              </div>
-            )}
-
-            {examId && !(isParentView && !linkedStudentId) && !loading && result && (
-              <>
-                {selectedExam && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-semibold text-gray-900">{selectedExam.name}</h2>
-                    <ExamTypeBadge examType={selectedExam.exam_type} />
-                    <InstituteExamTypeBadge name={selectedExam.exam_types?.name} />
-                  </div>
-                )}
-                <OverallScoreCard result={result} />
-                {subject && (
-                  <div className="flex flex-col gap-5">
-                    <SubjectTabs subjects={result.subjects} active={subject.subject_id} onChange={setActiveSubject} />
-                    <TopicPerformance subject={subject} />
-                    <TopicSummary subject={subject} />
-                  </div>
-                )}
-              </>
-            )}
-          </>
         )}
 
         {isTeacher && activeTab === 'student' && examId && !fromStudentsNav && (
