@@ -79,6 +79,20 @@ export default function Scan() {
   const [absentList, setAbsentList] = useState([])
   const [activeScanMode, setActiveScanMode] = useState('class')
   const [gradingMode, setGradingMode] = useState(null)
+  const [writtenStep, setWrittenStep] = useState(1)
+  const [writtenClassId, setWrittenClassId] = useState('')
+  const [writtenExamId, setWrittenExamId] = useState('')
+  const [writtenExams, setWrittenExams] = useState([])
+  const [writtenStudents, setWrittenStudents] = useState([])
+  const [writtenSearch, setWrittenSearch] = useState('')
+  const [expandedStudentId, setExpandedStudentId] = useState(null)
+  const [writtenPoorQuestions, setWrittenPoorQuestions] = useState({})
+  const [writtenMarks, setWrittenMarks] = useState({})
+  const [gradedStudentIds, setGradedStudentIds] = useState(new Set())
+  const [writtenSavedStudentIds, setWrittenSavedStudentIds] = useState(new Set())
+  const [writtenExamQuestions, setWrittenExamQuestions] = useState([])
+  const [writtenSavingId, setWrittenSavingId] = useState(null)
+  const [writtenError, setWrittenError] = useState('')
   const fileRef = useRef(null)
   const fileRefRoll = useRef(null)
 
@@ -103,6 +117,40 @@ export default function Scan() {
 
   const canScan = userRole === 'teacher' || userRole === 'admin'
   const showScanUI = !userRole || canScan
+
+  const writtenSelectedExam = useMemo(
+    () => writtenExams.find((e) => e.id === writtenExamId),
+    [writtenExams, writtenExamId]
+  )
+
+  const writtenQuestionCount = writtenSelectedExam?.total_questions ?? DEFAULT_QUESTION_COUNT
+
+  const filteredWrittenStudents = useMemo(() => {
+    const q = writtenSearch.trim().toLowerCase()
+    if (!q) return writtenStudents
+    return writtenStudents.filter(
+      (s) =>
+        s.name?.toLowerCase().includes(q) ||
+        String(s.roll_number ?? '').toLowerCase().includes(q)
+    )
+  }, [writtenStudents, writtenSearch])
+
+  function resetWrittenGrading() {
+    setWrittenStep(1)
+    setWrittenClassId('')
+    setWrittenExamId('')
+    setWrittenExams([])
+    setWrittenStudents([])
+    setWrittenSearch('')
+    setExpandedStudentId(null)
+    setWrittenPoorQuestions({})
+    setWrittenMarks({})
+    setGradedStudentIds(new Set())
+    setWrittenSavedStudentIds(new Set())
+    setWrittenExamQuestions([])
+    setWrittenSavingId(null)
+    setWrittenError('')
+  }
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -141,6 +189,29 @@ export default function Scan() {
     }
     loadExamsAndClasses()
   }, [canScan, instituteId])
+
+  useEffect(() => {
+    if (gradingMode !== 'written' || !writtenClassId) {
+      setWrittenExams([])
+      setWrittenExamId('')
+      return
+    }
+
+    supabase
+      .from('exams')
+      .select('id, name, total_questions, exam_classes(class_id)')
+      .eq('exam_type', 'written')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        const filtered = (data ?? []).filter((ex) =>
+          ex.exam_classes?.some((ec) => ec.class_id === writtenClassId)
+        )
+        setWrittenExams(filtered)
+        setWrittenExamId((prev) =>
+          filtered.some((e) => e.id === prev) ? prev : ''
+        )
+      })
+  }, [gradingMode, writtenClassId])
 
   useEffect(() => {
     if (!canScan) return
@@ -578,6 +649,180 @@ export default function Scan() {
     return { count: sessionRecords.length, avg, topicAgg }
   }, [sessionRecords])
 
+  async function handleStartWrittenGrading() {
+    if (!writtenClassId || !writtenExamId) return
+    setWrittenError('')
+
+    const { data: classStudents, error: studentsErr } = await supabase
+      .from('users')
+      .select('id, name, roll_number')
+      .eq('role', 'student')
+      .eq('class_id', writtenClassId)
+      .order('roll_number')
+
+    if (studentsErr) {
+      setWrittenError(studentsErr.message)
+      return
+    }
+
+    const { data: questions, error: questionsErr } = await supabase
+      .from('questions')
+      .select('id, question_number, topic_id, topics(subject_id)')
+      .eq('exam_id', writtenExamId)
+      .order('question_number')
+
+    if (questionsErr) {
+      setWrittenError(questionsErr.message)
+      return
+    }
+
+    const studentIds = (classStudents ?? []).map((s) => s.id)
+    let graded = new Set()
+    if (studentIds.length > 0) {
+      const { data: gradedRows } = await supabase
+        .from('topic_scores')
+        .select('student_id')
+        .eq('exam_id', writtenExamId)
+        .in('student_id', studentIds)
+
+      graded = new Set((gradedRows ?? []).map((r) => r.student_id))
+    }
+
+    setWrittenStudents(classStudents ?? [])
+    setWrittenExamQuestions(questions ?? [])
+    setGradedStudentIds(graded)
+    setWrittenSavedStudentIds(new Set())
+    setWrittenPoorQuestions({})
+    setWrittenMarks({})
+    setExpandedStudentId(null)
+    setWrittenSearch('')
+    setWrittenStep(2)
+  }
+
+  async function handleExpandWrittenStudent(studentId) {
+    if (expandedStudentId === studentId) {
+      setExpandedStudentId(null)
+      return
+    }
+
+    setExpandedStudentId(studentId)
+    setWrittenError('')
+
+    if (Object.prototype.hasOwnProperty.call(writtenPoorQuestions, studentId)) return
+
+    const { data: omrRows } = await supabase
+      .from('omr_results')
+      .select('is_correct, answer_given, questions(question_number)')
+      .eq('exam_id', writtenExamId)
+      .eq('student_id', studentId)
+
+    if (!omrRows?.length) {
+      setWrittenPoorQuestions((prev) => ({ ...prev, [studentId]: [] }))
+      setWrittenMarks((prev) => ({ ...prev, [studentId]: '' }))
+      return
+    }
+
+    const poor = []
+    let marks = ''
+    for (const row of omrRows) {
+      const qNum = row.questions?.question_number
+      if (qNum == null) continue
+      if (!row.is_correct) poor.push(qNum)
+      if (qNum === 1 && row.answer_given != null) marks = String(row.answer_given)
+    }
+
+    if (!marks) {
+      marks = String(omrRows.filter((r) => r.is_correct).length)
+    }
+
+    setWrittenPoorQuestions((prev) => ({ ...prev, [studentId]: poor }))
+    setWrittenMarks((prev) => ({ ...prev, [studentId]: marks }))
+  }
+
+  function toggleWrittenPoorQuestion(studentId, qNum) {
+    setWrittenPoorQuestions((prev) => {
+      const arr = prev[studentId] ?? []
+      const has = arr.includes(qNum)
+      return {
+        ...prev,
+        [studentId]: has ? arr.filter((n) => n !== qNum) : [...arr, qNum],
+      }
+    })
+  }
+
+  async function handleSaveWrittenStudent(studentId) {
+    const poorArr = writtenPoorQuestions[studentId] ?? []
+    const poorSet = new Set(poorArr)
+    const marks = parseInt(writtenMarks[studentId], 10)
+
+    if (Number.isNaN(marks) || marks < 0 || marks > writtenQuestionCount) {
+      setWrittenError(`Enter marks between 0 and ${writtenQuestionCount}`)
+      return
+    }
+
+    setWrittenSavingId(studentId)
+    setWrittenError('')
+
+    try {
+      const topicAgg = {}
+      const omrRows = []
+
+      for (const q of writtenExamQuestions) {
+        const isPoor = poorSet.has(q.question_number)
+        const tid = q.topic_id
+        const sid = q.topics?.subject_id ?? null
+
+        if (tid) {
+          if (!topicAgg[tid]) topicAgg[tid] = { score: 0, total: 0, subject_id: sid }
+          topicAgg[tid].total += 1
+          if (!isPoor) topicAgg[tid].score += 1
+        }
+
+        omrRows.push({
+          exam_id: writtenExamId,
+          student_id: studentId,
+          question_id: q.id,
+          answer_given: q.question_number === 1 ? String(marks) : null,
+          is_correct: !isPoor,
+        })
+      }
+
+      if (omrRows.length === 0) {
+        throw new Error('No questions found for this exam. Add questions in Exams first.')
+      }
+
+      const { error: omrErr } = await supabase
+        .from('omr_results')
+        .upsert(omrRows, { onConflict: 'exam_id,student_id,question_id' })
+      if (omrErr) throw omrErr
+
+      const topicRows = Object.entries(topicAgg).map(([topic_id, { score, total, subject_id }]) => ({
+        exam_id: writtenExamId,
+        student_id: studentId,
+        topic_id,
+        subject_id: subject_id ?? null,
+        score,
+        total,
+        percentage: total > 0 ? Math.round((score / total) * 100) : 0,
+      }))
+
+      if (topicRows.length > 0) {
+        const { error: topicErr } = await supabase
+          .from('topic_scores')
+          .upsert(topicRows, { onConflict: 'exam_id,student_id,topic_id' })
+        if (topicErr) throw topicErr
+      }
+
+      setGradedStudentIds((prev) => new Set([...prev, studentId]))
+      setWrittenSavedStudentIds((prev) => new Set([...prev, studentId]))
+      setExpandedStudentId(null)
+    } catch (err) {
+      setWrittenError(err.message || 'Save failed')
+    }
+
+    setWrittenSavingId(null)
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Grading</h1>
@@ -613,14 +858,194 @@ export default function Scan() {
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <button
             type="button"
-            onClick={() => setGradingMode(null)}
+            onClick={() => {
+              resetWrittenGrading()
+              setGradingMode(null)
+            }}
             className="text-sm text-gray-500 hover:text-gray-700"
           >
             ← Back
           </button>
-          <h2 className="text-lg font-semibold text-gray-800">
-            Written Exam Grading — Coming Soon
-          </h2>
+
+          <h2 className="text-lg font-semibold text-gray-800">Written Exam Grading</h2>
+
+          {writtenError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <p className="text-red-700 text-sm">{writtenError}</p>
+            </div>
+          )}
+
+          {writtenStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Select Class</label>
+                <select
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                  value={writtenClassId}
+                  onChange={(e) => {
+                    setWrittenClassId(e.target.value)
+                    setWrittenExamId('')
+                  }}
+                >
+                  <option value="">Choose class…</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {writtenClassId && (
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">Select Exam</label>
+                  <select
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2"
+                    value={writtenExamId}
+                    onChange={(e) => setWrittenExamId(e.target.value)}
+                  >
+                    <option value="">Choose exam…</option>
+                    {writtenExams.map((ex) => (
+                      <option key={ex.id} value={ex.id}>{ex.name}</option>
+                    ))}
+                  </select>
+                  {writtenExams.length === 0 && (
+                    <p className="text-xs text-gray-400 mt-1">No written exams for this class.</p>
+                  )}
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={!writtenClassId || !writtenExamId}
+                onClick={handleStartWrittenGrading}
+                className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+              >
+                Start Grading
+              </button>
+            </div>
+          )}
+
+          {writtenStep === 2 && (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                {writtenSelectedExam?.name}
+                {' · '}
+                {classes.find((c) => c.id === writtenClassId)?.name}
+              </p>
+
+              <input
+                type="text"
+                value={writtenSearch}
+                onChange={(e) => setWrittenSearch(e.target.value)}
+                placeholder="Search by name or roll number…"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              />
+
+              <div className="space-y-2">
+                {filteredWrittenStudents.length === 0 && (
+                  <p className="text-sm text-gray-400">No students found.</p>
+                )}
+                {filteredWrittenStudents.map((student) => {
+                  const isExpanded = expandedStudentId === student.id
+                  const poorArr = writtenPoorQuestions[student.id] ?? []
+                  const isGraded = gradedStudentIds.has(student.id)
+                  const justSaved = writtenSavedStudentIds.has(student.id)
+
+                  return (
+                    <div key={student.id} className="border border-gray-200 rounded-xl overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => handleExpandWrittenStudent(student.id)}
+                        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">{student.name}</p>
+                          <p className="text-xs text-gray-500">Roll #{student.roll_number}</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isGraded && (
+                            <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-50 text-blue-700">
+                              Graded
+                            </span>
+                          )}
+                          {justSaved && (
+                            <span className="text-green-600 text-sm font-medium">✓</span>
+                          )}
+                          <span className="text-gray-400 text-xs">{isExpanded ? '▲' : '▼'}</span>
+                        </div>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="px-4 pb-4 border-t border-gray-100 space-y-4">
+                          <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mt-3">
+                            <p className="text-sm text-yellow-800 font-medium">
+                              Select questions with poor or wrong answers
+                            </p>
+                          </div>
+
+                          <div>
+                            <label className="block text-sm text-gray-600 mb-1">
+                              Marks obtained
+                            </label>
+                            <input
+                              type="number"
+                              min={0}
+                              max={writtenQuestionCount}
+                              value={writtenMarks[student.id] ?? ''}
+                              onChange={(e) =>
+                                setWrittenMarks((prev) => ({
+                                  ...prev,
+                                  [student.id]: e.target.value,
+                                }))
+                              }
+                              placeholder={`0 – ${writtenQuestionCount}`}
+                              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                            />
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            {Array.from({ length: writtenQuestionCount }, (_, i) => i + 1).map((qNum) => {
+                              const isPoor = poorArr.includes(qNum)
+                              return (
+                                <button
+                                  key={qNum}
+                                  type="button"
+                                  onClick={() => toggleWrittenPoorQuestion(student.id, qNum)}
+                                  className={`w-10 h-10 rounded-lg border-2 text-xs font-medium transition-colors ${
+                                    isPoor
+                                      ? 'border-red-500 bg-red-100 text-red-800'
+                                      : 'border-green-500 bg-green-100 text-green-800'
+                                  }`}
+                                >
+                                  {qNum}
+                                </button>
+                              )
+                            })}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleSaveWrittenStudent(student.id)}
+                            disabled={writtenSavingId === student.id}
+                            className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-40"
+                          >
+                            {writtenSavingId === student.id ? 'Saving…' : 'Save'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setWrittenStep(1)}
+                className="text-sm text-gray-500 hover:text-gray-700"
+              >
+                ← Change class / exam
+              </button>
+            </div>
+          )}
         </section>
       )}
 
