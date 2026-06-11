@@ -131,10 +131,12 @@ export default function Exams() {
     setExams(data ?? [])
   }
 
-  async function handleDeleteExam(examId, examName) {
-    if (!window.confirm(
-      `Delete "${examName}"? This will delete all questions and results for this exam.`
-    )) return
+  async function handleDeleteExam(examId, examName, examType) {
+    const confirmMessage = examType === 'written'
+      ? 'Delete written exam? This will delete all questions and results for this exam.'
+      : `Delete "${examName}"? This will delete all questions and results for this exam.`
+
+    if (!window.confirm(confirmMessage)) return
 
     await supabase.from('topic_scores')
       .delete().eq('exam_id', examId)
@@ -151,8 +153,15 @@ export default function Exams() {
     await supabase.from('exam_classes')
       .delete().eq('exam_id', examId)
 
-    await supabase.from('exams')
+    const { error: deleteError } = await supabase.from('exams')
       .delete().eq('id', examId)
+
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+
+    setExams((prev) => prev.filter((e) => e.id !== examId))
 
     if (activeExam?.id === examId) closeQuestionsPanel()
     if (activeProfileExamId === examId) setActiveProfileExamId(null)
@@ -978,7 +987,7 @@ export default function Exams() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDeleteExam(exam.id, exam.name)}
+                        onClick={() => handleDeleteExam(exam.id, exam.name, exam.exam_type)}
                         className="text-xs text-red-500 hover:text-red-700 font-medium"
                       >
                         Delete
