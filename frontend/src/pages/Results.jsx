@@ -21,6 +21,19 @@ const statusPillClass = {
   weak: 'bg-red-100 text-red-700',
 }
 
+function ExamTypeBadge({ examType }) {
+  const isWritten = examType === 'written'
+  return (
+    <span
+      className={`text-xs px-2 py-0.5 rounded-full font-medium text-white ${
+        isWritten ? 'bg-blue-600' : 'bg-purple-600'
+      }`}
+    >
+      {isWritten ? 'Written' : 'MCQ'}
+    </span>
+  )
+}
+
 function OverallScoreCard({ result }) {
   const { totalScore, totalMax, percentage, classTop } = result
   const youPct = totalMax > 0 ? (totalScore / totalMax) * 100 : 0
@@ -526,7 +539,7 @@ export default function Results() {
   useEffect(() => {
     supabase
       .from('exams')
-      .select('id, name, exam_subjects(subject_id, subjects(name))')
+      .select('id, name, exam_type, exam_subjects(subject_id, subjects(name))')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data && data.length > 0) {
@@ -656,6 +669,8 @@ export default function Results() {
 
   const subject = result?.subjects?.find((s) => s.subject_id === activeSubject) ?? result?.subjects?.[0]
 
+  const selectedExam = exams.find((e) => e.id === examId)
+
   const displayedRankings = selectedClassId
     ? studentRankings.filter((s) => s.class_id === selectedClassId)
     : studentRankings
@@ -725,10 +740,15 @@ export default function Results() {
             <h1 className="text-2xl font-bold text-gray-900">My Performance</h1>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
-            <select value={examId} onChange={(e) => setExamId(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500">
-              {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}
-            </select>
+            <div className="flex items-center gap-2 w-full md:w-auto">
+              <select value={examId} onChange={(e) => setExamId(e.target.value)}
+                className="flex-1 md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500">
+                {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}
+              </select>
+              {selectedExam && (
+                <ExamTypeBadge examType={selectedExam.exam_type} />
+              )}
+            </div>
             {isTeacher && activeTab === 'student' && classes.length > 0 && !navState?.classId && (
               <select
                 value={selectedClassId}
