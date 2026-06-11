@@ -166,26 +166,14 @@ export default function Students() {
             roll_number: roll,
             institute_id: instituteId,
             class_id: newStudentClassId || null,
+            parent_name: parentName.trim() || null,
+            parent_phone: parentPhone.trim() || null,
           }),
         }
       )
 
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Failed to create student')
-
-      const trimmedParentName = parentName.trim()
-      const trimmedParentPhone = parentPhone.trim()
-      if (data.user_id && (trimmedParentName || trimmedParentPhone)) {
-        const { error: parentError } = await supabase
-          .from('users')
-          .update({
-            parent_name: trimmedParentName || null,
-            parent_phone: trimmedParentPhone || null,
-          })
-          .eq('id', data.user_id)
-
-        if (parentError) throw new Error(parentError.message)
-      }
 
       setStudentName('')
       setRollNumber('')
