@@ -18,11 +18,15 @@ export default function Students() {
   const [studentName, setStudentName] = useState('')
   const [rollNumber, setRollNumber] = useState('')
   const [newStudentClassId, setNewStudentClassId] = useState('')
+  const [parentName, setParentName] = useState('')
+  const [parentPhone, setParentPhone] = useState('')
 
   const [editingId, setEditingId] = useState(null)
   const [editName, setEditName] = useState('')
   const [editRoll, setEditRoll] = useState('')
   const [editEmail, setEditEmail] = useState('')
+  const [editParentName, setEditParentName] = useState('')
+  const [editParentPhone, setEditParentPhone] = useState('')
   const [editSaving, setEditSaving] = useState(false)
 
   const [selectedFilterClass, setSelectedFilterClass] = useState('')
@@ -88,7 +92,7 @@ export default function Students() {
 
       const { data, error: fetchError } = await supabase
         .from('users')
-        .select('id, name, email, roll_number, class_id, classes(name)')
+        .select('id, name, email, roll_number, class_id, parent_name, parent_phone, classes(name)')
         .eq('role', 'student')
         .in('class_id', classIds)
         .order('roll_number')
@@ -107,7 +111,7 @@ export default function Students() {
 
     const { data, error: fetchError } = await supabase
       .from('users')
-      .select('id, name, email, roll_number, class_id, classes(name)')
+      .select('id, name, email, roll_number, class_id, parent_name, parent_phone, classes(name)')
       .eq('role', 'student')
       .order('name')
 
@@ -169,9 +173,25 @@ export default function Students() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Failed to create student')
 
+      const trimmedParentName = parentName.trim()
+      const trimmedParentPhone = parentPhone.trim()
+      if (data.user_id && (trimmedParentName || trimmedParentPhone)) {
+        const { error: parentError } = await supabase
+          .from('users')
+          .update({
+            parent_name: trimmedParentName || null,
+            parent_phone: trimmedParentPhone || null,
+          })
+          .eq('id', data.user_id)
+
+        if (parentError) throw new Error(parentError.message)
+      }
+
       setStudentName('')
       setRollNumber('')
       setNewStudentClassId('')
+      setParentName('')
+      setParentPhone('')
       setSuccessMessage(`Student ${name} added. Login: Roll ${roll}, Password: ${roll}`)
       await fetchStudents()
     } catch (err) {
@@ -200,6 +220,8 @@ export default function Students() {
     setEditName(student.name ?? '')
     setEditRoll(String(student.roll_number ?? ''))
     setEditEmail(student.email ?? '')
+    setEditParentName(student.parent_name ?? '')
+    setEditParentPhone(student.parent_phone ?? '')
   }
 
   function handleCancelEdit() {
@@ -207,6 +229,8 @@ export default function Students() {
     setEditName('')
     setEditRoll('')
     setEditEmail('')
+    setEditParentName('')
+    setEditParentPhone('')
   }
 
   async function handleSaveEdit(studentId) {
@@ -223,7 +247,13 @@ export default function Students() {
 
     const { error: updateError } = await supabase
       .from('users')
-      .update({ name, roll_number: roll, email })
+      .update({
+        name,
+        roll_number: roll,
+        email,
+        parent_name: editParentName.trim() || null,
+        parent_phone: editParentPhone.trim() || null,
+      })
       .eq('id', studentId)
 
     setEditSaving(false)
@@ -313,6 +343,35 @@ export default function Students() {
                 ))}
               </select>
             )}
+
+            <div>
+              <label htmlFor="parent-name" className="block text-sm font-medium text-gray-700 mb-1">
+                Parent Name
+              </label>
+              <input
+                id="parent-name"
+                type="text"
+                value={parentName}
+                onChange={(e) => setParentName(e.target.value)}
+                placeholder="Parent/Guardian name"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="parent-phone" className="block text-sm font-medium text-gray-700 mb-1">
+                Parent Phone
+              </label>
+              <input
+                id="parent-phone"
+                type="text"
+                value={parentPhone}
+                onChange={(e) => setParentPhone(e.target.value)}
+                placeholder="10-digit mobile number"
+                maxLength={10}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              />
+            </div>
 
             <div className="flex items-end">
               <button
@@ -463,6 +522,21 @@ export default function Students() {
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
                       placeholder="Email"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={editParentName}
+                      onChange={(e) => setEditParentName(e.target.value)}
+                      placeholder="Parent/Guardian name"
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    />
+                    <input
+                      type="text"
+                      value={editParentPhone}
+                      onChange={(e) => setEditParentPhone(e.target.value)}
+                      placeholder="10-digit mobile number"
+                      maxLength={10}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                     />
                     <div className="flex gap-2">
