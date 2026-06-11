@@ -34,6 +34,10 @@ function formatTodayDate() {
   })
 }
 
+function todayDateStr() {
+  return new Date().toISOString().split('T')[0]
+}
+
 function getPeriodEndTime(periodNumber, startTime) {
   return PERIOD_END_TIMES[periodNumber] ?? startTime?.slice(0, 5) ?? ''
 }
@@ -139,7 +143,9 @@ export default function Dashboard() {
   })
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [todaySchedule, setTodaySchedule] = useState([])
+  const [teacherClassCards, setTeacherClassCards] = useState([])
   const [loading, setLoading] = useState(true)
+
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
@@ -293,33 +299,73 @@ export default function Dashboard() {
         setRecentAnnouncements(announcements.slice(0, 3))
       } else if (userRole === 'teacher') {
         setRecentAnnouncements((announcementData ?? []).slice(0, 3))
-        const { data: teacherClassesData } = await supabase
-          .from('class_teachers')
-          .select('class_id, classes(id, name)')
+
+        const dayName = DAYS[new Date().getDay()]
+        const today = todayDateStr()
+
+        let slotsQuery = supabase
+          .from('schedule_slots')
+          .select('period_number, start_time, end_time, subjects(name), classes(name)')
           .eq('teacher_id', session.user.id)
+          .eq('day_of_week', dayName)
+          .order('period_number')
 
-        const classIds = [...new Set(teacherClassesData?.map((tc) => tc.class_id) ?? [])]
-
-        let studentCount = 0
-        if (classIds.length > 0) {
-          const { count } = await supabase
-            .from('users')
-            .select('id', { count: 'exact' })
-            .eq('role', 'student')
-            .in('class_id', classIds)
-          studentCount = count ?? 0
+        if (instituteId) {
+          slotsQuery = slotsQuery.eq('institute_id', instituteId)
         }
 
-        const { count: examCount } = await supabase
-          .from('exams')
-          .select('*', { count: 'exact', head: true })
-          .eq('created_by', session.user.id)
+        const { data: slots } = await slotsQuery
 
-        setStats({
-          myClasses: classIds.length,
-          myStudents: studentCount,
-          examsCreated: examCount ?? 0,
-        })
+        setTodaySchedule(slots ?? [])
+
+        const { data: teacherAssignments } = await supabase
+          .from('class_teachers')
+          .select('class_id, subject_id, classes(id, name), subjects(name)')
+          .eq('teacher_id', session.user.id)
+
+        const classMap = {}
+        for (const row of teacherAssignments ?? []) {
+          const classId = row.class_id
+          if (!classMap[classId]) {
+            classMap[classId] = {
+              classId,
+              className: row.classes?.name ?? 'Class',
+              subjects: [],
+            }
+          }
+          const subjectName = row.subjects?.name
+          if (subjectName && !classMap[classId].subjects.includes(subjectName)) {
+            classMap[classId].subjects.push(subjectName)
+          }
+        }
+
+        const classCards = await Promise.all(
+          Object.values(classMap).map(async (cls) => {
+            const [{ count: studentCount }, { data: attendanceToday }] = await Promise.all([
+              supabase
+                .from('users')
+                .select('id', { count: 'exact', head: true })
+                .eq('role', 'student')
+                .eq('class_id', cls.classId),
+              supabase
+                .from('attendance')
+                .select('id')
+                .eq('class_id', cls.classId)
+                .eq('date', today)
+                .eq('marked_by', session.user.id)
+                .limit(1),
+            ])
+
+            return {
+              ...cls,
+              studentCount: studentCount ?? 0,
+              attendanceMarked: (attendanceToday?.length ?? 0) > 0,
+            }
+          })
+        )
+
+        classCards.sort((a, b) => a.className.localeCompare(b.className))
+        setTeacherClassCards(classCards)
       } else if (userRole === 'admin' && instituteId) {
         const [studentsRes, teachersRes, scoresRes] = await Promise.all([
           supabase
@@ -472,53 +518,111 @@ export default function Dashboard() {
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome, {userName}!</h1>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-900">Today&apos;s Schedule</h2>
+              <span className="text-xs text-gray-500">{formatTodayDate()}</span>
+            </div>
+            {todaySchedule.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-2xl mb-2">📅</p>
+                <p className="text-sm text-gray-500">No classes scheduled today</p>
+              </div>
+            ) : (
+              <div className="flex gap-3 overflow-x-auto md:flex-wrap md:overflow-visible pb-1 md:pb-0">
+                {todaySchedule.map((slot, index) => (
+                  <div
+                    key={`${slot.period_number}-${index}`}
+                    className="flex rounded-xl shadow-sm bg-white p-4 min-w-[160px] shrink-0 border border-gray-100 overflow-hidden"
+                  >
+                    <div
+                      className={`w-1 shrink-0 rounded-full ${BAR_COLORS[index % BAR_COLORS.length]}`}
+                    />
+                    <div className="pl-3 flex flex-col gap-0.5 min-w-0">
+                      <p className="text-xs text-gray-500">Period {slot.period_number}</p>
+                      <p className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                        {formatTime12(slot.start_time)} –{' '}
+                        {formatTime12(
+                          slot.end_time?.slice(0, 5) ??
+                            getPeriodEndTime(slot.period_number, slot.start_time)
+                        )}
+                      </p>
+                      <p className="text-lg font-semibold text-gray-900 truncate">
+                        {slot.subjects?.name ?? 'Subject'}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        🏫 {slot.classes?.name ?? 'Class'}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {teacherClassCards.length > 0 && (
+            <div className="grid grid-cols-2 gap-3">
+              {teacherClassCards.map((cls) => (
+                <div
+                  key={cls.classId}
+                  className="rounded-xl shadow-sm bg-white p-3 border border-gray-100"
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <p className="font-semibold text-gray-900 text-sm truncate">{cls.className}</p>
+                    {cls.attendanceMarked ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium shrink-0">
+                        ✅ Marked
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => navigate('/attendance')}
+                        className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0 hover:bg-orange-200 transition-colors"
+                      >
+                        ⚠️ Pending
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mb-2 line-clamp-2">
+                    {cls.subjects.length > 0 ? cls.subjects.join(', ') : 'No subjects assigned'}
+                  </p>
+                  <p className="text-xs text-gray-600">👥 {cls.studentCount} Students</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-3">
             <button
               type="button"
               onClick={() => navigate('/subjects')}
-              className="text-left w-full"
+              className="bg-white border border-gray-200 text-gray-800 font-medium px-3 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-colors text-sm text-center"
             >
-              <StatCard label="My Classes" value={stats.myClasses ?? 0} />
+              📚 View Subjects
             </button>
             <button
               type="button"
               onClick={() => navigate('/students')}
-              className="text-left w-full"
+              className="bg-white border border-gray-200 text-gray-800 font-medium px-3 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-colors text-sm text-center"
             >
-              <StatCard label="My Students" value={stats.myStudents ?? 0} />
+              👥 View Students
             </button>
             <button
               type="button"
               onClick={() => navigate('/exams')}
-              className="text-left w-full"
+              className="bg-white border border-gray-200 text-gray-800 font-medium px-3 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-colors text-sm text-center"
             >
-              <StatCard label="Exams Created" value={stats.examsCreated ?? 0} />
+              📝 View Exams
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/attendance')}
-              className="w-full bg-green-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
-            >
-              ✅ Mark Attendance
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/scan')}
-              className="w-full bg-blue-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
-            >
-              📷 Start Scanning
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/results', { state: { tab: 'heatmap' } })}
-              className="w-full bg-purple-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-purple-700 transition-colors flex items-center justify-center gap-2"
-            >
-              📊 View Heatmap
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => navigate('/scan')}
+            className="w-full bg-blue-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+          >
+            📝 Start Grading
+          </button>
         </>
       )}
 
