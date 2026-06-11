@@ -93,6 +93,7 @@ export default function Scan() {
   const [reviewStudentId, setReviewStudentId] = useState(null)
   const [writtenExamQuestions, setWrittenExamQuestions] = useState([])
   const [writtenSavingId, setWrittenSavingId] = useState(null)
+  const [writtenConfirmingAll, setWrittenConfirmingAll] = useState(false)
   const [writtenError, setWrittenError] = useState('')
   const [writtenSuccessToast, setWrittenSuccessToast] = useState('')
   const fileRef = useRef(null)
@@ -152,6 +153,7 @@ export default function Scan() {
     setReviewStudentId(null)
     setWrittenExamQuestions([])
     setWrittenSavingId(null)
+    setWrittenConfirmingAll(false)
     setWrittenError('')
     setWrittenSuccessToast('')
   }
@@ -856,6 +858,42 @@ export default function Scan() {
     setWrittenSavingId(null)
   }
 
+  async function handleConfirmAllWrittenStudents() {
+    const pending = [...gradedStudentIds].filter((id) => !submittedStudentIds.has(id))
+    if (pending.length === 0) return
+
+    if (!window.confirm('Confirm and notify all graded students? This cannot be undone.')) return
+
+    setWrittenConfirmingAll(true)
+    setWrittenError('')
+
+    const examName = writtenSelectedExam?.name ?? 'Exam'
+
+    try {
+      const notifRows = pending.map((studentId) => {
+        const marks = parseInt(writtenMarks[studentId], 10)
+        return {
+          user_id: studentId,
+          title: `Results Posted — ${examName}`,
+          body: `You scored ${marks}/${writtenQuestionCount}. Check your results for topic feedback.`,
+          type: 'result',
+          is_read: false,
+        }
+      })
+
+      const { error } = await supabase.from('notifications').insert(notifRows)
+      if (error) throw error
+
+      setSubmittedStudentIds((prev) => new Set([...prev, ...pending]))
+      setWrittenSuccessToast('All results confirmed and students notified')
+      setTimeout(() => setWrittenSuccessToast(''), 3000)
+    } catch (err) {
+      setWrittenError(err.message || 'Failed to notify students')
+    }
+
+    setWrittenConfirmingAll(false)
+  }
+
   function toggleWrittenPoorQuestion(studentId, qNum) {
     setWrittenPoorQuestions((prev) => {
       const arr = prev[studentId] ?? []
@@ -1191,6 +1229,17 @@ export default function Scan() {
                 })}
               </div>
 
+              {gradedStudentIds.size > 0 && (
+                <button
+                  type="button"
+                  onClick={handleConfirmAllWrittenStudents}
+                  disabled={writtenConfirmingAll}
+                  className="w-full bg-green-600 text-white py-2.5 rounded-lg font-medium disabled:opacity-40"
+                >
+                  {writtenConfirmingAll ? 'Notifying…' : 'Confirm & Notify All'}
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => setWrittenStep(1)}
@@ -1208,8 +1257,16 @@ export default function Scan() {
 
             return (
               <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-1">Review Grading</h3>
+                <div className="bg-white rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto relative">
+                  <button
+                    type="button"
+                    onClick={() => setReviewStudentId(null)}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                    aria-label="Close review"
+                  >
+                    ✕
+                  </button>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-1 pr-8">Review Grading</h3>
                   <p className="text-sm text-gray-600 mb-1">
                     {reviewStudent.name} · Roll #{reviewStudent.roll_number}
                   </p>
