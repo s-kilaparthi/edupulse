@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useLocation } from 'react-router-dom'
 import { ArrowUp, ArrowDown, Minus, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../supabase'
-import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 function topicStatus(pct) {
   if (pct >= 75) return 'strong'
@@ -430,6 +429,7 @@ export default function Results() {
   const [studentRankings, setStudentRankings] = useState([])
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [linkedStudentId, setLinkedStudentId] = useState(null)
+  const [linkedStudentClassId, setLinkedStudentClassId] = useState(null)
 
   const effectiveStudentId =
     userRole === 'parent'
@@ -441,14 +441,24 @@ export default function Results() {
   const exams = useMemo(() => {
     let list = allExams
 
+    if (userRole === 'parent') {
+      if (!linkedStudentClassId) return []
+      list = list.filter((e) => {
+        if (e.scope === 'all') return true
+        return (e.exam_classes ?? []).some((ec) => ec.class_id === linkedStudentClassId)
+      })
+    }
+
     if (selectedExamTypeId) {
       list = list.filter((e) => e.exam_type_id === selectedExamTypeId)
     }
 
     return list
-  }, [allExams, selectedExamTypeId])
+  }, [allExams, selectedExamTypeId, userRole, linkedStudentClassId])
 
-  const isStudentView = !isTeacher && roleLoaded
+  const isStudentView = userRole === 'student' && roleLoaded
+  const isParentView = userRole === 'parent' && roleLoaded
+  const isLearnerView = isStudentView || isParentView
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -473,10 +483,20 @@ export default function Results() {
         }
 
         if (data?.role === 'parent') {
-          const linkedStudent = await fetchLinkedStudent(data)
+          const { data: linkedStudent } = await supabase
+            .from('users')
+            .select('id, class_id')
+            .eq('roll_number', data.roll_number)
+            .eq('role', 'student')
+            .eq('institute_id', data.institute_id)
+            .limit(1)
+            .maybeSingle()
+
           setLinkedStudentId(linkedStudent?.id ?? null)
+          setLinkedStudentClassId(linkedStudent?.class_id ?? null)
         } else {
           setLinkedStudentId(null)
+          setLinkedStudentClassId(null)
         }
         setRoleLoaded(true)
 
@@ -1085,7 +1105,7 @@ export default function Results() {
           </div>
         )}
 
-        {isStudentView && (
+        {isLearnerView && (
           <>
             <div className="flex flex-col gap-4">
               <select
@@ -1110,7 +1130,13 @@ export default function Results() {
               )}
             </div>
 
-            {!examId && (
+            {isParentView && !linkedStudentId && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                <p className="text-gray-500 text-sm">No linked student found for this parent account.</p>
+              </div>
+            )}
+
+            {!examId && !(isParentView && !linkedStudentId) && (
               <>
                 {loadingSummaries && (
                   <div className="flex items-center justify-center py-12">
@@ -1167,21 +1193,21 @@ export default function Results() {
               </>
             )}
 
-            {examId && loading && (
+            {examId && !(isParentView && !linkedStudentId) && loading && (
               <div className="flex items-center justify-center py-12">
                 <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
                 <span className="ml-3 text-sm text-gray-500">Loading results…</span>
               </div>
             )}
 
-            {examId && !loading && !result && (
+            {examId && !(isParentView && !linkedStudentId) && !loading && !result && (
               <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
                 <p className="text-gray-500 text-sm">No results found for this exam yet.</p>
                 <p className="text-gray-400 text-xs mt-1">Scan some OMR sheets first.</p>
               </div>
             )}
 
-            {examId && !loading && result && (
+            {examId && !(isParentView && !linkedStudentId) && !loading && result && (
               <>
                 {selectedExam && (
                   <div className="flex flex-wrap items-center gap-2">
