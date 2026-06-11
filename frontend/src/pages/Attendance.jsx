@@ -38,6 +38,70 @@ function formatDateDDMMYYYY(dateStr) {
   return `${d}/${m}/${y}`
 }
 
+function attendanceNotificationBody(status, subjectName, dateStr) {
+  const dateLabel = formatDateDDMMYYYY(dateStr)
+  if (status === 'absent') {
+    return `You were marked Absent for ${subjectName} on ${dateLabel}`
+  }
+  if (status === 'late') {
+    return `You were marked Late for ${subjectName} on ${dateLabel}`
+  }
+  return `You were marked Present for ${subjectName} on ${dateLabel}`
+}
+
+async function sendAttendanceNotifications({ students, attendanceMap, slot, date, instituteId }) {
+  const subjectName = slot.subjects?.name ?? 'your subject'
+  const notifRows = []
+
+  for (const student of students) {
+    const status = attendanceMap[student.id] ?? 'present'
+    const title = `Attendance Marked — ${subjectName}`
+    const body = attendanceNotificationBody(status, subjectName, date)
+
+    const { data: studentUser } = await supabase
+      .from('users')
+      .select('id, roll_number')
+      .eq('id', student.id)
+      .single()
+
+    if (!studentUser?.id) continue
+
+    notifRows.push({
+      user_id: studentUser.id,
+      title,
+      body,
+      type: 'attendance',
+      is_read: false,
+    })
+
+    if (instituteId && studentUser.roll_number != null && studentUser.roll_number !== '') {
+      const { data: parent } = await supabase
+        .from('users')
+        .select('id')
+        .eq('roll_number', String(studentUser.roll_number))
+        .eq('role', 'parent')
+        .eq('institute_id', instituteId)
+        .limit(1)
+        .maybeSingle()
+
+      if (parent?.id) {
+        notifRows.push({
+          user_id: parent.id,
+          title,
+          body,
+          type: 'attendance',
+          is_read: false,
+        })
+      }
+    }
+  }
+
+  if (notifRows.length > 0) {
+    const { error: notifError } = await supabase.from('notifications').insert(notifRows)
+    if (notifError) console.error('Attendance notification error:', notifError)
+  }
+}
+
 function StudentList({
   students,
   attendanceMap,
@@ -476,6 +540,17 @@ export default function Attendance() {
     } else {
       setSavedSlots((prev) => new Set([...prev, slot.id]))
       setActiveSlotId(null)
+      try {
+        await sendAttendanceNotifications({
+          students,
+          attendanceMap,
+          slot,
+          date: selectedDate,
+          instituteId,
+        })
+      } catch (notifErr) {
+        console.error('Attendance notification error:', notifErr)
+      }
     }
 
     setSaving(false)
