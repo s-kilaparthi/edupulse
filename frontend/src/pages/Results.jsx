@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext, useLocation } from 'react-router-dom'
 import { ArrowUp, ArrowDown, Minus, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../supabase'
+import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 function topicStatus(pct) {
   if (pct >= 75) return 'strong'
@@ -395,16 +396,24 @@ export default function Results() {
   const [studentSearch, setStudentSearch] = useState('')
   const [studentRankings, setStudentRankings] = useState([])
   const [expandedStudentId, setExpandedStudentId] = useState(null)
+  const [linkedStudentId, setLinkedStudentId] = useState(null)
+
+  const effectiveStudentId =
+    userRole === 'parent' ? linkedStudentId : session?.user?.id
 
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role')
+      .select('role, roll_number, institute_id')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data?.role) setUserRole(data.role)
+        if (data?.role === 'parent') {
+          const linkedStudent = await fetchLinkedStudent(data)
+          setLinkedStudentId(linkedStudent?.id ?? null)
+        }
       })
   }, [session])
 
@@ -580,7 +589,7 @@ export default function Results() {
       setLoading(false)
       return
     }
-    if (!isTeacher && !session?.user?.id) return
+    if (!isTeacher && !effectiveStudentId) return
 
     async function loadResults() {
       setLoading(true)
@@ -592,7 +601,7 @@ export default function Results() {
       if (isTeacher) {
         query = query.eq('student_id', selectedStudentId)
       } else {
-        query = query.eq('student_id', session.user.id)
+        query = query.eq('student_id', effectiveStudentId)
       }
 
       const { data } = await query
@@ -620,7 +629,7 @@ export default function Results() {
         .eq('id', examId)
         .single()
 
-      const resultStudentId = isTeacher ? selectedStudentId : session.user.id
+      const resultStudentId = isTeacher ? selectedStudentId : effectiveStudentId
 
       if (examMeta?.exam_type === 'written') {
         const { data: summary } = await supabase
@@ -671,7 +680,7 @@ export default function Results() {
     }
 
     loadResults()
-  }, [examId, isTeacher, selectedStudentId, session])
+  }, [examId, isTeacher, selectedStudentId, effectiveStudentId])
 
   useEffect(() => {
     if (exams.length === 0) return
@@ -679,7 +688,7 @@ export default function Results() {
       setTrendData([])
       return
     }
-    if (!isTeacher && !session?.user?.id) return
+    if (!isTeacher && !effectiveStudentId) return
 
     setLoadingTrend(true)
     let query = supabase
@@ -690,7 +699,7 @@ export default function Results() {
     if (isTeacher) {
       query = query.eq('student_id', selectedStudentId)
     } else {
-      query = query.eq('student_id', session.user.id)
+      query = query.eq('student_id', effectiveStudentId)
     }
 
     query.then(({ data }) => {
@@ -723,7 +732,7 @@ export default function Results() {
         setTrendData(trend)
         setLoadingTrend(false)
       })
-  }, [exams, isTeacher, selectedStudentId, session])
+  }, [exams, isTeacher, selectedStudentId, effectiveStudentId])
 
   const subject = result?.subjects?.find((s) => s.subject_id === activeSubject) ?? result?.subjects?.[0]
 

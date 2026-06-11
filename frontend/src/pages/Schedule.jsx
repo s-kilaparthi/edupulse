@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -41,6 +42,8 @@ export default function Schedule() {
   const isAdmin = userRole === 'admin'
   const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
+  const isParent = userRole === 'parent'
+  const isStudentView = isStudent || isParent
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -48,15 +51,18 @@ export default function Schedule() {
 
     supabase
       .from('users')
-      .select('role, institute_id, class_id')
+      .select('role, institute_id, class_id, roll_number')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
           setUserRole(data.role)
           setInstituteId(data.institute_id)
           if (data.role === 'student') {
             setStudentClassId(data.class_id)
+          } else if (data.role === 'parent') {
+            const linkedStudent = await fetchLinkedStudent(data)
+            setStudentClassId(linkedStudent?.class_id ?? null)
           }
         }
       })
@@ -110,7 +116,7 @@ export default function Schedule() {
           setClasses(uniqueClasses.filter(Boolean))
           setSubjects([])
           setTeachers([])
-        } else if (userRole === 'student' && studentClassId) {
+        } else if ((userRole === 'student' || userRole === 'parent') && studentClassId) {
           const { data: cls } = await supabase
             .from('classes')
             .select('id, name')
@@ -127,7 +133,7 @@ export default function Schedule() {
       setLoading(false)
     }
 
-    if (userRole === 'student' && !studentClassId) {
+    if ((userRole === 'student' || userRole === 'parent') && !studentClassId) {
       setLoading(false)
       return
     }
@@ -275,11 +281,11 @@ export default function Schedule() {
 
       {loading ? (
         <p className="text-sm text-gray-500">Loading schedule…</p>
-      ) : isStudent && !studentClassId ? (
+      ) : isStudentView && !studentClassId ? (
         <p className="text-sm text-gray-500">No class assigned to your account.</p>
       ) : (
         <>
-          {!isStudent && classes.length > 0 && (
+          {!isStudentView && classes.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 mb-6">
               {classes.map((c) => (
                 <button
@@ -301,11 +307,11 @@ export default function Schedule() {
             </div>
           )}
 
-          {isStudent && selectedClassName && (
+          {isStudentView && selectedClassName && (
             <p className="text-sm text-gray-500 mb-6">{selectedClassName}</p>
           )}
 
-          {!isStudent && !selectedClassId && (
+          {!isStudentView && !selectedClassId && (
             <p className="text-sm text-gray-500">Select a class to view the timetable.</p>
           )}
 

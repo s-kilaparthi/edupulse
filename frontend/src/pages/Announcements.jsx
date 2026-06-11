@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 function getTargetLabel(announcement) {
   switch (announcement.target_type) {
@@ -160,8 +161,10 @@ export default function Announcements() {
   const [userName, setUserName] = useState('')
   const [instituteId, setInstituteId] = useState(null)
   const [studentClassId, setStudentClassId] = useState(null)
+  const [linkedStudentId, setLinkedStudentId] = useState(null)
   const isAdmin = userRole === 'admin'
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
+  const isParent = userRole === 'parent'
 
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
@@ -197,16 +200,21 @@ export default function Announcements() {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role, name, institute_id, class_id')
+      .select('role, name, institute_id, class_id, roll_number')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
           setUserRole(data.role)
           setUserName(data.name)
           setInstituteId(data.institute_id)
           if (data.role === 'student') {
             setStudentClassId(data.class_id)
+            setLinkedStudentId(session.user.id)
+          } else if (data.role === 'parent') {
+            const linkedStudent = await fetchLinkedStudent(data)
+            setStudentClassId(linkedStudent?.class_id ?? null)
+            setLinkedStudentId(linkedStudent?.id ?? null)
           }
         }
       })
@@ -440,9 +448,9 @@ export default function Announcements() {
       ? teacherAnnouncementTab === 'institute'
         ? instituteAnnouncements
         : myAnnouncements
-      : userRole === 'student'
+      : userRole === 'student' || userRole === 'parent'
         ? announcements.filter((a) =>
-            studentCanSeeAnnouncement(a, studentClassId, session?.user?.id)
+            studentCanSeeAnnouncement(a, studentClassId, linkedStudentId ?? session?.user?.id)
           )
         : announcements
 

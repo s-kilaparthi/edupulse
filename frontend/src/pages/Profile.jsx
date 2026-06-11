@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 export default function Profile() {
   const { session } = useOutletContext()
@@ -16,6 +17,7 @@ export default function Profile() {
   const [savingPassword, setSavingPassword] = useState(false)
   const [attendanceSummary, setAttendanceSummary] = useState([])
   const [recentExams, setRecentExams] = useState([])
+  const [linkedStudent, setLinkedStudent] = useState(null)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -25,16 +27,29 @@ export default function Profile() {
       .select('id, name, email, roll_number, role, institute_id, class_id, classes(name), institutes(name, city)')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
-          setProfile(data)
           setUserRole(data.role)
 
-          if (data.role === 'student') {
+          let studentId = session.user.id
+          let displayProfile = data
+
+          if (data.role === 'parent') {
+            const student = await fetchLinkedStudent(data)
+            setLinkedStudent(student)
+            if (student) {
+              studentId = student.id
+              displayProfile = student
+            }
+          }
+
+          setProfile(displayProfile)
+
+          if (data.role === 'student' || data.role === 'parent') {
             supabase
               .from('attendance')
               .select('status, subject_id, subjects(name)')
-              .eq('student_id', session.user.id)
+              .eq('student_id', studentId)
               .then(({ data: attendanceData }) => {
                 const subjectMap = {}
                 for (const row of attendanceData ?? []) {
@@ -57,7 +72,7 @@ export default function Profile() {
             supabase
               .from('topic_scores')
               .select('exam_id, score, total, exams(name, exam_date)')
-              .eq('student_id', session.user.id)
+              .eq('student_id', studentId)
               .order('created_at', { ascending: false })
               .limit(20)
               .then(({ data: scoreData }) => {
@@ -160,49 +175,57 @@ export default function Profile() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-semibold text-gray-900">Change Password</h2>
-          <button
-            type="button"
-            onClick={() => setEditingPassword(!editingPassword)}
-            className="text-xs text-blue-600 hover:text-blue-700"
-          >
-            {editingPassword ? 'Cancel' : 'Change'}
-          </button>
-        </div>
-
-        {editingPassword && (
-          <div className="flex flex-col gap-3">
-            <input
-              type="password"
-              placeholder="New password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
-            <input
-              type="password"
-              placeholder="Confirm new password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-            />
-            {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
-            {passwordSuccess && <p className="text-xs text-green-600">{passwordSuccess}</p>}
+      {userRole !== 'parent' && (
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-900">Change Password</h2>
             <button
               type="button"
-              onClick={handleChangePassword}
-              disabled={savingPassword}
-              className="bg-blue-600 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+              onClick={() => setEditingPassword(!editingPassword)}
+              className="text-xs text-blue-600 hover:text-blue-700"
             >
-              {savingPassword ? 'Saving...' : 'Save Password'}
+              {editingPassword ? 'Cancel' : 'Change'}
             </button>
           </div>
-        )}
-      </div>
 
-      {userRole === 'student' && attendanceSummary.length > 0 && (
+          {editingPassword && (
+            <div className="flex flex-col gap-3">
+              <input
+                type="password"
+                placeholder="New password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+              <input
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+              {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
+              {passwordSuccess && <p className="text-xs text-green-600">{passwordSuccess}</p>}
+              <button
+                type="button"
+                onClick={handleChangePassword}
+                disabled={savingPassword}
+                className="bg-blue-600 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+              >
+                {savingPassword ? 'Saving...' : 'Save Password'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {userRole === 'parent' && linkedStudent && (
+        <p className="text-sm text-gray-500 -mt-2">
+          Viewing student profile: {linkedStudent.name}
+        </p>
+      )}
+
+      {(userRole === 'student' || userRole === 'parent') && attendanceSummary.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">My Attendance</h2>
           <div className="space-y-3">
@@ -227,7 +250,7 @@ export default function Profile() {
         </div>
       )}
 
-      {userRole === 'student' && recentExams.length > 0 && (
+      {(userRole === 'student' || userRole === 'parent') && recentExams.length > 0 && (
         <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-900 mb-4">Recent Exams</h2>
           <div className="space-y-2">

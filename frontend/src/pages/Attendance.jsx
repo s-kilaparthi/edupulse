@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const STATUS_OPTIONS = ['present', 'absent', 'late']
@@ -197,21 +198,31 @@ export default function Attendance() {
 
   const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
+  const isParent = userRole === 'parent'
+  const isStudentView = isStudent || isParent
   const isAdmin = userRole === 'admin'
+  const [effectiveStudentId, setEffectiveStudentId] = useState(null)
 
   useEffect(() => {
     if (!session?.user?.id) return
 
     supabase
       .from('users')
-      .select('role, institute_id')
+      .select('role, institute_id, roll_number')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
           setUserRole(data.role)
           setInstituteId(data.institute_id)
           setUserId(session.user.id)
+
+          if (data.role === 'parent') {
+            const linkedStudent = await fetchLinkedStudent(data)
+            setEffectiveStudentId(linkedStudent?.id ?? null)
+          } else if (data.role === 'student') {
+            setEffectiveStudentId(session.user.id)
+          }
         }
       })
   }, [session])
@@ -378,14 +389,14 @@ export default function Attendance() {
   }, [isAdmin, adminTab, selectedClassId, instituteId, selectedDate, fetchAdminSlots])
 
   useEffect(() => {
-    if (!userId || !instituteId || !isStudent) return
+    if (!instituteId || !isStudentView || !effectiveStudentId) return
 
     setLoading(true)
 
     supabase
       .from('attendance')
       .select('status, date, subject_id, subjects(name)')
-      .eq('student_id', userId)
+      .eq('student_id', effectiveStudentId)
       .eq('institute_id', instituteId)
       .order('date', { ascending: false })
       .then(({ data }) => {
@@ -408,7 +419,7 @@ export default function Attendance() {
         setStudentRecordsBySubject(recordsMap)
         setLoading(false)
       })
-  }, [userId, instituteId, isStudent])
+  }, [instituteId, isStudentView, effectiveStudentId])
 
   async function fetchStudentsForSlot(slot) {
     const { data } = await supabase
@@ -886,7 +897,7 @@ export default function Attendance() {
         </>
       )}
 
-      {isStudent && (
+      {isStudentView && (
         loading ? (
           <p className="text-sm text-gray-500">Loading attendance…</p>
         ) : Object.keys(studentSummary).length === 0 ? (

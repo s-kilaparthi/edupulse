@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 export default function Subjects() {
   const { session } = useOutletContext()
@@ -43,15 +44,18 @@ export default function Subjects() {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role, institute_id, class_id')
+      .select('role, institute_id, class_id, roll_number')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
           setUserRole(data.role)
           setInstituteId(data.institute_id)
           if (data.role === 'student') {
             setStudentClassId(data.class_id)
+          } else if (data.role === 'parent') {
+            const linkedStudent = await fetchLinkedStudent(data)
+            setStudentClassId(linkedStudent?.class_id ?? null)
           }
         }
       })
@@ -60,6 +64,8 @@ export default function Subjects() {
   const isAdmin = userRole === 'admin'
   const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
+  const isParent = userRole === 'parent'
+  const isStudentView = isStudent || isParent
 
   useEffect(() => {
     if (!session?.user?.id || !userRole) return
@@ -159,7 +165,7 @@ export default function Subjects() {
       return
     }
 
-    if (userRole === 'student') {
+    if (userRole === 'student' || userRole === 'parent') {
       if (!studentClassId) {
         setSubjects([])
         setSubjectTeacherMap({})
@@ -241,7 +247,7 @@ export default function Subjects() {
       fetchSubjects()
       return
     }
-    if (userRole === 'student') {
+    if (userRole === 'student' || userRole === 'parent') {
       setLoading(true)
       fetchSubjects()
       return
@@ -252,7 +258,7 @@ export default function Subjects() {
   }, [userRole, instituteId, studentClassId, teacherAssignments, classesLoaded, selectedClassId])
 
   function getClassTopics(subject) {
-    const classId = isStudent ? studentClassId : selectedClassId
+    const classId = isStudentView ? studentClassId : selectedClassId
     if (!classId) {
       if (isAdmin) return subject.topics ?? []
       return subject.topics?.filter((t) => t.class_id === null) ?? []
@@ -473,7 +479,7 @@ export default function Subjects() {
     }
   }
 
-  const showSubjectList = isStudent || isAdmin || selectedClassId
+  const showSubjectList = isStudentView || isAdmin || selectedClassId
 
   return (
     <>
@@ -546,7 +552,7 @@ export default function Subjects() {
         </form>
       )}
 
-      {!isStudent && availableClasses.length > 0 && (
+      {!isStudentView && availableClasses.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-6">
           {availableClasses.map((c) => (
             <button
@@ -601,7 +607,7 @@ export default function Subjects() {
                   key={subject.id}
                   className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
                 >
-                  {isStudent ? (
+                  {isStudentView ? (
                     <>
                       <p className="font-medium text-gray-900">{subject.name}</p>
                       {subjectTeacherMap[subject.id] && (
@@ -768,7 +774,7 @@ export default function Subjects() {
                         </ul>
                       )}
 
-                      {!isStudent && (
+                      {!isStudentView && (
                         <div className="mt-3 border-t border-gray-100 pt-3">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-xs font-medium text-gray-600">
@@ -981,7 +987,7 @@ export default function Subjects() {
         )
       )}
 
-      {!isStudent && (
+      {!isStudentView && (
         <input
           ref={pdfRef}
           type="file"

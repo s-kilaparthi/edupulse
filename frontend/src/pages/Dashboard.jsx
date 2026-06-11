@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
@@ -35,6 +36,20 @@ function formatTodayDate() {
 
 function getPeriodEndTime(periodNumber, startTime) {
   return PERIOD_END_TIMES[periodNumber] ?? startTime?.slice(0, 5) ?? ''
+}
+
+function studentCanSeeAnnouncement(announcement, studentClassId, studentId) {
+  const { target_type, target_ids } = announcement
+  const ids = target_ids ?? []
+  if (target_type === 'everyone' || target_type === 'all_students') return true
+  if (target_type === 'class_students' && studentClassId) {
+    return ids.includes(studentClassId)
+  }
+  if (target_type === 'specific_student') {
+    return ids.includes(studentId)
+  }
+  if (!target_type) return true
+  return false
 }
 
 function StatCard({ label, value, sub, onClick, hint }) {
@@ -115,6 +130,7 @@ export default function Dashboard() {
   const [userLoaded, setUserLoaded] = useState(false)
   const [stats, setStats] = useState({})
   const [studentInfo, setStudentInfo] = useState({})
+  const [parentName, setParentName] = useState('')
   const [adminStats, setAdminStats] = useState({
     students: 0,
     teachers: 0,
@@ -148,13 +164,53 @@ export default function Dashboard() {
       setLoading(true)
 
       const { data: announcementData } = await supabase.rpc('get_my_announcements')
-      setRecentAnnouncements((announcementData ?? []).slice(0, 3))
 
-      if (userRole === 'student') {
+      if (userRole === 'student' || userRole === 'parent') {
+        let studentId = session.user.id
+        let studentClassId = null
+        let studentRollNo = null
+        let studentClassName = null
+        let studentDisplayName = userName
+
+        if (userRole === 'parent') {
+          const { data: parentData } = await supabase
+            .from('users')
+            .select('name, parent_name, roll_number, institute_id')
+            .eq('id', session.user.id)
+            .single()
+
+          setParentName(parentData?.parent_name || parentData?.name || '')
+
+          const linkedStudent = await fetchLinkedStudent(parentData)
+          if (!linkedStudent) {
+            setStats({})
+            setStudentInfo({})
+            setTodaySchedule([])
+            setLoading(false)
+            return
+          }
+
+          studentId = linkedStudent.id
+          studentClassId = linkedStudent.class_id
+          studentRollNo = linkedStudent.roll_number
+          studentClassName = linkedStudent.classes?.name
+          studentDisplayName = linkedStudent.name
+        } else {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('class_id, roll_number, classes(name)')
+            .eq('id', session.user.id)
+            .single()
+
+          studentClassId = userData?.class_id
+          studentRollNo = userData?.roll_number
+          studentClassName = userData?.classes?.name
+        }
+
         const { data: scoreRows } = await supabase
           .from('topic_scores')
           .select('exam_id, subject_id, score, total, exams(name, exam_date)')
-          .eq('student_id', session.user.id)
+          .eq('student_id', studentId)
           .order('created_at', { ascending: false })
           .limit(10)
 
@@ -174,20 +230,11 @@ export default function Dashboard() {
             : 0
         }
 
-        const { data: userData } = await supabase
-          .from('users')
-          .select('class_id, roll_number, classes(name)')
-          .eq('id', session.user.id)
-          .single()
-
-        const studentClassId = userData?.class_id
-        const studentRollNo = userData?.roll_number
-        const studentClassName = userData?.classes?.name
-
         setStudentInfo({
           classId: studentClassId,
           rollNo: studentRollNo,
           className: studentClassName,
+          studentName: studentDisplayName,
         })
 
         if (studentClassId) {
@@ -211,7 +258,16 @@ export default function Dashboard() {
           lastExamTotal,
           lastExamPct,
         })
+
+        let announcements = announcementData ?? []
+        if (userRole === 'parent') {
+          announcements = announcements.filter((a) =>
+            studentCanSeeAnnouncement(a, studentClassId, studentId)
+          )
+        }
+        setRecentAnnouncements(announcements.slice(0, 3))
       } else if (userRole === 'teacher') {
+        setRecentAnnouncements((announcementData ?? []).slice(0, 3))
         const { data: teacherClassesData } = await supabase
           .from('class_teachers')
           .select('class_id, classes(id, name)')
@@ -284,6 +340,7 @@ export default function Dashboard() {
           exams: examCount,
           avg,
         })
+        setRecentAnnouncements((announcementData ?? []).slice(0, 3))
       }
 
       setLoading(false)
@@ -302,23 +359,36 @@ export default function Dashboard() {
 
   return (
     <div className="max-w-4xl flex flex-col gap-5">
-      {userRole === 'student' && (
+      {(userRole === 'student' || userRole === 'parent') && (
         <>
           <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome back, {userName}!</h1>
-            <div className="flex flex-wrap gap-3 mt-2">
-              {studentInfo.className && (
-                <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
-                  📚 {studentInfo.className}
-                </span>
-              )}
-              {studentInfo.rollNo && (
-                <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
-                  🎓 Roll #{studentInfo.rollNo}
-                </span>
-              )}
-            </div>
+            {userRole === 'parent' ? (
+              <>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome, {parentName}!</h1>
+                <p className="text-sm text-green-700 mt-2">
+                  Viewing: {studentInfo.studentName ?? 'Student'}
+                  {studentInfo.rollNo ? ` · Roll #${studentInfo.rollNo}` : ''}
+                  {studentInfo.className ? ` · ${studentInfo.className}` : ''}
+                </p>
+              </>
+            ) : (
+              <>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome back, {userName}!</h1>
+                <div className="flex flex-wrap gap-3 mt-2">
+                  {studentInfo.className && (
+                    <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
+                      📚 {studentInfo.className}
+                    </span>
+                  )}
+                  {studentInfo.rollNo && (
+                    <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
+                      🎓 Roll #{studentInfo.rollNo}
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
@@ -469,7 +539,7 @@ export default function Dashboard() {
         </>
       )}
 
-      {(userRole === 'student' || userRole === 'teacher') && (
+      {(userRole === 'student' || userRole === 'parent' || userRole === 'teacher') && (
         <AnnouncementsSection announcements={recentAnnouncements} navigate={navigate} />
       )}
     </div>

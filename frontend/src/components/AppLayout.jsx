@@ -132,7 +132,7 @@ export default function AppLayout({ session }) {
   }
 
   const navItems =
-    userRole === 'student'
+    userRole === 'student' || userRole === 'parent'
       ? studentNav
       : userRole === 'admin'
         ? adminNav
