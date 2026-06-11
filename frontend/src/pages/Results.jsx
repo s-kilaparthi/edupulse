@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useLocation } from 'react-router-dom'
 import { ArrowUp, ArrowDown, Minus, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../supabase'
@@ -393,7 +393,10 @@ export default function Results() {
   const [roleLoaded, setRoleLoaded] = useState(false)
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
 
-  const [exams, setExams] = useState([])
+  const [allExams, setAllExams] = useState([])
+  const [instituteExamTypes, setInstituteExamTypes] = useState([])
+  const [selectedExamTypeId, setSelectedExamTypeId] = useState('')
+  const [studentClassId, setStudentClassId] = useState(null)
   const [examId, setExamId] = useState(navState?.examId ?? '')
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -416,21 +419,55 @@ export default function Results() {
         ? session?.user?.id
         : null
 
+  const exams = useMemo(() => {
+    let list = allExams
+
+    if (selectedExamTypeId) {
+      list = list.filter((e) => e.exam_type_id === selectedExamTypeId)
+    }
+
+    if (!isTeacher && selectedExamTypeId && studentClassId) {
+      list = list.filter((e) => {
+        if (e.scope === 'all') return true
+        return (e.exam_classes ?? []).some((ec) => ec.class_id === studentClassId)
+      })
+    }
+
+    return list
+  }, [allExams, selectedExamTypeId, isTeacher, studentClassId])
+
   useEffect(() => {
     if (!session?.user?.id) return
     setRoleLoaded(false)
     supabase
       .from('users')
-      .select('role, roll_number, institute_id')
+      .select('role, roll_number, institute_id, class_id')
       .eq('id', session.user.id)
       .single()
       .then(async ({ data }) => {
         if (data?.role) setUserRole(data.role)
+
+        if (data?.institute_id) {
+          const { data: types } = await supabase
+            .from('exam_types')
+            .select('id, name')
+            .eq('institute_id', data.institute_id)
+            .order('name')
+          setInstituteExamTypes(types ?? [])
+        } else {
+          setInstituteExamTypes([])
+        }
+
         if (data?.role === 'parent') {
           const linkedStudent = await fetchLinkedStudent(data)
           setLinkedStudentId(linkedStudent?.id ?? null)
+          setStudentClassId(linkedStudent?.class_id ?? null)
+        } else if (data?.role === 'student') {
+          setLinkedStudentId(null)
+          setStudentClassId(data.class_id ?? null)
         } else {
           setLinkedStudentId(null)
+          setStudentClassId(null)
         }
         setRoleLoaded(true)
       })
@@ -584,22 +621,29 @@ export default function Results() {
     setSelectedStudentId('')
     setExpandedStudentId(null)
     setStudentSearch('')
-  }, [examId, fromStudentsNav])
+  }, [examId, selectedExamTypeId, fromStudentsNav])
 
   useEffect(() => {
     supabase
       .from('exams')
-      .select('id, name, exam_type, exam_subjects(subject_id, subjects(name))')
+      .select('id, name, exam_type, exam_type_id, scope, exam_subjects(subject_id, subjects(name)), exam_classes(class_id)')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        if (data && data.length > 0) {
-          setExams(data)
-          if (!navState?.examId) {
-            setExamId(data[0].id)
-          }
+        if (data) {
+          setAllExams(data)
         }
       })
   }, [])
+
+  useEffect(() => {
+    if (exams.length === 0) {
+      if (examId) setExamId('')
+      return
+    }
+    if (!exams.some((e) => e.id === examId)) {
+      setExamId(exams[0].id)
+    }
+  }, [exams])
 
   useEffect(() => {
     if (!examId) return
@@ -860,16 +904,34 @@ export default function Results() {
             <h1 className="text-2xl font-bold text-gray-900">My Performance</h1>
           </div>
           <div className="flex flex-wrap gap-2 items-center">
+            <select
+              value={selectedExamTypeId}
+              onChange={(e) => setSelectedExamTypeId(e.target.value)}
+              className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+            >
+              <option value="">Select Exam Type</option>
+              {instituteExamTypes.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
             <div className="flex items-center gap-2 w-full md:w-auto">
-              <select value={examId} onChange={(e) => setExamId(e.target.value)}
-                className="flex-1 md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500">
-                {exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)}
+              <select
+                value={examId}
+                onChange={(e) => setExamId(e.target.value)}
+                disabled={exams.length === 0}
+                className="flex-1 md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {exams.length === 0 ? (
+                  <option value="">No exams found</option>
+                ) : (
+                  exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)
+                )}
               </select>
               {selectedExam && (
                 <ExamTypeBadge examType={selectedExam.exam_type} />
               )}
             </div>
-            {isTeacher && activeTab === 'student' && classes.length > 0 && !navState?.classId && (
+            {isTeacher && activeTab === 'student' && examId && classes.length > 0 && !navState?.classId && (
               <select
                 value={selectedClassId}
                 onChange={(e) => {

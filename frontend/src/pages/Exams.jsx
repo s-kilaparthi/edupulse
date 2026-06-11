@@ -42,6 +42,10 @@ export default function Exams() {
   const [teacherAssignments, setTeacherAssignments] = useState([])
   const [userRole, setUserRole] = useState(null)
   const [instituteId, setInstituteId] = useState(null)
+  const [instituteExamTypes, setInstituteExamTypes] = useState([])
+  const [newInstituteExamType, setNewInstituteExamType] = useState('')
+  const [selectedExamTypeId, setSelectedExamTypeId] = useState('')
+  const [savingExamType, setSavingExamType] = useState(false)
 
   // Add questions panel
   const [activeExam, setActiveExam] = useState(null)
@@ -123,13 +127,75 @@ export default function Exams() {
     setSubjects(data ?? [])
   }
 
+  async function fetchExamTypes(instId) {
+    if (!instId) {
+      setInstituteExamTypes([])
+      return
+    }
+
+    const { data, error: fetchError } = await supabase
+      .from('exam_types')
+      .select('id, name')
+      .eq('institute_id', instId)
+      .order('name')
+
+    if (fetchError) throw new Error(fetchError.message)
+    setInstituteExamTypes(data ?? [])
+  }
+
   async function fetchExams() {
     const { data, error: fetchError } = await supabase
       .from('exams')
-      .select('id, name, exam_date, total_questions, total_marks, scope, exam_type, exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
+      .select('id, name, exam_date, total_questions, total_marks, scope, exam_type, exam_type_id, exam_types(name), exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
       .order('created_at', { ascending: false })
     if (fetchError) throw new Error(fetchError.message)
     setExams(data ?? [])
+  }
+
+  async function handleAddExamType() {
+    const name = newInstituteExamType.trim()
+    if (!name || !instituteId) return
+
+    setSavingExamType(true)
+    setError(null)
+
+    try {
+      const { error: insertError } = await supabase
+        .from('exam_types')
+        .insert({ name, institute_id: instituteId })
+
+      if (insertError) throw new Error(insertError.message)
+
+      setNewInstituteExamType('')
+      await fetchExamTypes(instituteId)
+    } catch (err) {
+      setError(err.message)
+    }
+
+    setSavingExamType(false)
+  }
+
+  async function handleDeleteExamType(typeId, typeName) {
+    if (!window.confirm(`Delete exam type "${typeName}"?`)) return
+
+    setError(null)
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('exam_types')
+        .delete()
+        .eq('id', typeId)
+
+      if (deleteError) throw new Error(deleteError.message)
+
+      if (selectedExamTypeId === typeId) {
+        setSelectedExamTypeId('')
+      }
+
+      await fetchExamTypes(instituteId)
+    } catch (err) {
+      setError(err.message)
+    }
   }
 
   async function handleDeleteExam(examId, examName, examType) {
@@ -222,6 +288,10 @@ export default function Exams() {
         setAvailableClasses([])
       }
 
+      if (instId) {
+        await fetchExamTypes(instId)
+      }
+
       await fetchExams()
     } catch (err) {
       setError(err.message)
@@ -269,7 +339,7 @@ export default function Exams() {
     const name = examName.trim()
     const total = parseInt(totalQuestions, 10)
 
-    if (!name || !examDate || !total || total < 1) {
+    if (!name || !examDate || !total || total < 1 || !selectedExamTypeId) {
       setError('Please fill in all exam fields.')
       return
     }
@@ -315,6 +385,7 @@ export default function Exams() {
           created_by: user.id,
           scope: examScope,
           exam_type: examType,
+          exam_type_id: selectedExamTypeId,
         })
         .select('id')
         .single()
@@ -339,6 +410,7 @@ export default function Exams() {
       }
 
       setExamName('')
+      setSelectedExamTypeId('')
       setExamType('mcq')
       setExamDate('')
       setTotalQuestions('')
@@ -760,6 +832,27 @@ export default function Exams() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
           <div className="sm:col-span-2">
+            <label htmlFor="institute-exam-type" className="block text-sm font-medium text-gray-700 mb-1">
+              Exam Type
+            </label>
+            <select
+              id="institute-exam-type"
+              required
+              value={selectedExamTypeId}
+              onChange={(e) => setSelectedExamTypeId(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+            >
+              <option value="">Select exam type</option>
+              {instituteExamTypes.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+            {instituteExamTypes.length === 0 && (
+              <p className="text-xs text-gray-400 mt-1">Add exam types below before creating an exam.</p>
+            )}
+          </div>
+
+          <div className="sm:col-span-2">
             <label className="block text-sm font-medium text-gray-700 mb-1">Exam name</label>
             <input
               type="text"
@@ -986,6 +1079,49 @@ export default function Exams() {
         </div>
       )}
 
+      <section className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Exam Types</h2>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {instituteExamTypes.length === 0 ? (
+            <p className="text-sm text-gray-400">No exam types yet. Add one below.</p>
+          ) : (
+            instituteExamTypes.map((t) => (
+              <span
+                key={t.id}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-sm"
+              >
+                {t.name}
+                <button
+                  type="button"
+                  onClick={() => handleDeleteExamType(t.id, t.name)}
+                  className="text-gray-400 hover:text-red-600 font-medium leading-none"
+                  aria-label={`Delete ${t.name}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))
+          )}
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={newInstituteExamType}
+            onChange={(e) => setNewInstituteExamType(e.target.value)}
+            placeholder="New exam type name"
+            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+          />
+          <button
+            type="button"
+            onClick={handleAddExamType}
+            disabled={savingExamType || !newInstituteExamType.trim()}
+            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm shrink-0"
+          >
+            {savingExamType ? 'Adding…' : 'Add'}
+          </button>
+        </div>
+      </section>
+
       <section className="mb-6">
         <h2 className="text-sm font-semibold text-gray-900 mb-3">All Exams</h2>
         {loading ? (
@@ -998,13 +1134,20 @@ export default function Exams() {
               <li key={exam.id}>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                   <div className="flex flex-col gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleExamProfile(exam)}
-                      className="font-semibold text-gray-900 hover:text-blue-600 text-left text-sm"
-                    >
-                      {exam.name}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleExamProfile(exam)}
+                        className="font-semibold text-gray-900 hover:text-blue-600 text-left text-sm"
+                      >
+                        {exam.name}
+                      </button>
+                      {exam.exam_types?.name && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+                          {exam.exam_types.name}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-3 flex-wrap">
                       <button
                         type="button"

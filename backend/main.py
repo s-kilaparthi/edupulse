@@ -269,6 +269,12 @@ async def register_institute(request: Request):
             "institute_id": institute_id,
         }).execute()
 
+        supabase_admin.from_('exam_types').insert([
+            {"name": "Class Test", "institute_id": institute_id},
+            {"name": "Mid Exam", "institute_id": institute_id},
+            {"name": "Final Exam", "institute_id": institute_id},
+        ]).execute()
+
         return {"success": True, "institute_id": institute_id}
 
     except HTTPException:
