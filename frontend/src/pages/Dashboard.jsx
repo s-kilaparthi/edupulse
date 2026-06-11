@@ -2,14 +2,41 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
-function StatCard({ label, value, sub }) {
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-      <p className="text-xs text-gray-500">{label}</p>
+const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
+function formatTime12(timeStr) {
+  if (!timeStr) return ''
+  const [h, m] = timeStr.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hour = h % 12 || 12
+  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+function StatCard({ label, value, sub, onClick, hint }) {
+  const className = `rounded-2xl border border-gray-200 bg-white p-5 shadow-sm ${
+    onClick ? 'cursor-pointer hover:border-blue-300 hover:shadow-md transition-all' : ''
+  }`
+
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-xs text-gray-500">{label}</p>
+        {hint && <span className="text-xs text-blue-600 font-medium shrink-0">{hint}</span>}
+      </div>
       <p className="text-2xl font-bold text-gray-900">{value}</p>
       {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
-    </div>
+    </>
   )
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={`${className} text-left w-full`}>
+        {content}
+      </button>
+    )
+  }
+
+  return <div className={className}>{content}</div>
 }
 
 function AnnouncementsSection({ announcements, navigate }) {
@@ -70,6 +97,7 @@ export default function Dashboard() {
     avg: 0,
   })
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
+  const [todaySchedule, setTodaySchedule] = useState([])
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     if (!session?.user?.id) return
@@ -137,13 +165,19 @@ export default function Dashboard() {
           className: studentClassName,
         })
 
-        let subjectsCount = 0
         if (studentClassId) {
-          const { count } = await supabase
-            .from('subject_classes')
-            .select('id', { count: 'exact' })
+          const dayName = DAYS[new Date().getDay()]
+          const { data: slots } = await supabase
+            .from('schedule_slots')
+            .select('period_number, start_time, subjects(name), users(name)')
             .eq('class_id', studentClassId)
-          subjectsCount = count ?? 0
+            .eq('day_of_week', dayName)
+            .order('period_number')
+            .limit(8)
+
+          setTodaySchedule(slots ?? [])
+        } else {
+          setTodaySchedule([])
         }
 
         setStats({
@@ -151,7 +185,6 @@ export default function Dashboard() {
           lastExamScore,
           lastExamTotal,
           lastExamPct,
-          subjectsEnrolled: subjectsCount,
         })
       } else if (userRole === 'teacher') {
         const { data: teacherClassesData } = await supabase
@@ -263,27 +296,29 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <StatCard
-              label="Last Exam Score"
-              value={`${stats.lastExamScore ?? 0} / ${stats.lastExamTotal ?? 0} (${stats.lastExamPct ?? 0}%)`}
-              sub={stats.lastExamName}
-            />
-            <StatCard
-              label="Subjects Enrolled"
-              value={stats.subjectsEnrolled ?? 0}
-            />
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3">Today&apos;s Schedule</h2>
+            {todaySchedule.length === 0 ? (
+              <p className="text-sm text-gray-500">No classes scheduled today</p>
+            ) : (
+              <ul className="space-y-2">
+                {todaySchedule.map((slot) => (
+                  <li key={slot.period_number} className="text-sm text-gray-700">
+                    Period {slot.period_number} · {formatTime12(slot.start_time)} ·{' '}
+                    {slot.subjects?.name ?? 'Subject'} · {slot.users?.name ?? 'Teacher'}
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
-          <div className="flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/results')}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700"
-            >
-              View My Performance
-            </button>
-          </div>
+          <StatCard
+            label="Last Exam Score"
+            value={`${stats.lastExamScore ?? 0} / ${stats.lastExamTotal ?? 0} (${stats.lastExamPct ?? 0}%)`}
+            sub={stats.lastExamName}
+            onClick={() => navigate('/results')}
+            hint="View Results →"
+          />
         </>
       )}
 

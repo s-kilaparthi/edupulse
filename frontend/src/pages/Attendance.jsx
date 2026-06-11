@@ -31,6 +31,12 @@ function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
 
+function formatDateDDMMYYYY(dateStr) {
+  if (!dateStr) return ''
+  const [y, m, d] = dateStr.split('-')
+  return `${d}/${m}/${y}`
+}
+
 function StudentList({
   students,
   attendanceMap,
@@ -170,6 +176,8 @@ export default function Attendance() {
   const [loading, setLoading] = useState(true)
 
   const [studentSummary, setStudentSummary] = useState({})
+  const [studentRecordsBySubject, setStudentRecordsBySubject] = useState({})
+  const [expandedStudentSubject, setExpandedStudentSubject] = useState(null)
   const [adminTab, setAdminTab] = useState('mark')
   const [reportFromDate, setReportFromDate] = useState(() => {
     const d = new Date()
@@ -382,15 +390,22 @@ export default function Attendance() {
       .order('date', { ascending: false })
       .then(({ data }) => {
         const subjectMap = {}
+        const recordsMap = {}
         for (const row of data ?? []) {
           const sname = row.subjects?.name ?? 'Unknown'
           if (!subjectMap[sname]) subjectMap[sname] = { present: 0, total: 0 }
+          if (!recordsMap[sname]) recordsMap[sname] = []
           subjectMap[sname].total += 1
           if (row.status === 'present' || row.status === 'late') {
             subjectMap[sname].present += 1
           }
+          recordsMap[sname].push({ date: row.date, status: row.status })
+        }
+        for (const sname of Object.keys(recordsMap)) {
+          recordsMap[sname].sort((a, b) => b.date.localeCompare(a.date))
         }
         setStudentSummary(subjectMap)
+        setStudentRecordsBySubject(recordsMap)
         setLoading(false)
       })
   }, [userId, instituteId, isStudent])
@@ -882,24 +897,70 @@ export default function Attendance() {
           <div className="space-y-3">
             {Object.entries(studentSummary).map(([subject, { present, total }]) => {
               const pct = total > 0 ? Math.round((present / total) * 100) : 0
+              const isExpanded = expandedStudentSubject === subject
+              const records = studentRecordsBySubject[subject] ?? []
+
               return (
                 <div
                   key={subject}
-                  className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-200"
+                  className="bg-white rounded-xl border border-gray-200 overflow-hidden"
                 >
-                  <div>
-                    <p className="font-medium text-gray-900">{subject}</p>
-                    <p className="text-xs text-gray-500">
-                      {present}/{total} classes
-                    </p>
-                  </div>
-                  <span
-                    className={`text-sm font-bold ${
-                      pct >= 75 ? 'text-green-600' : 'text-red-600'
-                    }`}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setExpandedStudentSubject((prev) => (prev === subject ? null : subject))
+                    }
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 transition-colors"
                   >
-                    {pct}%{pct < 75 && ' ⚠️'}
-                  </span>
+                    <div>
+                      <p className="font-medium text-gray-900">{subject}</p>
+                      <p className="text-xs text-gray-500">
+                        {present}/{total} classes
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span
+                        className={`text-sm font-bold ${
+                          pct >= 75 ? 'text-green-600' : 'text-red-600'
+                        }`}
+                      >
+                        {pct}%{pct < 75 && ' ⚠️'}
+                      </span>
+                      <span className="text-gray-400 text-xs">{isExpanded ? '▲' : '▼'}</span>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="border-t border-gray-100 px-4 py-3 bg-gray-50">
+                      {records.length === 0 ? (
+                        <p className="text-sm text-gray-500">No attendance records yet</p>
+                      ) : (
+                        <ul className="space-y-2">
+                          {records.map((record, i) => (
+                            <li
+                              key={`${record.date}-${i}`}
+                              className="flex items-center justify-between text-sm"
+                            >
+                              <span className="text-gray-700">
+                                {formatDateDDMMYYYY(record.date)}
+                              </span>
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-xs font-medium capitalize ${
+                                  record.status === 'present'
+                                    ? 'bg-green-100 text-green-700'
+                                    : record.status === 'absent'
+                                      ? 'bg-red-100 text-red-700'
+                                      : 'bg-yellow-100 text-yellow-700'
+                                }`}
+                              >
+                                {record.status}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               )
             })}
