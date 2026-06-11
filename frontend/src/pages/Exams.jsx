@@ -386,7 +386,7 @@ export default function Exams() {
     // Pre-populate questionMap with existing saved questions
     const { data: existingQuestions } = await supabase
       .from('questions')
-      .select('question_number, topic_id, correct_answer, topics(name)')
+      .select('question_number, topic_id, correct_answer, question_text, topics(name)')
       .eq('exam_id', exam.id)
 
     if (existingQuestions && existingQuestions.length > 0) {
@@ -400,6 +400,7 @@ export default function Exams() {
           topic_name: q.topics?.name ?? '',
           color,
           correct_answer: q.correct_answer,
+          question_text: q.question_text ?? '',
         }
       })
       setQuestionMap(map)
@@ -453,11 +454,19 @@ export default function Exams() {
           topic_name: topic?.name ?? '',
           color,
           correct_answer: next[num]?.correct_answer ?? '',
+          question_text: next[num]?.question_text ?? '',
         }
       })
       return next
     })
     setSelectedQNums([])
+  }
+
+  function updateQuestionText(qNum, text) {
+    setQuestionMap((prev) => ({
+      ...prev,
+      [qNum]: { ...prev[qNum], question_text: text },
+    }))
   }
 
   function updateAnswer(qNum, answer) {
@@ -512,7 +521,8 @@ export default function Exams() {
       }
       if (isWritten) {
         row.correct_answer = null
-        row.question_text = null
+        const text = questionMap[num].question_text?.trim()
+        row.question_text = text || null
       } else {
         row.correct_answer = questionMap[num].correct_answer
       }
@@ -1045,9 +1055,14 @@ export default function Exams() {
                               className="border border-gray-100 rounded-xl p-4"
                             >
                               <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <span className="text-xs font-bold text-gray-700">
-                                  Q{q.question_number}
-                                </span>
+                                <div className="flex flex-col gap-0.5">
+                                  <span className="text-xs font-bold text-gray-700">
+                                    Q{q.question_number}
+                                  </span>
+                                  {exam.exam_type === 'written' && q.question_text && (
+                                    <p className="text-xs text-gray-500">{q.question_text}</p>
+                                  )}
+                                </div>
                                 <span className="text-xs text-blue-600">
                                   {q.topics?.subjects?.name ?? 'Subject'} — {q.topics?.name ?? 'Topic'}
                                 </span>
@@ -1056,34 +1071,40 @@ export default function Exams() {
                                     {q.difficulty}
                                   </span>
                                 )}
-                                <span className="text-xs text-green-600 font-medium ml-auto">
-                                  Answer: {q.correct_answer}
-                                </span>
+                                {exam.exam_type !== 'written' && (
+                                  <span className="text-xs text-green-600 font-medium ml-auto">
+                                    Answer: {q.correct_answer}
+                                  </span>
+                                )}
                               </div>
-                              {q.question_text ? (
-                                <p className="text-sm text-gray-900 mb-2">{q.question_text}</p>
-                              ) : (
-                                <p className="text-sm text-gray-400 italic mb-2">No question text</p>
+                              {exam.exam_type !== 'written' && (
+                                <>
+                                  {q.question_text ? (
+                                    <p className="text-sm text-gray-900 mb-2">{q.question_text}</p>
+                                  ) : (
+                                    <p className="text-sm text-gray-400 italic mb-2">No question text</p>
+                                  )}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
+                                    {['a', 'b', 'c', 'd'].map((opt) => {
+                                      const letter = opt.toUpperCase()
+                                      const value = q[`option_${opt}`]
+                                      if (!value) return null
+                                      return (
+                                        <p
+                                          key={opt}
+                                          className={`text-xs px-2 py-1 rounded ${
+                                            q.correct_answer === letter
+                                              ? 'bg-green-50 text-green-800 font-medium'
+                                              : 'text-gray-600'
+                                          }`}
+                                        >
+                                          {letter}. {value}
+                                        </p>
+                                      )
+                                    })}
+                                  </div>
+                                </>
                               )}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
-                                {['a', 'b', 'c', 'd'].map((opt) => {
-                                  const letter = opt.toUpperCase()
-                                  const value = q[`option_${opt}`]
-                                  if (!value) return null
-                                  return (
-                                    <p
-                                      key={opt}
-                                      className={`text-xs px-2 py-1 rounded ${
-                                        q.correct_answer === letter
-                                          ? 'bg-green-50 text-green-800 font-medium'
-                                          : 'text-gray-600'
-                                      }`}
-                                    >
-                                      {letter}. {value}
-                                    </p>
-                                  )
-                                })}
-                              </div>
                             </div>
                           ))}
                         </div>
@@ -1255,13 +1276,45 @@ export default function Exams() {
 
                         {allNums.length > 0 && isWrittenExam && (
                           <div className="border-t border-gray-100 pt-4 mb-4">
-                            <div className="flex gap-3 text-xs">
-                              {unassignedCount > 0 && (
-                                <span className="text-orange-600">{unassignedCount} unassigned</span>
-                              )}
-                              {unassignedCount === 0 && (
-                                <span className="text-green-600">All topics assigned ✓</span>
-                              )}
+                            <div className="flex items-center justify-between mb-3">
+                              <p className="text-sm font-medium text-gray-700">Written Questions</p>
+                              <div className="flex gap-3 text-xs">
+                                {unassignedCount > 0 && (
+                                  <span className="text-orange-600">{unassignedCount} unassigned</span>
+                                )}
+                                {unassignedCount === 0 && (
+                                  <span className="text-green-600">All topics assigned ✓</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="space-y-3 max-h-72 overflow-y-auto">
+                              {allNums.map((num) => {
+                                const q = questionMap[num]
+                                return (
+                                  <div
+                                    key={num}
+                                    className={`p-3 rounded-lg border ${
+                                      !q?.topic_id
+                                        ? 'border-orange-200 bg-orange-50'
+                                        : 'border-gray-200 bg-white'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 mb-2">
+                                      <span className="text-xs font-medium text-gray-700">Q{num}</span>
+                                      {q?.topic_name && (
+                                        <span className="text-xs text-blue-600">{q.topic_name}</span>
+                                      )}
+                                    </div>
+                                    <input
+                                      type="text"
+                                      value={q?.question_text ?? ''}
+                                      onChange={(e) => updateQuestionText(num, e.target.value)}
+                                      placeholder="Question text (optional)"
+                                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                    />
+                                  </div>
+                                )
+                              })}
                             </div>
                           </div>
                         )}
