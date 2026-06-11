@@ -316,6 +316,33 @@ async def create_student(request: Request):
             "class_id": class_id,
         }).execute()
 
+        parent_phone = body.get('parent_phone')
+        parent_name = body.get('parent_name')
+        if parent_phone and str(parent_phone).strip():
+            parent_email = f"parent{roll_number}@edupulse.com"
+            parent_auth_response = supabase_admin.auth.admin.create_user({
+                "email": parent_email,
+                "password": str(roll_number),
+                "email_confirm": True,
+            })
+            parent_user_id = parent_auth_response.user.id
+            display_parent_name = (
+                parent_name.strip()
+                if parent_name and str(parent_name).strip()
+                else f"Parent of {name}"
+            )
+            supabase_admin.from_('users').insert({
+                "id": parent_user_id,
+                "name": display_parent_name,
+                "email": parent_email,
+                "role": "parent",
+                "institute_id": institute_id,
+                "class_id": class_id,
+                "roll_number": roll_number,
+                "parent_phone": str(parent_phone).strip(),
+                "parent_name": parent_name.strip() if parent_name and str(parent_name).strip() else None,
+            }).execute()
+
         return {"success": True, "user_id": user_id}
 
     except HTTPException:
