@@ -7,6 +7,13 @@ const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 
 
 const BAR_COLORS = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500']
 
+const CLASS_CARD_TOP_BORDERS = [
+  'border-t-blue-500',
+  'border-t-green-500',
+  'border-t-orange-500',
+  'border-t-purple-500',
+]
+
 const PERIOD_END_TIMES = {
   1: '10:00',
   2: '11:00',
@@ -513,14 +520,20 @@ export default function Dashboard() {
 
       {userRole === 'teacher' && (
         <>
-          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+          <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-100 p-5 shadow-sm">
             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse</p>
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome, {userName}!</h1>
+            <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+              Teacher
+            </span>
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-900">Today&apos;s Schedule</h2>
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 bg-blue-500 rounded-full" />
+                <h2 className="font-bold text-gray-800 text-base">Today&apos;s Schedule</h2>
+              </div>
               <span className="text-xs text-gray-500">{formatTodayDate()}</span>
             </div>
             {todaySchedule.length === 0 ? (
@@ -561,11 +574,16 @@ export default function Dashboard() {
           </div>
 
           {teacherClassCards.length > 0 && (
-            <div className="grid grid-cols-2 gap-3">
-              {teacherClassCards.map((cls) => (
+            <>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-1 h-5 bg-purple-500 rounded-full" />
+                <h2 className="font-bold text-gray-800 text-base">My Classes</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+              {teacherClassCards.map((cls, index) => (
                 <div
                   key={cls.classId}
-                  className="rounded-xl shadow-sm bg-white p-3 border border-gray-100"
+                  className={`rounded-xl shadow-sm bg-white p-3 border border-gray-100 border-t-4 ${CLASS_CARD_TOP_BORDERS[index % CLASS_CARD_TOP_BORDERS.length]} hover:shadow-md transition-shadow`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <p className="font-semibold text-gray-900 text-sm truncate">{cls.className}</p>
@@ -589,39 +607,44 @@ export default function Dashboard() {
                   <p className="text-xs text-gray-600">👥 {cls.studentCount} Students</p>
                 </div>
               ))}
-            </div>
+              </div>
+            </>
           )}
 
           <div className="grid grid-cols-3 gap-3">
             <button
               type="button"
               onClick={() => navigate('/subjects')}
-              className="bg-white border border-gray-200 text-gray-800 font-medium px-3 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-colors text-sm text-center"
+              className="bg-indigo-500 text-white font-semibold p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-indigo-600 transition-colors"
             >
-              📚 View Subjects
+              <span className="text-xl">📚</span>
+              <span className="text-sm">View Subjects</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/students')}
-              className="bg-white border border-gray-200 text-gray-800 font-medium px-3 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-colors text-sm text-center"
+              className="bg-emerald-500 text-white font-semibold p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-600 transition-colors"
             >
-              👥 View Students
+              <span className="text-xl">👥</span>
+              <span className="text-sm">View Students</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/exams')}
-              className="bg-white border border-gray-200 text-gray-800 font-medium px-3 py-3 rounded-xl shadow-sm hover:bg-gray-50 transition-colors text-sm text-center"
+              className="bg-orange-500 text-white font-semibold p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-orange-600 transition-colors"
             >
-              📝 View Exams
+              <span className="text-xl">📝</span>
+              <span className="text-sm">View Exams</span>
             </button>
           </div>
 
           <button
             type="button"
             onClick={() => navigate('/scan')}
-            className="w-full bg-blue-600 text-white font-medium px-4 py-3 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium px-4 py-3 rounded-xl shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center justify-center gap-2"
           >
-            📝 Start Grading
+            <span className="text-xl">📝</span>
+            Start Grading
           </button>
         </>
       )}
