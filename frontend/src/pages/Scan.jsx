@@ -78,6 +78,7 @@ export default function Scan() {
   const [absentStudentName, setAbsentStudentName] = useState('')
   const [absentList, setAbsentList] = useState([])
   const [activeScanMode, setActiveScanMode] = useState('class')
+  const [gradingMode, setGradingMode] = useState(null)
   const fileRef = useRef(null)
   const fileRefRoll = useRef(null)
 
@@ -578,13 +579,61 @@ export default function Scan() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">OMR Scanning</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">Grading</h1>
 
       {userRole === 'student' && (
-        <p className="text-sm text-red-600">Scanning is only available to teachers and admins.</p>
+        <p className="text-sm text-red-600">Grading is only available to teachers and admins.</p>
       )}
 
-      {showScanUI && step === 1 && (
+      {showScanUI && gradingMode === null && (
+        <section className="bg-white rounded-2xl shadow p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <button
+              type="button"
+              onClick={() => setGradingMode('omr')}
+              className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-blue-200 bg-blue-50 px-6 py-12 text-lg font-semibold text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors"
+            >
+              <span className="text-3xl">📷</span>
+              OMR Scan
+            </button>
+            <button
+              type="button"
+              onClick={() => setGradingMode('written')}
+              className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 bg-gray-50 px-6 py-12 text-lg font-semibold text-gray-700 hover:border-gray-300 hover:bg-gray-100 transition-colors"
+            >
+              <span className="text-3xl">📝</span>
+              Written Exam
+            </button>
+          </div>
+        </section>
+      )}
+
+      {showScanUI && gradingMode === 'written' && (
+        <section className="bg-white rounded-2xl shadow p-6 space-y-4">
+          <button
+            type="button"
+            onClick={() => setGradingMode(null)}
+            className="text-sm text-gray-500 hover:text-gray-700"
+          >
+            ← Back
+          </button>
+          <h2 className="text-lg font-semibold text-gray-800">
+            Written Exam Grading — Coming Soon
+          </h2>
+        </section>
+      )}
+
+      {showScanUI && gradingMode === 'omr' && (
+        <button
+          type="button"
+          onClick={() => setGradingMode(null)}
+          className="text-sm text-gray-500 hover:text-gray-700 mb-4"
+        >
+          ← Back
+        </button>
+      )}
+
+      {showScanUI && gradingMode === 'omr' && step === 1 && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">Step 1 — Select Exam</h2>
           <label className="block text-sm text-gray-600">Exam</label>
@@ -619,7 +668,7 @@ export default function Scan() {
         </section>
       )}
 
-      {showScanUI && step === 2 && !showReview && (
+      {showScanUI && gradingMode === 'omr' && step === 2 && !showReview && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800">Step 2 — Select Student + Scan</h2>
@@ -939,7 +988,7 @@ export default function Scan() {
         </section>
       )}
 
-      {showScanUI && step === 2 && showReview && (
+      {showScanUI && gradingMode === 'omr' && step === 2 && showReview && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-800">
@@ -1015,7 +1064,7 @@ export default function Scan() {
         </section>
       )}
 
-      {showScanUI && step === 3 && (
+      {showScanUI && gradingMode === 'omr' && step === 3 && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">Step 3 — Review Detected Answers</h2>
           <p className="text-sm text-gray-600">
@@ -1075,7 +1124,7 @@ export default function Scan() {
         </section>
       )}
 
-      {showScanUI && step === 4 && sessionSummary && (
+      {showScanUI && gradingMode === 'omr' && step === 4 && sessionSummary && (
         <section className="bg-white rounded-2xl shadow p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800">Session Summary</h2>
           <p className="text-gray-700">
