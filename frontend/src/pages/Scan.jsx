@@ -126,6 +126,7 @@ export default function Scan() {
       const { data, error } = await supabase
         .from('exams')
         .select('id, name, total_questions, scope, exam_classes(class_id, classes(name))')
+        .eq('exam_type', 'mcq')
         .order('created_at', { ascending: false })
       if (!error && data) setExams(data)
 
@@ -590,19 +591,19 @@ export default function Scan() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               type="button"
-              onClick={() => setGradingMode('omr')}
-              className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-blue-200 bg-blue-50 px-6 py-12 text-lg font-semibold text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors"
-            >
-              <span className="text-3xl">📷</span>
-              OMR Scan
-            </button>
-            <button
-              type="button"
               onClick={() => setGradingMode('written')}
               className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 bg-gray-50 px-6 py-12 text-lg font-semibold text-gray-700 hover:border-gray-300 hover:bg-gray-100 transition-colors"
             >
               <span className="text-3xl">📝</span>
               Written Exam
+            </button>
+            <button
+              type="button"
+              onClick={() => setGradingMode('omr')}
+              className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-blue-200 bg-blue-50 px-6 py-12 text-lg font-semibold text-blue-700 hover:border-blue-400 hover:bg-blue-100 transition-colors"
+            >
+              <span className="text-3xl">📷</span>
+              OMR Scan
             </button>
           </div>
         </section>
