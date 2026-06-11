@@ -829,6 +829,22 @@ export default function Scan() {
     setExpandedStudentId(studentId)
   }
 
+  async function upsertWrittenExamSummary(studentId, marks) {
+    const { error } = await supabase.from('omr_results').upsert(
+      {
+        exam_id: writtenExamId,
+        student_id: studentId,
+        question_id: null,
+        answer_given: null,
+        is_correct: null,
+        marks_obtained: marks,
+        total_marks: writtenQuestionCount,
+      },
+      { onConflict: 'exam_id,student_id,question_id' }
+    )
+    if (error) throw error
+  }
+
   async function handleConfirmWrittenStudent(studentId) {
     const marks = parseInt(writtenMarks[studentId], 10)
     const examName = writtenSelectedExam?.name ?? 'Exam'
@@ -837,6 +853,8 @@ export default function Scan() {
     setWrittenError('')
 
     try {
+      await upsertWrittenExamSummary(studentId, marks)
+
       const { error } = await supabase.from('notifications').insert({
         user_id: studentId,
         title: `Results Posted — ${examName}`,
@@ -870,6 +888,11 @@ export default function Scan() {
     const examName = writtenSelectedExam?.name ?? 'Exam'
 
     try {
+      for (const studentId of pending) {
+        const marks = parseInt(writtenMarks[studentId], 10)
+        await upsertWrittenExamSummary(studentId, marks)
+      }
+
       const notifRows = pending.map((studentId) => {
         const marks = parseInt(writtenMarks[studentId], 10)
         return {

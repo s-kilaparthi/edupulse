@@ -454,31 +454,53 @@ export default function Results() {
         return
       }
 
-      const { data: scores } = await supabase
-        .from('omr_results')
-        .select('student_id, is_correct')
-        .eq('exam_id', examId)
-        .in('student_id', allStudents.map((s) => s.id))
-
       const { data: examData } = await supabase
         .from('exams')
-        .select('total_questions')
+        .select('total_questions, exam_type')
         .eq('id', examId)
         .single()
 
       const totalQ = examData?.total_questions ?? 0
+      const isWrittenExam = examData?.exam_type === 'written'
+      const studentIds = allStudents.map((s) => s.id)
 
       const scoreMap = {}
-      for (const r of scores ?? []) {
-        if (!scoreMap[r.student_id]) scoreMap[r.student_id] = 0
-        if (r.is_correct) scoreMap[r.student_id] += 1
+      const totalMap = {}
+      let attendedSet = new Set()
+
+      if (isWrittenExam) {
+        const { data: summaries } = await supabase
+          .from('omr_results')
+          .select('student_id, marks_obtained, total_marks')
+          .eq('exam_id', examId)
+          .is('question_id', null)
+          .in('student_id', studentIds)
+
+        for (const r of summaries ?? []) {
+          scoreMap[r.student_id] = r.marks_obtained ?? 0
+          totalMap[r.student_id] = r.total_marks ?? totalQ
+          attendedSet.add(r.student_id)
+        }
+      } else {
+        const { data: scores } = await supabase
+          .from('omr_results')
+          .select('student_id, is_correct, question_id')
+          .eq('exam_id', examId)
+          .in('student_id', studentIds)
+
+        for (const r of scores ?? []) {
+          if (r.question_id == null) continue
+          if (!scoreMap[r.student_id]) scoreMap[r.student_id] = 0
+          if (r.is_correct) scoreMap[r.student_id] += 1
+          attendedSet.add(r.student_id)
+        }
       }
 
       const rankings = allStudents.map((s) => ({
         ...s,
         score: scoreMap[s.id] ?? 0,
-        totalQ,
-        attended: s.id in scoreMap,
+        totalQ: totalMap[s.id] ?? totalQ,
+        attended: attendedSet.has(s.id),
       }))
 
       rankings.sort((a, b) => {
@@ -587,24 +609,60 @@ export default function Results() {
         subjectMap[sid].max += row.total
       }
       const subjects = Object.values(subjectMap).map((s) => ({ ...s, percentage: s.max > 0 ? Math.round((s.score / s.max) * 100) : 0 }))
-      const totalScore = subjects.reduce((sum, s) => sum + s.score, 0)
-      const totalMax = subjects.reduce((sum, s) => sum + s.max, 0)
-      const percentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0
+      let totalScore = subjects.reduce((sum, s) => sum + s.score, 0)
+      let totalMax = subjects.reduce((sum, s) => sum + s.max, 0)
+      let percentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0
       const newResult = { totalScore, totalMax, percentage, classTop: 0, subjects }
 
-      const { data: allScores } = await supabase
-        .from('topic_scores')
-        .select('student_id, score')
-        .eq('exam_id', examId)
+      const { data: examMeta } = await supabase
+        .from('exams')
+        .select('exam_type')
+        .eq('id', examId)
+        .single()
 
-      if (allScores && allScores.length > 0) {
-        const studentTotals = {}
-        for (const row of allScores) {
-          if (!studentTotals[row.student_id]) studentTotals[row.student_id] = 0
-          studentTotals[row.student_id] += row.score
+      const resultStudentId = isTeacher ? selectedStudentId : session.user.id
+
+      if (examMeta?.exam_type === 'written') {
+        const { data: summary } = await supabase
+          .from('omr_results')
+          .select('marks_obtained, total_marks')
+          .eq('exam_id', examId)
+          .eq('student_id', resultStudentId)
+          .is('question_id', null)
+          .maybeSingle()
+
+        if (summary) {
+          newResult.totalScore = summary.marks_obtained ?? 0
+          newResult.totalMax = summary.total_marks ?? totalMax
+          newResult.percentage = newResult.totalMax > 0
+            ? Math.round((newResult.totalScore / newResult.totalMax) * 100)
+            : 0
         }
-        const maxScore = Math.max(...Object.values(studentTotals))
-        newResult.classTop = maxScore
+
+        const { data: allSummaries } = await supabase
+          .from('omr_results')
+          .select('marks_obtained')
+          .eq('exam_id', examId)
+          .is('question_id', null)
+
+        if (allSummaries?.length) {
+          newResult.classTop = Math.max(...allSummaries.map((r) => r.marks_obtained ?? 0))
+        }
+      } else {
+        const { data: allScores } = await supabase
+          .from('topic_scores')
+          .select('student_id, score')
+          .eq('exam_id', examId)
+
+        if (allScores && allScores.length > 0) {
+          const studentTotals = {}
+          for (const row of allScores) {
+            if (!studentTotals[row.student_id]) studentTotals[row.student_id] = 0
+            studentTotals[row.student_id] += row.score
+          }
+          const maxScore = Math.max(...Object.values(studentTotals))
+          newResult.classTop = maxScore
+        }
       }
 
       setResult(newResult)
