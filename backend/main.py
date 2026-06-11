@@ -410,12 +410,38 @@ async def delete_user(user_id: str):
             os.environ.get('SUPABASE_SERVICE_KEY')
         )
 
+        student_roll_number = None
+        student_institute_id = None
+
+        user_result = supabase_admin.from_('users').select('id, roll_number, institute_id').eq('id', user_id).limit(1).execute()
+        if user_result.data:
+            student_roll_number = user_result.data[0].get('roll_number')
+            student_institute_id = user_result.data[0].get('institute_id')
+
         try:
             supabase_admin.auth.admin.delete_user(user_id)
         except Exception as auth_err:
             print(f"Auth delete skipped (user may not exist): {auth_err}")
 
         supabase_admin.from_('users').delete().eq('id', user_id).execute()
+
+        if student_roll_number is not None and student_institute_id is not None:
+            parent_result = (
+                supabase_admin.from_('users')
+                .select('id')
+                .eq('roll_number', student_roll_number)
+                .eq('role', 'parent')
+                .eq('institute_id', student_institute_id)
+                .limit(1)
+                .execute()
+            )
+            if parent_result.data:
+                parent_id = parent_result.data[0]['id']
+                try:
+                    supabase_admin.auth.admin.delete_user(parent_id)
+                except Exception as auth_err:
+                    print(f"Parent auth delete skipped (user may not exist): {auth_err}")
+                supabase_admin.from_('users').delete().eq('id', parent_id).execute()
 
         return {"success": True}
 
