@@ -246,16 +246,12 @@ async def register_institute(request: Request):
 
         supabase_admin = create_client(supabase_url, supabase_service_key)
 
-        institute_response = supabase_admin.from_('institutes').insert({
+        result = supabase_admin.from_('institutes').insert({
             "name": institute_name.strip(),
             "city": city.strip(),
             "state": state.strip(),
-        }).select('id').single().execute()
-
-        if not institute_response.data:
-            raise HTTPException(status_code=500, detail="Failed to create institute")
-
-        institute_id = institute_response.data['id']
+        }).execute()
+        institute_id = result.data[0]['id']
 
         auth_response = supabase_admin.auth.admin.create_user({
             "email": admin_email.strip(),
