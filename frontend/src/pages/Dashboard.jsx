@@ -4,12 +4,37 @@ import { supabase } from '../supabase'
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
+const BAR_COLORS = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500']
+
+const PERIOD_END_TIMES = {
+  1: '10:00',
+  2: '11:00',
+  3: '12:00',
+  4: '13:00',
+  5: '14:00',
+  6: '15:00',
+  7: '16:00',
+  8: '17:00',
+}
+
 function formatTime12(timeStr) {
   if (!timeStr) return ''
   const [h, m] = timeStr.split(':').map(Number)
   const ampm = h >= 12 ? 'PM' : 'AM'
   const hour = h % 12 || 12
   return `${hour}:${String(m).padStart(2, '0')} ${ampm}`
+}
+
+function formatTodayDate() {
+  return new Date().toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
+}
+
+function getPeriodEndTime(periodNumber, startTime) {
+  return PERIOD_END_TIMES[periodNumber] ?? startTime?.slice(0, 5) ?? ''
 }
 
 function StatCard({ label, value, sub, onClick, hint }) {
@@ -297,18 +322,41 @@ export default function Dashboard() {
           </div>
 
           <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3">Today&apos;s Schedule</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-semibold text-gray-900">Today&apos;s Schedule</h2>
+              <span className="text-xs text-gray-500">{formatTodayDate()}</span>
+            </div>
             {todaySchedule.length === 0 ? (
-              <p className="text-sm text-gray-500">No classes scheduled today</p>
+              <div className="text-center py-8">
+                <p className="text-2xl mb-2">📅</p>
+                <p className="text-sm text-gray-500">No classes scheduled today</p>
+              </div>
             ) : (
-              <ul className="space-y-2">
-                {todaySchedule.map((slot) => (
-                  <li key={slot.period_number} className="text-sm text-gray-700">
-                    Period {slot.period_number} · {formatTime12(slot.start_time)} ·{' '}
-                    {slot.subjects?.name ?? 'Subject'} · {slot.users?.name ?? 'Teacher'}
-                  </li>
+              <div className="flex gap-3 overflow-x-auto md:flex-wrap md:overflow-visible pb-1 md:pb-0">
+                {todaySchedule.map((slot, index) => (
+                  <div
+                    key={slot.period_number}
+                    className="flex rounded-xl shadow-sm bg-white p-4 min-w-[160px] shrink-0 border border-gray-100 overflow-hidden"
+                  >
+                    <div
+                      className={`w-1 shrink-0 rounded-full ${BAR_COLORS[index % BAR_COLORS.length]}`}
+                    />
+                    <div className="pl-3 flex flex-col gap-0.5 min-w-0">
+                      <p className="text-xs text-gray-500">Period {slot.period_number}</p>
+                      <p className="text-sm font-bold text-gray-900 whitespace-nowrap">
+                        {formatTime12(slot.start_time)} –{' '}
+                        {formatTime12(getPeriodEndTime(slot.period_number, slot.start_time))}
+                      </p>
+                      <p className="text-lg font-semibold text-gray-900 truncate">
+                        {slot.subjects?.name ?? 'Subject'}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">
+                        👤 {slot.users?.name ?? 'Teacher'}
+                      </p>
+                    </div>
+                  </div>
                 ))}
-              </ul>
+              </div>
             )}
           </div>
 
