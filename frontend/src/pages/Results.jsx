@@ -36,7 +36,17 @@ function ExamTypeBadge({ examType }) {
 }
 
 function OverallScoreCard({ result }) {
-  const { totalScore, totalMax, percentage, classTop } = result
+  const { totalScore, totalMax, percentage, classTop, notGraded } = result
+
+  if (notGraded) {
+    return (
+      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p className="text-sm text-gray-500">Overall Score</p>
+        <p className="mt-1 text-lg font-medium text-gray-500">Not graded</p>
+      </div>
+    )
+  }
+
   const youPct = totalMax > 0 ? (totalScore / totalMax) * 100 : 0
   const topPct = totalMax > 0 ? (classTop / totalMax) * 100 : 0
   return (
@@ -607,6 +617,16 @@ export default function Results() {
 
     async function loadResults() {
       setLoading(true)
+
+      const { data: examMeta } = await supabase
+        .from('exams')
+        .select('exam_type')
+        .eq('id', examId)
+        .single()
+
+      const isWrittenExam = examMeta?.exam_type === 'written'
+      const resultStudentId = isTeacher ? selectedStudentId : effectiveStudentId
+
       let query = supabase
         .from('topic_scores')
         .select('topic_id, subject_id, score, total, percentage, topics(name), subjects(name)')
@@ -619,10 +639,9 @@ export default function Results() {
       }
 
       const { data } = await query
-      if (!data || data.length === 0) { setResult(null); setLoading(false); return }
 
       const subjectMap = {}
-      for (const row of data) {
+      for (const row of data ?? []) {
         const sid = row.subject_id ?? 'unknown'
         if (!subjectMap[sid]) {
           subjectMap[sid] = { subject_id: sid, name: row.subjects?.name ?? 'General', score: 0, max: 0, percentage: 0, topics: [] }
@@ -632,20 +651,8 @@ export default function Results() {
         subjectMap[sid].max += row.total
       }
       const subjects = Object.values(subjectMap).map((s) => ({ ...s, percentage: s.max > 0 ? Math.round((s.score / s.max) * 100) : 0 }))
-      let totalScore = subjects.reduce((sum, s) => sum + s.score, 0)
-      let totalMax = subjects.reduce((sum, s) => sum + s.max, 0)
-      let percentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0
-      const newResult = { totalScore, totalMax, percentage, classTop: 0, subjects }
 
-      const { data: examMeta } = await supabase
-        .from('exams')
-        .select('exam_type')
-        .eq('id', examId)
-        .single()
-
-      const resultStudentId = isTeacher ? selectedStudentId : effectiveStudentId
-
-      if (examMeta?.exam_type === 'written') {
+      if (isWrittenExam) {
         const { data: summary } = await supabase
           .from('omr_results')
           .select('marks_obtained, total_marks')
@@ -654,13 +661,23 @@ export default function Results() {
           .is('question_id', null)
           .maybeSingle()
 
-        if (summary) {
-          newResult.totalScore = summary.marks_obtained ?? 0
-          newResult.totalMax = summary.total_marks ?? totalMax
-          newResult.percentage = newResult.totalMax > 0
-            ? Math.round((newResult.totalScore / newResult.totalMax) * 100)
-            : 0
+        if (!summary) {
+          setResult({
+            notGraded: true,
+            totalScore: 0,
+            totalMax: 0,
+            percentage: 0,
+            classTop: 0,
+            subjects,
+          })
+          setActiveSubject(subjects.length > 0 ? subjects[0].subject_id : '')
+          setLoading(false)
+          return
         }
+
+        const totalScore = summary.marks_obtained ?? 0
+        const totalMax = summary.total_marks ?? 0
+        const percentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0
 
         const { data: allSummaries } = await supabase
           .from('omr_results')
@@ -668,24 +685,39 @@ export default function Results() {
           .eq('exam_id', examId)
           .is('question_id', null)
 
-        if (allSummaries?.length) {
-          newResult.classTop = Math.max(...allSummaries.map((r) => r.marks_obtained ?? 0))
-        }
-      } else {
-        const { data: allScores } = await supabase
-          .from('topic_scores')
-          .select('student_id, score')
-          .eq('exam_id', examId)
+        const classTop = allSummaries?.length
+          ? Math.max(...allSummaries.map((r) => r.marks_obtained ?? 0))
+          : 0
 
-        if (allScores && allScores.length > 0) {
-          const studentTotals = {}
-          for (const row of allScores) {
-            if (!studentTotals[row.student_id]) studentTotals[row.student_id] = 0
-            studentTotals[row.student_id] += row.score
-          }
-          const maxScore = Math.max(...Object.values(studentTotals))
-          newResult.classTop = maxScore
+        setResult({ notGraded: false, totalScore, totalMax, percentage, classTop, subjects })
+        setActiveSubject(subjects.length > 0 ? subjects[0].subject_id : '')
+        setLoading(false)
+        return
+      }
+
+      if (!data || data.length === 0) {
+        setResult(null)
+        setLoading(false)
+        return
+      }
+
+      let totalScore = subjects.reduce((sum, s) => sum + s.score, 0)
+      let totalMax = subjects.reduce((sum, s) => sum + s.max, 0)
+      let percentage = totalMax > 0 ? Math.round((totalScore / totalMax) * 100) : 0
+      const newResult = { notGraded: false, totalScore, totalMax, percentage, classTop: 0, subjects }
+
+      const { data: allScores } = await supabase
+        .from('topic_scores')
+        .select('student_id, score')
+        .eq('exam_id', examId)
+
+      if (allScores && allScores.length > 0) {
+        const studentTotals = {}
+        for (const row of allScores) {
+          if (!studentTotals[row.student_id]) studentTotals[row.student_id] = 0
+          studentTotals[row.student_id] += row.score
         }
+        newResult.classTop = Math.max(...Object.values(studentTotals))
       }
 
       setResult(newResult)
@@ -785,14 +817,16 @@ export default function Results() {
             <p className="text-gray-400 text-xs mt-1">Scan some OMR sheets first.</p>
           </div>
         )}
-        {!loading && result && subject && (
+        {!loading && result && (
           <>
             <OverallScoreCard result={result} />
-            <div className="flex flex-col gap-5">
-              <SubjectTabs subjects={result.subjects} active={subject.subject_id} onChange={setActiveSubject} />
-              <TopicPerformance subject={subject} />
-              <TopicSummary subject={subject} />
-            </div>
+            {subject && (
+              <div className="flex flex-col gap-5">
+                <SubjectTabs subjects={result.subjects} active={subject.subject_id} onChange={setActiveSubject} />
+                <TopicPerformance subject={subject} />
+                <TopicSummary subject={subject} />
+              </div>
+            )}
           </>
         )}
         {!loadingTrend && trendData.length > 0 && (
@@ -902,14 +936,16 @@ export default function Results() {
           </div>
         )}
 
-        {!isTeacher && !loading && result && subject && (
+        {!isTeacher && !loading && result && (
           <>
             <OverallScoreCard result={result} />
-            <div className="flex flex-col gap-5">
-              <SubjectTabs subjects={result.subjects} active={subject.subject_id} onChange={setActiveSubject} />
-              <TopicPerformance subject={subject} />
-              <TopicSummary subject={subject} />
-            </div>
+            {subject && (
+              <div className="flex flex-col gap-5">
+                <SubjectTabs subjects={result.subjects} active={subject.subject_id} onChange={setActiveSubject} />
+                <TopicPerformance subject={subject} />
+                <TopicSummary subject={subject} />
+              </div>
+            )}
           </>
         )}
 
@@ -1008,7 +1044,7 @@ export default function Results() {
                           </div>
                         )}
 
-                        {expandedStudentId === s.id && !loading && result && subject && (
+                        {expandedStudentId === s.id && !loading && result && (
                           <div className="mx-4 mb-4 border border-blue-100 rounded-xl overflow-hidden bg-white">
                             <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-100">
                               <p className="text-xs font-medium text-blue-700">
@@ -1028,13 +1064,17 @@ export default function Results() {
                             </div>
                             <div className="p-4 flex flex-col gap-4">
                               <OverallScoreCard result={result} />
-                              <SubjectTabs
-                                subjects={result.subjects}
-                                active={subject.subject_id}
-                                onChange={setActiveSubject}
-                              />
-                              <TopicPerformance subject={subject} />
-                              <TopicSummary subject={subject} />
+                              {subject && (
+                                <>
+                                  <SubjectTabs
+                                    subjects={result.subjects}
+                                    active={subject.subject_id}
+                                    onChange={setActiveSubject}
+                                  />
+                                  <TopicPerformance subject={subject} />
+                                  <TopicSummary subject={subject} />
+                                </>
+                              )}
                             </div>
                           </div>
                         )}

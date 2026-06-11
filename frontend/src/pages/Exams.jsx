@@ -33,6 +33,7 @@ export default function Exams() {
   const [examType, setExamType] = useState('mcq')
   const [examDate, setExamDate] = useState('')
   const [totalQuestions, setTotalQuestions] = useState('')
+  const [totalMarks, setTotalMarks] = useState('')
   const [selectedSubjects, setSelectedSubjects] = useState([])
   const [scope, setScope] = useState('class')
   const [selectedClassIds, setSelectedClassIds] = useState([])
@@ -125,7 +126,7 @@ export default function Exams() {
   async function fetchExams() {
     const { data, error: fetchError } = await supabase
       .from('exams')
-      .select('id, name, exam_date, total_questions, scope, exam_type, exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
+      .select('id, name, exam_date, total_questions, total_marks, scope, exam_type, exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
       .order('created_at', { ascending: false })
     if (fetchError) throw new Error(fetchError.message)
     setExams(data ?? [])
@@ -272,6 +273,13 @@ export default function Exams() {
       setError('Please fill in all exam fields.')
       return
     }
+    if (examType === 'written') {
+      const marks = parseInt(totalMarks, 10)
+      if (!marks || marks < 1) {
+        setError('Please enter total marks for written exams.')
+        return
+      }
+    }
     const examScope = userRole === 'teacher' ? 'class' : scope
 
     if ((examScope === 'class' || examScope === 'multiple') && selectedClassIds.length === 0) {
@@ -303,6 +311,7 @@ export default function Exams() {
           name,
           exam_date: examDate,
           total_questions: total,
+          total_marks: examType === 'written' ? parseInt(totalMarks, 10) : null,
           created_by: user.id,
           scope: examScope,
           exam_type: examType,
@@ -333,6 +342,7 @@ export default function Exams() {
       setExamType('mcq')
       setExamDate('')
       setTotalQuestions('')
+      setTotalMarks('')
       setSelectedSubjects([])
       setScope('class')
       setSelectedClassIds([])
@@ -938,6 +948,21 @@ export default function Exams() {
             />
           </div>
 
+          {examType === 'written' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Total Marks</label>
+              <input
+                type="number"
+                min={1}
+                required
+                value={totalMarks}
+                onChange={(e) => setTotalMarks(e.target.value)}
+                placeholder="Total marks (e.g. 100)"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              />
+            </div>
+          )}
+
           <div className="sm:col-span-2">
             <button
               type="submit"
@@ -1012,6 +1037,9 @@ export default function Exams() {
                         return name ? name + range : null
                       }).filter(Boolean).join(', ') || 'No subjects'}{' '}
                       · {formatDate(exam.exam_date)} · {exam.total_questions} questions
+                      {exam.exam_type === 'written' && exam.total_marks != null
+                        ? ` · Total Marks: ${exam.total_marks}`
+                        : ''}
                       {exam.scope === 'institute'
                         ? ' · Whole Institute'
                         : exam.exam_classes?.length
@@ -1038,6 +1066,12 @@ export default function Exams() {
                         Close
                       </button>
                     </div>
+
+                    {exam.exam_type === 'written' && exam.total_marks != null && (
+                      <p className="text-sm text-gray-700 mb-4">
+                        Total Marks: <span className="font-semibold">{exam.total_marks}</span>
+                      </p>
+                    )}
 
                     {loadingProfile ? (
                       <p className="text-sm text-gray-500">Loading questions…</p>

@@ -169,6 +169,7 @@ export default function Scan() {
   )
 
   const writtenQuestionCount = writtenSelectedExam?.total_questions ?? DEFAULT_QUESTION_COUNT
+  const writtenTotalMarks = writtenSelectedExam?.total_marks ?? null
 
   const filteredWrittenStudents = useMemo(() => {
     const q = writtenSearch.trim().toLowerCase()
@@ -229,30 +230,39 @@ export default function Scan() {
   }
 
   async function loadWrittenStudentGradingData(studentId) {
-    const { data: omrRows } = await supabase
-      .from('omr_results')
-      .select('is_correct, answer_given, questions(question_number)')
-      .eq('exam_id', writtenExamId)
-      .eq('student_id', studentId)
+    const [{ data: omrRows }, { data: summary }] = await Promise.all([
+      supabase
+        .from('omr_results')
+        .select('is_correct, questions(question_number)')
+        .eq('exam_id', writtenExamId)
+        .eq('student_id', studentId)
+        .not('question_id', 'is', null),
+      supabase
+        .from('omr_results')
+        .select('marks_obtained')
+        .eq('exam_id', writtenExamId)
+        .eq('student_id', studentId)
+        .is('question_id', null)
+        .maybeSingle(),
+    ])
 
-    if (!omrRows?.length) {
+    if (!omrRows?.length && !summary) {
       setWrittenPoorQuestions((prev) => ({ ...prev, [studentId]: [] }))
       setWrittenMarks((prev) => ({ ...prev, [studentId]: '' }))
       return
     }
 
     const poor = []
-    let marks = ''
-    for (const row of omrRows) {
+    for (const row of omrRows ?? []) {
       const qNum = row.questions?.question_number
       if (qNum == null) continue
       if (!row.is_correct) poor.push(qNum)
-      if (qNum === 1 && row.answer_given != null) marks = String(row.answer_given)
     }
 
-    if (!marks) {
-      marks = String(omrRows.filter((r) => r.is_correct).length)
-    }
+    const marks =
+      summary?.marks_obtained != null
+        ? String(summary.marks_obtained)
+        : ''
 
     setWrittenPoorQuestions((prev) => ({ ...prev, [studentId]: poor }))
     setWrittenMarks((prev) => ({ ...prev, [studentId]: marks }))
@@ -261,11 +271,20 @@ export default function Scan() {
   async function preloadGradedStudentData(studentIds) {
     if (studentIds.length === 0) return
 
-    const { data: omrRows } = await supabase
-      .from('omr_results')
-      .select('student_id, is_correct, answer_given, questions(question_number)')
-      .eq('exam_id', writtenExamId)
-      .in('student_id', studentIds)
+    const [{ data: omrRows }, { data: summaries }] = await Promise.all([
+      supabase
+        .from('omr_results')
+        .select('student_id, is_correct, questions(question_number)')
+        .eq('exam_id', writtenExamId)
+        .in('student_id', studentIds)
+        .not('question_id', 'is', null),
+      supabase
+        .from('omr_results')
+        .select('student_id, marks_obtained')
+        .eq('exam_id', writtenExamId)
+        .in('student_id', studentIds)
+        .is('question_id', null),
+    ])
 
     const poorMap = {}
     const marksMap = {}
@@ -278,13 +297,11 @@ export default function Scan() {
       const qNum = row.questions?.question_number
       if (qNum == null) continue
       if (!row.is_correct) poorMap[sid].push(qNum)
-      if (qNum === 1 && row.answer_given != null) marksMap[sid] = String(row.answer_given)
     }
 
-    for (const sid of studentIds) {
-      if (!marksMap[sid]) {
-        const correct = (omrRows ?? []).filter((r) => r.student_id === sid && r.is_correct).length
-        marksMap[sid] = String(correct)
+    for (const row of summaries ?? []) {
+      if (row.marks_obtained != null) {
+        marksMap[row.student_id] = String(row.marks_obtained)
       }
     }
 
@@ -339,7 +356,7 @@ export default function Scan() {
 
     supabase
       .from('exams')
-      .select('id, name, total_questions, exam_classes(class_id)')
+      .select('id, name, total_questions, total_marks, exam_classes(class_id)')
       .eq('exam_type', 'written')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
@@ -888,7 +905,7 @@ export default function Scan() {
         answer_given: null,
         is_correct: null,
         marks_obtained: marks,
-        total_marks: writtenQuestionCount,
+        total_marks: writtenTotalMarks,
       },
       { onConflict: 'exam_id,student_id,question_id' }
     )
@@ -898,6 +915,16 @@ export default function Scan() {
   async function handleConfirmWrittenStudent(studentId) {
     const marks = parseInt(writtenMarks[studentId], 10)
     const examName = writtenSelectedExam?.name ?? 'Exam'
+
+    if (!writtenTotalMarks) {
+      setWrittenError('This exam has no total marks configured.')
+      return
+    }
+
+    if (Number.isNaN(marks) || marks < 0 || marks > writtenTotalMarks) {
+      setWrittenError(`Enter marks between 0 and ${writtenTotalMarks}`)
+      return
+    }
 
     setWrittenSavingId(studentId)
     setWrittenError('')
@@ -910,7 +937,7 @@ export default function Scan() {
         studentId,
         rollNumber: student?.roll_number,
         title: `Results Posted — ${examName}`,
-        body: `You scored ${marks}/${writtenQuestionCount}. Check your results for topic feedback.`,
+        body: `You scored ${marks}/${writtenTotalMarks}. Check your results for topic feedback.`,
         type: 'result',
         instituteId,
       })
@@ -934,6 +961,11 @@ export default function Scan() {
     const pending = [...gradedStudentIds].filter((id) => !submittedStudentIds.has(id))
     if (pending.length === 0) return
 
+    if (!writtenTotalMarks) {
+      setWrittenError('This exam has no total marks configured.')
+      return
+    }
+
     if (!window.confirm('Confirm and notify all graded students? This cannot be undone.')) return
 
     setWrittenConfirmingAll(true)
@@ -955,7 +987,7 @@ export default function Scan() {
           studentId,
           rollNumber: student?.roll_number,
           title: `Results Posted — ${examName}`,
-          body: `You scored ${marks}/${writtenQuestionCount}. Check your results for topic feedback.`,
+          body: `You scored ${marks}/${writtenTotalMarks}. Check your results for topic feedback.`,
           type: 'result',
           instituteId,
         })
@@ -991,8 +1023,13 @@ export default function Scan() {
     const poorSet = new Set(poorArr)
     const marks = parseInt(writtenMarks[studentId], 10)
 
-    if (Number.isNaN(marks) || marks < 0 || marks > writtenQuestionCount) {
-      setWrittenError(`Enter marks between 0 and ${writtenQuestionCount}`)
+    if (!writtenTotalMarks) {
+      setWrittenError('This exam has no total marks configured.')
+      return
+    }
+
+    if (Number.isNaN(marks) || marks < 0 || marks > writtenTotalMarks) {
+      setWrittenError(`Enter marks between 0 and ${writtenTotalMarks}`)
       return
     }
 
@@ -1223,7 +1260,7 @@ export default function Scan() {
                               </span>
                               {studentMarks !== '' && studentMarks != null && (
                                 <span className="text-xs font-medium text-gray-700">
-                                  {studentMarks}/{writtenQuestionCount}
+                                  {studentMarks}/{writtenTotalMarks ?? '—'}
                                 </span>
                               )}
                               <button
@@ -1257,12 +1294,12 @@ export default function Scan() {
 
                           <div>
                             <label className="block text-sm text-gray-600 mb-1">
-                              Marks obtained
+                              Marks obtained / {writtenTotalMarks ?? '—'}
                             </label>
                             <input
                               type="number"
                               min={0}
-                              max={writtenQuestionCount}
+                              max={writtenTotalMarks ?? undefined}
                               value={writtenMarks[student.id] ?? ''}
                               onChange={(e) =>
                                 setWrittenMarks((prev) => ({
@@ -1270,7 +1307,7 @@ export default function Scan() {
                                   [student.id]: e.target.value,
                                 }))
                               }
-                              placeholder={`0 – ${writtenQuestionCount}`}
+                              placeholder={writtenTotalMarks ? `0 – ${writtenTotalMarks}` : 'Set total marks on exam'}
                               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                             />
                           </div>
@@ -1356,7 +1393,7 @@ export default function Scan() {
                   <div className="bg-gray-50 rounded-xl p-4 mb-4">
                     <p className="text-sm text-gray-600">Marks obtained</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      {review.marks}/{writtenQuestionCount}
+                      {review.marks}/{writtenTotalMarks ?? '—'}
                     </p>
                   </div>
 
