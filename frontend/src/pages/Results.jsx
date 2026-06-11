@@ -422,11 +422,13 @@ export default function Results() {
   const [trendData, setTrendData] = useState([])
   const [loadingTrend, setLoadingTrend] = useState(false)
   const [activeTab, setActiveTab] = useState(navState?.tab ?? 'student')
-  const [selectedStudentId, setSelectedStudentId] = useState(navState?.studentId ?? '')
+  const [selectedStudentId, setSelectedStudentId] = useState(fromStudentsNav ? (navState?.studentId ?? '') : '')
   const [classes, setClasses] = useState([])
-  const [selectedClassId, setSelectedClassId] = useState(navState?.classId ?? '')
+  const [selectedClassId, setSelectedClassId] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
   const [studentRankings, setStudentRankings] = useState([])
+  const [teacherOverviewRows, setTeacherOverviewRows] = useState([])
+  const [loadingTeacherOverview, setLoadingTeacherOverview] = useState(false)
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [linkedStudentId, setLinkedStudentId] = useState(null)
   const [linkedStudentClassId, setLinkedStudentClassId] = useState(null)
@@ -460,6 +462,7 @@ export default function Results() {
   const isParentView = userRole === 'parent' && roleLoaded
   const isLearnerView = isStudentView || isParentView
   const isTeacherStudentView = fromStudentsNav && isTeacher && roleLoaded
+  const isTeacherMainView = isTeacher && !fromStudentsNav && roleLoaded
   const isCardExamView = isLearnerView || isTeacherStudentView
 
   useEffect(() => {
@@ -502,13 +505,9 @@ export default function Results() {
         }
         setRoleLoaded(true)
 
-        if (data?.role === 'teacher' || data?.role === 'admin') {
-          if (navState?.examId && !fromStudentsNav) {
-            setExamId(navState.examId)
-          } else if (fromStudentsNav) {
-            setExamId('')
-          }
-        } else {
+        if (data?.role !== 'teacher' && data?.role !== 'admin') {
+          setExamId('')
+        } else if (fromStudentsNav) {
           setExamId('')
         }
       })
@@ -622,47 +621,39 @@ export default function Results() {
   }, [examId, isTeacher, session])
 
   useEffect(() => {
-    if (!isTeacher || !examId || !session?.user?.id) return
+    if (!isTeacherMainView || !session?.user?.id) return
 
-    setClasses([])
     supabase
-      .from('exam_classes')
-      .select('class_id, classes(id, name)')
-      .eq('exam_id', examId)
-      .then(({ data }) => {
-        if (data && data.length > 0) {
-          setClasses(data.map((ec) => ec.classes).filter(Boolean))
-        } else {
+      .from('users')
+      .select('institute_id')
+      .eq('id', session.user.id)
+      .single()
+      .then(({ data: userData }) => {
+        if (userData?.institute_id) {
           supabase
-            .from('users')
-            .select('institute_id')
-            .eq('id', session.user.id)
-            .single()
-            .then(({ data: userData }) => {
-              if (userData?.institute_id) {
-                supabase
-                  .from('classes')
-                  .select('id, name')
-                  .eq('institute_id', userData.institute_id)
-                  .then(({ data: classData }) => {
-                    if (classData) setClasses(classData)
-                  })
-              }
+            .from('classes')
+            .select('id, name')
+            .eq('institute_id', userData.institute_id)
+            .order('name')
+            .then(({ data: classData }) => {
+              setClasses(classData ?? [])
             })
+        } else {
+          setClasses([])
         }
       })
-  }, [examId, isTeacher, session])
+  }, [isTeacherMainView, session])
 
   useEffect(() => {
     if (fromStudentsNav) {
       setStudentSearch('')
       return
     }
-    setSelectedClassId('')
-    setSelectedStudentId('')
+    if (!isTeacher) return
     setExpandedStudentId(null)
+    setSelectedStudentId('')
     setStudentSearch('')
-  }, [examId, selectedExamTypeId, fromStudentsNav])
+  }, [examId, selectedExamTypeId, selectedClassId, fromStudentsNav, isTeacher])
 
   useEffect(() => {
     supabase
@@ -677,22 +668,152 @@ export default function Results() {
   }, [])
 
   useEffect(() => {
-    if (!isTeacher || fromStudentsNav) return
-    if (exams.length === 0) {
-      if (examId) setExamId('')
-      return
-    }
-    if (!exams.some((e) => e.id === examId)) {
-      setExamId(exams[0].id)
-    }
-  }, [exams, isTeacher, fromStudentsNav])
-
-  useEffect(() => {
-    if (isTeacher && !fromStudentsNav) return
-    if (examId && !exams.some((e) => e.id === examId)) {
+    if (isTeacherMainView && examId && !exams.some((e) => e.id === examId)) {
       setExamId('')
     }
-  }, [exams, examId, isTeacher, fromStudentsNav])
+    if (isCardExamView && examId && !exams.some((e) => e.id === examId)) {
+      setExamId('')
+    }
+  }, [exams, examId, isTeacherMainView, isCardExamView])
+
+  useEffect(() => {
+    if (!isTeacherMainView || examId || !session?.user?.id) {
+      setTeacherOverviewRows([])
+      return
+    }
+
+    async function loadTeacherOverview() {
+      setLoadingTeacherOverview(true)
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('institute_id')
+        .eq('id', session.user.id)
+        .single()
+
+      if (!userData?.institute_id) {
+        setTeacherOverviewRows([])
+        setLoadingTeacherOverview(false)
+        return
+      }
+
+      let studentQuery = supabase
+        .from('users')
+        .select('id, name, roll_number, class_id, classes(name)')
+        .eq('role', 'student')
+        .eq('institute_id', userData.institute_id)
+        .order('roll_number')
+
+      if (selectedClassId) {
+        studentQuery = studentQuery.eq('class_id', selectedClassId)
+      }
+
+      const { data: students } = await studentQuery
+      const examList = exams
+
+      if (!students?.length || !examList.length) {
+        setTeacherOverviewRows([])
+        setLoadingTeacherOverview(false)
+        return
+      }
+
+      const examIds = examList.map((e) => e.id)
+      const studentIds = students.map((s) => s.id)
+
+      const { data: writtenSummaries } = await supabase
+        .from('omr_results')
+        .select('exam_id, student_id, marks_obtained, total_marks')
+        .in('exam_id', examIds)
+        .in('student_id', studentIds)
+        .is('question_id', null)
+
+      const { data: mcqResults } = await supabase
+        .from('omr_results')
+        .select('exam_id, student_id, is_correct, question_id')
+        .in('exam_id', examIds)
+        .in('student_id', studentIds)
+        .not('question_id', 'is', null)
+
+      const writtenMap = {}
+      for (const row of writtenSummaries ?? []) {
+        writtenMap[`${row.exam_id}-${row.student_id}`] = row
+      }
+
+      const mcqMap = {}
+      const mcqAttended = new Set()
+      for (const row of mcqResults ?? []) {
+        if (row.question_id == null) continue
+        const key = `${row.exam_id}-${row.student_id}`
+        if (!mcqMap[key]) mcqMap[key] = 0
+        if (row.is_correct) mcqMap[key] += 1
+        mcqAttended.add(key)
+      }
+
+      const rows = []
+      for (const exam of examList) {
+        for (const student of students) {
+          if (exam.scope !== 'all') {
+            const classIds = (exam.exam_classes ?? []).map((ec) => ec.class_id)
+            if (!classIds.includes(student.class_id)) continue
+          }
+
+          const key = `${exam.id}-${student.id}`
+          let score = 0
+          let total = 0
+          let attended = false
+          let notGraded = false
+
+          if (exam.exam_type === 'written') {
+            const summary = writtenMap[key]
+            total = exam.total_marks ?? 0
+            if (!summary) {
+              notGraded = true
+            } else {
+              attended = true
+              score = summary.marks_obtained ?? 0
+              total = summary.total_marks ?? total
+            }
+          } else {
+            total = exam.total_questions ?? 0
+            if (mcqAttended.has(key)) {
+              attended = true
+              score = mcqMap[key] ?? 0
+            }
+          }
+
+          const percentage = total > 0 && attended ? Math.round((score / total) * 100) : 0
+
+          rows.push({
+            studentId: student.id,
+            studentName: student.name,
+            rollNumber: student.roll_number,
+            className: student.classes?.name,
+            examId: exam.id,
+            examName: exam.name,
+            examDate: exam.exam_date,
+            examType: exam.exam_type,
+            instituteExamTypeName: exam.exam_types?.name,
+            score,
+            total,
+            percentage,
+            attended,
+            notGraded,
+          })
+        }
+      }
+
+      rows.sort((a, b) => {
+        const dateCmp = (b.examDate ?? '').localeCompare(a.examDate ?? '')
+        if (dateCmp !== 0) return dateCmp
+        return (a.studentName ?? '').localeCompare(b.studentName ?? '')
+      })
+
+      setTeacherOverviewRows(rows)
+      setLoadingTeacherOverview(false)
+    }
+
+    loadTeacherOverview()
+  }, [isTeacherMainView, examId, exams, selectedClassId, session])
 
   useEffect(() => {
     if (!isCardExamView || examId) {
@@ -972,6 +1093,15 @@ export default function Results() {
     String(s.roll_number).includes(studentSearch)
   )
 
+  const searchedOverviewRows = teacherOverviewRows.filter((row) => {
+    const q = studentSearch.toLowerCase()
+    return (
+      row.studentName?.toLowerCase().includes(q) ||
+      String(row.rollNumber).includes(studentSearch) ||
+      row.examName?.toLowerCase().includes(q)
+    )
+  })
+
   function renderCardExamFlow({ blocked = false, blockedMessage = null }) {
     return (
       <>
@@ -1121,47 +1251,40 @@ export default function Results() {
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
             <h1 className="text-2xl font-bold text-gray-900">My Performance</h1>
           </div>
-          {isTeacher && !fromStudentsNav && (
+          {isTeacherMainView && (
             <div className="flex flex-wrap gap-2 items-center">
               <select
                 value={selectedExamTypeId}
                 onChange={(e) => setSelectedExamTypeId(e.target.value)}
                 className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
               >
-                <option value="">Select Exam Type</option>
+                <option value="">All Exam Types</option>
                 {instituteExamTypes.map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
-              <div className="flex items-center gap-2 w-full md:w-auto">
-                <select
-                  value={examId}
-                  onChange={(e) => setExamId(e.target.value)}
-                  disabled={exams.length === 0}
-                  className="flex-1 md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {exams.length === 0 ? (
-                    <option value="">No exams found</option>
-                  ) : (
-                    exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.name}</option>)
-                  )}
-                </select>
-                {selectedExam && (
-                  <ExamTypeBadge examType={selectedExam.exam_type} />
-                )}
-              </div>
-              {activeTab === 'student' && examId && classes.length > 0 && !navState?.classId && (
+              <select
+                value={examId}
+                onChange={(e) => setExamId(e.target.value)}
+                className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+              >
+                <option value="">All Exams</option>
+                {exams.map((exam) => (
+                  <option key={exam.id} value={exam.id}>{exam.name}</option>
+                ))}
+              </select>
+              {activeTab === 'student' && (
                 <select
                   value={selectedClassId}
                   onChange={(e) => {
                     setSelectedClassId(e.target.value)
-                    setSelectedStudentId('')
                     setExpandedStudentId(null)
+                    setSelectedStudentId('')
                     setStudentSearch('')
                   }}
                   className="w-full md:w-auto rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
                 >
-                  <option value="">All classes</option>
+                  <option value="">All Classes</option>
                   {classes.map((c) => (
                     <option key={c.id} value={c.id}>{c.name}</option>
                   ))}
@@ -1171,7 +1294,7 @@ export default function Results() {
           )}
         </header>
 
-        {isTeacher && !fromStudentsNav && (
+        {isTeacherMainView && (
           <div className="flex gap-1 border-b border-gray-200 mb-5">
             <button onClick={() => setActiveTab('student')}
               className={`px-4 py-2.5 text-sm font-medium relative ${activeTab === 'student' ? 'text-gray-900' : 'text-gray-500'}`}>
@@ -1186,7 +1309,13 @@ export default function Results() {
           </div>
         )}
 
-        {isTeacher && activeTab === 'heatmap' && (
+        {isTeacherMainView && activeTab === 'heatmap' && !examId && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+            <p className="text-gray-500 text-sm">Select an exam to view the class heatmap.</p>
+          </div>
+        )}
+
+        {isTeacherMainView && activeTab === 'heatmap' && examId && (
           <ClassHeatmap examId={examId} exams={exams} />
         )}
 
@@ -1195,35 +1324,95 @@ export default function Results() {
           blockedMessage: 'No linked student found for this parent account.',
         })}
 
-        {isTeacher && activeTab === 'student' && examId && !fromStudentsNav && displayedRankings.length === 0 && studentRankings.length > 0 && selectedClassId && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-            <p className="text-gray-500 text-sm">No students in this class</p>
-          </div>
-        )}
-
-        {isTeacher && activeTab === 'student' && examId && !fromStudentsNav && studentRankings.length === 0 && (
-          <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-            <p className="text-gray-500 text-sm">No students found for this exam</p>
-          </div>
-        )}
-
-        {isTeacher && activeTab === 'student' && examId && !fromStudentsNav && (
+        {isTeacherMainView && activeTab === 'student' && (
           <>
             <div className="relative">
               <input
                 type="text"
-                placeholder="Search by name or roll number..."
+                placeholder="Search by name, roll number, or exam..."
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
                 className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
-            {displayedRankings.length > 0 && (
+            {!examId && loadingTeacherOverview && (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+                <span className="ml-3 text-sm text-gray-500">Loading results…</span>
+              </div>
+            )}
+
+            {!examId && !loadingTeacherOverview && searchedOverviewRows.length === 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                <p className="text-gray-500 text-sm">No results found.</p>
+              </div>
+            )}
+
+            {!examId && !loadingTeacherOverview && searchedOverviewRows.length > 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div className="p-4 border-b border-gray-100">
+                  <h2 className="text-sm font-semibold text-gray-900">
+                    All Results — {searchedOverviewRows.length} entries
+                  </h2>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {searchedOverviewRows.map((row) => (
+                    <div
+                      key={`${row.studentId}-${row.examId}`}
+                      className="flex items-center gap-3 px-4 py-3"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 text-sm truncate">{row.studentName}</p>
+                        <p className="text-xs text-gray-400">
+                          Roll #{row.rollNumber}
+                          {row.className && ` · ${row.className}`}
+                        </p>
+                        <p className="text-sm text-gray-700 mt-1 truncate">{row.examName}</p>
+                        <p className="text-xs text-gray-400">{formatExamDate(row.examDate)}</p>
+                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                          <ExamTypeBadge examType={row.examType} />
+                          <InstituteExamTypeBadge name={row.instituteExamTypeName} />
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        {row.notGraded ? (
+                          <p className="text-sm font-medium text-gray-500">Not graded</p>
+                        ) : !row.attended ? (
+                          <p className="text-sm font-medium text-gray-400">Absent</p>
+                        ) : (
+                          <>
+                            <p className="font-semibold text-gray-900 text-sm">{row.score} / {row.total}</p>
+                            <p className="text-xs text-gray-400">{row.percentage}%</p>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {examId && displayedRankings.length === 0 && studentRankings.length > 0 && selectedClassId && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                <p className="text-gray-500 text-sm">No students in this class</p>
+              </div>
+            )}
+
+            {examId && studentRankings.length === 0 && (
+              <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+                <p className="text-gray-500 text-sm">No students found for this exam</p>
+              </div>
+            )}
+
+            {examId && displayedRankings.length > 0 && (
               <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
                 <div className="p-4 border-b border-gray-100">
                   <h2 className="text-sm font-semibold text-gray-900">
                     Class Results — {displayedRankings.length} students
+                    {selectedExam && (
+                      <span className="font-normal text-gray-500"> · {selectedExam.name}</span>
+                    )}
                   </h2>
                 </div>
                 <div className="divide-y divide-gray-50">
