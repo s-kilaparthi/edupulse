@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase } from '../supabase'
 
 export default function Register() {
   const [instituteName, setInstituteName] = useState('')
@@ -39,32 +38,20 @@ export default function Register() {
     setLoading(true)
 
     try {
-      const { data: institute, error: instituteError } = await supabase
-        .from('institutes')
-        .insert({ name: instituteName.trim(), city: city.trim(), state: state.trim() })
-        .select('id')
-        .single()
-
-      if (instituteError) throw instituteError
-
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: adminEmail.trim(),
-        password,
-        options: { data: { name: adminName.trim() } },
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/register-institute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          institute_name: instituteName.trim(),
+          city: city.trim(),
+          state: state.trim(),
+          admin_name: adminName.trim(),
+          admin_email: adminEmail.trim(),
+          password: password,
+        }),
       })
-
-      if (authError) throw authError
-      if (!authData.user) throw new Error('Failed to create user account.')
-
-      const { error: userError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        name: adminName.trim(),
-        email: adminEmail.trim(),
-        role: 'admin',
-        institute_id: institute.id,
-      })
-
-      if (userError) throw userError
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.detail || 'Registration failed')
 
       setSuccess(true)
     } catch (err) {
