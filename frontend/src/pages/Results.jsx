@@ -1230,6 +1230,7 @@ export default function Results() {
   const isTeacherStudentView = fromStudentsNav && isTeacher && roleLoaded
   const isAdminStudentView = fromStudentsNav && userRole === 'admin' && roleLoaded
   const isAdminMainView = userRole === 'admin' && !fromStudentsNav && roleLoaded
+  const isTeacherMainView = isTeacher && !fromStudentsNav && roleLoaded
   const isReportsMainView =
     (isAdminMainView || (userRole === 'teacher' && isTeacherMainView)) &&
     activeTab === 'reports' &&
@@ -1240,7 +1241,6 @@ export default function Results() {
     !!reportsStudentId
   const isAdminReportsStudentView = isReportsStudentView
   const showExamTypeSummaryBanner = isLearnerView || isAdminStudentView || isReportsStudentView
-  const isTeacherMainView = isTeacher && !fromStudentsNav && roleLoaded
   const isCardExamView = isLearnerView || isTeacherStudentView || isReportsStudentView
 
   const reportExams = useMemo(() => {
