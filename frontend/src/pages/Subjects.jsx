@@ -115,11 +115,11 @@ export default function Subjects() {
 
     let query = supabase
       .from('subject_notes')
-      .select('id, subject_id, title, url, created_at')
+      .select('id, subject_id, title, url, created_at, class_id')
       .in('subject_id', subjectIds)
       .order('created_at', { ascending: false })
 
-    if (classId) query = query.eq('class_id', classId)
+    if (classId) query = query.or(`class_id.eq.${classId},class_id.is.null`)
 
     const { data } = await query
 
@@ -863,7 +863,7 @@ export default function Subjects() {
                                     const { data: userData } = await supabase.auth.getUser()
                                     await supabase.from('subject_notes').insert({
                                       subject_id: subject.id,
-                                      class_id: selectedClassId || null,
+                                      class_id: isAdmin ? null : (selectedClassId || null),
                                       title: noteTitle.trim(),
                                       url: noteUrl.trim(),
                                       uploaded_by: userData.user.id,
@@ -909,6 +909,17 @@ export default function Subjects() {
                                     <span>📄</span>
                                     <span className="truncate font-medium">{note.title}</span>
                                   </a>
+                                  <span
+                                    className={`text-xs px-2 py-0.5 rounded-full shrink-0 ml-2 ${
+                                      note.class_id == null
+                                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                        : 'bg-gray-100 text-gray-600 border border-gray-200'
+                                    }`}
+                                  >
+                                    {note.class_id == null
+                                      ? '🌐 All Classes'
+                                      : availableClasses.find((c) => c.id === note.class_id)?.name ?? 'Class'}
+                                  </span>
                                   {(isTeacher || isAdmin) && (
                                     <button
                                       type="button"
