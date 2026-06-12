@@ -171,25 +171,19 @@ export default function Exams() {
   async function fetchExams() {
     const { data, error: fetchError } = await supabase
       .from('exams')
-      .select('id, name, exam_date, total_questions, total_marks, scope, exam_type, exam_type_id, created_by, exam_types(name), exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name)), exam_teachers(teacher_id, users(name))')
+      .select('id, name, exam_date, total_questions, total_marks, scope, exam_type, exam_type_id, created_by, users!created_by(name, role), exam_types(name), exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name)), exam_teachers(teacher_id, users(name))')
       .order('created_at', { ascending: false })
     if (fetchError) throw new Error(fetchError.message)
 
-    let examsData = data ?? []
-    const creatorIds = [...new Set(examsData.map((e) => e.created_by).filter(Boolean))]
-
-    if (creatorIds.length > 0) {
-      const { data: creators } = await supabase
-        .from('users')
-        .select('id, role')
-        .in('id', creatorIds)
-
-      const roleMap = Object.fromEntries((creators ?? []).map((u) => [u.id, u.role]))
-      examsData = examsData.map((e) => ({
-        ...e,
-        creator_role: roleMap[e.created_by] ?? null,
-      }))
-    }
+    const examsData = (data ?? []).map((e) => {
+      const creator = e.users ?? null
+      const { users, ...rest } = e
+      return {
+        ...rest,
+        creator_role: creator?.role ?? null,
+        creator_name: creator?.name ?? null,
+      }
+    })
 
     setExams(examsData)
   }
@@ -1484,6 +1478,19 @@ export default function Exams() {
             {filteredExams.map((exam) => (
               <li key={exam.id}>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm relative">
+                  {userRole === 'admin' && (
+                    <span
+                      className={`absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full font-medium border ${
+                        exam.creator_role === 'teacher'
+                          ? 'bg-slate-100 text-slate-600 border-slate-200'
+                          : 'bg-blue-50 text-blue-700 border-blue-200'
+                      }`}
+                    >
+                      {exam.creator_role === 'teacher'
+                        ? `📋 Created by ${exam.creator_name ?? 'Teacher'}`
+                        : '📋 Created by Admin'}
+                    </span>
+                  )}
                   {showAssignedByAdminBadge(exam) && (
                     <span className="absolute top-3 right-3 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">
                       📋 Assigned by Admin
