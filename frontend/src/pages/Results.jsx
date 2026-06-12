@@ -265,6 +265,53 @@ function heatmapPctClass(pct) {
   return 'text-red-600 dark:text-red-400'
 }
 
+async function computeExamTotalsForStudents(exam, examId, studentIds) {
+  if (!studentIds.length) {
+    return { sumObtained: 0, sumTotal: 0, percentage: 0 }
+  }
+
+  if (exam.exam_type === 'written') {
+    const { data: summaries } = await supabase
+      .from('omr_results')
+      .select('marks_obtained, total_marks')
+      .eq('exam_id', examId)
+      .in('student_id', studentIds)
+      .is('question_id', null)
+
+    const sumObtained = (summaries ?? []).reduce((sum, r) => sum + (r.marks_obtained ?? 0), 0)
+    const sumTotal = (summaries ?? []).reduce((sum, r) => sum + (r.total_marks ?? 0), 0)
+    const percentage = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : 0
+    return { sumObtained, sumTotal, percentage }
+  }
+
+  const { data: mcqResults } = await supabase
+    .from('omr_results')
+    .select('student_id, is_correct, question_id')
+    .eq('exam_id', examId)
+    .in('student_id', studentIds)
+    .not('question_id', 'is', null)
+
+  const studentCorrect = {}
+  const attended = new Set()
+  for (const row of mcqResults ?? []) {
+    if (row.question_id == null) continue
+    attended.add(row.student_id)
+    if (!studentCorrect[row.student_id]) studentCorrect[row.student_id] = 0
+    if (row.is_correct) studentCorrect[row.student_id] += 1
+  }
+
+  let sumObtained = 0
+  let sumTotal = 0
+  const totalQ = exam.total_questions ?? 0
+  for (const sid of attended) {
+    sumObtained += studentCorrect[sid] ?? 0
+    sumTotal += totalQ
+  }
+
+  const percentage = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : 0
+  return { sumObtained, sumTotal, percentage }
+}
+
 function ClassHeatmap({ examId, exams, session, userRole }) {
   const [classId, setClassId] = useState('')
   const [classes, setClasses] = useState([])
@@ -272,6 +319,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
   const [examSubjects, setExamSubjects] = useState([])
   const [heatmapData, setHeatmapData] = useState([])
   const [classAverage, setClassAverage] = useState(null)
+  const [allClassesSummary, setAllClassesSummary] = useState(null)
   const [loading, setLoading] = useState(false)
 
   const selectedExam = exams.find((e) => e.id === examId)
@@ -403,56 +451,61 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
         .eq('class_id', classId)
 
       const studentIds = (classStudents ?? []).map((s) => s.id)
-      if (studentIds.length === 0) {
-        setClassAverage({ sumObtained: 0, sumTotal: 0, percentage: 0 })
-        return
-      }
-
-      if (exam.exam_type === 'written') {
-        const { data: summaries } = await supabase
-          .from('omr_results')
-          .select('marks_obtained, total_marks')
-          .eq('exam_id', examId)
-          .in('student_id', studentIds)
-          .is('question_id', null)
-
-        const sumObtained = (summaries ?? []).reduce((sum, r) => sum + (r.marks_obtained ?? 0), 0)
-        const sumTotal = (summaries ?? []).reduce((sum, r) => sum + (r.total_marks ?? 0), 0)
-        const percentage = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : 0
-        setClassAverage({ sumObtained, sumTotal, percentage })
-        return
-      }
-
-      const { data: mcqResults } = await supabase
-        .from('omr_results')
-        .select('student_id, is_correct, question_id')
-        .eq('exam_id', examId)
-        .in('student_id', studentIds)
-        .not('question_id', 'is', null)
-
-      const studentCorrect = {}
-      const attended = new Set()
-      for (const row of mcqResults ?? []) {
-        if (row.question_id == null) continue
-        attended.add(row.student_id)
-        if (!studentCorrect[row.student_id]) studentCorrect[row.student_id] = 0
-        if (row.is_correct) studentCorrect[row.student_id] += 1
-      }
-
-      let sumObtained = 0
-      let sumTotal = 0
-      const totalQ = exam.total_questions ?? 0
-      for (const sid of attended) {
-        sumObtained += studentCorrect[sid] ?? 0
-        sumTotal += totalQ
-      }
-
-      const percentage = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : 0
-      setClassAverage({ sumObtained, sumTotal, percentage })
+      const totals = await computeExamTotalsForStudents(exam, examId, studentIds)
+      setClassAverage(totals)
     }
 
     loadClassAverage()
   }, [classId, examId, exams])
+
+  useEffect(() => {
+    if (classId || !examId || classes.length === 0) {
+      setAllClassesSummary(null)
+      return
+    }
+
+    const exam = exams.find((e) => e.id === examId)
+    if (!exam) {
+      setAllClassesSummary(null)
+      return
+    }
+
+    async function loadAllClassesSummary() {
+      const classSummaries = []
+      let instituteObtained = 0
+      let instituteTotal = 0
+
+      for (const cls of classes) {
+        const { data: classStudents } = await supabase
+          .from('users')
+          .select('id')
+          .eq('role', 'student')
+          .eq('class_id', cls.id)
+
+        const studentIds = (classStudents ?? []).map((s) => s.id)
+        const totals = await computeExamTotalsForStudents(exam, examId, studentIds)
+
+        classSummaries.push({
+          classId: cls.id,
+          className: cls.name,
+          percentage: totals.percentage,
+        })
+        instituteObtained += totals.sumObtained
+        instituteTotal += totals.sumTotal
+      }
+
+      const institutePercentage = instituteTotal > 0
+        ? Math.round((instituteObtained / instituteTotal) * 100)
+        : 0
+
+      setAllClassesSummary({
+        classes: classSummaries,
+        institutePercentage,
+      })
+    }
+
+    loadAllClassesSummary()
+  }, [classId, examId, exams, classes])
 
   function cellColor(pct) {
     if (pct === undefined) return 'bg-gray-100 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8]'
@@ -487,6 +540,32 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
           </select>
         </div>
       </div>
+
+      {!classId && allClassesSummary && (
+        <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {allClassesSummary.classes.map((c) => (
+              <div
+                key={c.classId}
+                className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-3 text-center shadow-sm"
+              >
+                <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">
+                  {c.className} ·{' '}
+                  <span className={`font-semibold ${heatmapPctClass(c.percentage)}`}>{c.percentage}%</span>
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 text-center shadow-sm">
+            <p className="text-base font-semibold text-gray-900 dark:text-[#FFFFFF]">
+              Institute Average:{' '}
+              <span className={heatmapPctClass(allClassesSummary.institutePercentage)}>
+                {allClassesSummary.institutePercentage}%
+              </span>
+            </p>
+          </div>
+        </div>
+      )}
 
       {classId && classAverage && selectedExam && (
         <div className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 text-center shadow-sm">
