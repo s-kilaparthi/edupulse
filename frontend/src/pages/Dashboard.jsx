@@ -52,6 +52,14 @@ function getTimeGreeting() {
   return { text: 'Good Evening', emoji: '🌙' }
 }
 
+function getRoleTimeGreeting(name) {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 12) return `Good Morning, ${name}! ☀️`
+  if (hour >= 12 && hour < 17) return `Good afternoon, ${name}! 🌤️`
+  if (hour >= 17 && hour < 21) return `Good Evening, ${name}! 🌙`
+  return `Good Night, ${name}! 🌙`
+}
+
 function AdminStatCard({ icon, label, value, borderColor, onClick }) {
   const className = `rounded-xl shadow-sm bg-white p-4 border-t-4 ${borderColor} ${
     onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200 transition-all text-left w-full' : ''
@@ -240,7 +248,7 @@ export default function Dashboard() {
     if (!session?.user?.id) return
     supabase
       .from('users')
-      .select('role, name, institute_id')
+      .select('role, name, institute_id, institutes(name)')
       .eq('id', session.user.id)
       .single()
       .then(({ data }) => {
@@ -248,6 +256,7 @@ export default function Dashboard() {
           setUserRole(data.role)
           setUserName(data.name)
           setInstituteId(data.institute_id)
+          if (data.institutes?.name) setInstituteName(data.institutes.name)
         }
         setUserLoaded(true)
       })
@@ -651,33 +660,35 @@ export default function Dashboard() {
     <div className="max-w-4xl flex flex-col gap-5">
       {(userRole === 'student' || userRole === 'parent') && (
         <>
-          <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
+          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 border border-blue-100 p-5 shadow-sm">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+              {getRoleTimeGreeting(userRole === 'parent' ? parentName : userName)}
+            </h1>
+            {instituteName && (
+              <p className="text-sm text-indigo-700 font-medium mt-1">{instituteName}</p>
+            )}
             {userRole === 'parent' ? (
-              <>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome, {parentName}!</h1>
-                <p className="text-sm text-green-700 mt-2">
-                  Viewing: {studentInfo.studentName ?? 'Student'}
-                  {studentInfo.rollNo ? ` · Roll #${studentInfo.rollNo}` : ''}
-                  {studentInfo.className ? ` · ${studentInfo.className}` : ''}
-                </p>
-              </>
+              <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                👨‍👩‍👧 Parent · Viewing: {studentInfo.studentName ?? 'Student'}
+              </span>
             ) : (
-              <>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome back, {userName}!</h1>
-                <div className="flex flex-wrap gap-3 mt-2">
-                  {studentInfo.className && (
-                    <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
-                      📚 {studentInfo.className}
-                    </span>
-                  )}
-                  {studentInfo.rollNo && (
-                    <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
-                      🎓 Roll #{studentInfo.rollNo}
-                    </span>
-                  )}
-                </div>
-              </>
+              <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                🎓 Student
+              </span>
+            )}
+            {userRole === 'student' && (
+              <div className="flex flex-wrap gap-3 mt-2">
+                {studentInfo.className && (
+                  <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
+                    📚 {studentInfo.className}
+                  </span>
+                )}
+                {studentInfo.rollNo && (
+                  <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
+                    🎓 Roll #{studentInfo.rollNo}
+                  </span>
+                )}
+              </div>
             )}
           </div>
 
@@ -732,11 +743,15 @@ export default function Dashboard() {
 
       {userRole === 'teacher' && (
         <>
-          <div className="rounded-2xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-100 p-5 shadow-sm">
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse</p>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 mt-1">Welcome, {userName}!</h1>
+          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 border border-blue-100 p-5 shadow-sm">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+              {getRoleTimeGreeting(userName)}
+            </h1>
+            {instituteName && (
+              <p className="text-sm text-indigo-700 font-medium mt-1">{instituteName}</p>
+            )}
             <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-              Teacher
+              👨‍🏫 Teacher
             </span>
           </div>
 
