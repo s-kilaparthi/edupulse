@@ -1102,19 +1102,19 @@ export default function Scan() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Grading</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mb-6">Grading</h1>
 
       {userRole === 'student' && (
         <p className="text-sm text-red-600">Grading is only available to teachers and admins.</p>
       )}
 
       {showScanUI && gradingMode === null && (
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               type="button"
               onClick={() => setGradingMode('written')}
-              className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-6 py-12 text-lg font-semibold text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626] px-6 py-12 text-lg font-semibold text-gray-700 dark:text-[#A8A8A8] hover:border-gray-300 dark:border-[#363636] hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors"
             >
               <span className="text-3xl">📝</span>
               Written Exam
@@ -1132,19 +1132,19 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'written' && (
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
           <button
             type="button"
             onClick={() => {
               resetWrittenGrading()
               setGradingMode(null)
             }}
-            className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300"
+            className="text-sm text-gray-500 dark:text-[#A8A8A8] hover:text-gray-700 dark:text-[#A8A8A8]"
           >
             ← Back
           </button>
 
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Written Exam Grading</h2>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Written Exam Grading</h2>
 
           {writtenError && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -1155,9 +1155,9 @@ export default function Scan() {
           {writtenStep === 1 && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Select Class</label>
+                <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Select Class</label>
                 <select
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700"
+                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={writtenClassId}
                   onChange={(e) => {
                     setWrittenClassId(e.target.value)
@@ -1173,9 +1173,9 @@ export default function Scan() {
 
               {writtenClassId && (
                 <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Select Exam</label>
+                  <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Select Exam</label>
                   <select
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700"
+                    className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
                     value={writtenExamId}
                     onChange={(e) => setWrittenExamId(e.target.value)}
                   >
@@ -1185,7 +1185,7 @@ export default function Scan() {
                     ))}
                   </select>
                   {writtenExams.length === 0 && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">No written exams for this class.</p>
+                    <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-1">No written exams for this class.</p>
                   )}
                 </div>
               )}
@@ -1209,7 +1209,7 @@ export default function Scan() {
 
           {writtenStep === 2 && (
             <div className="space-y-4">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <p className="text-sm text-gray-600 dark:text-[#A8A8A8]">
                 {writtenSelectedExam?.name}
                 {' · '}
                 {classes.find((c) => c.id === writtenClassId)?.name}
@@ -1220,12 +1220,12 @@ export default function Scan() {
                 value={writtenSearch}
                 onChange={(e) => setWrittenSearch(e.target.value)}
                 placeholder="Search by name or roll number…"
-                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700"
+                className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 text-sm dark:bg-[#262626]"
               />
 
               <div className="space-y-2">
                 {filteredWrittenStudents.length === 0 && (
-                  <p className="text-sm text-gray-400 dark:text-gray-500">No students found.</p>
+                  <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No students found.</p>
                 )}
                 {filteredWrittenStudents.map((student) => {
                   const isExpanded = expandedStudentId === student.id
@@ -1235,7 +1235,7 @@ export default function Scan() {
                   const studentMarks = writtenMarks[student.id]
 
                   return (
-                    <div key={student.id} className="border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                    <div key={student.id} className="border border-gray-200 dark:border-[#363636] rounded-xl overflow-hidden">
                       <div className="flex items-center justify-between px-4 py-3">
                         <button
                           type="button"
@@ -1244,8 +1244,8 @@ export default function Scan() {
                           }}
                           className={`flex-1 text-left ${!isGraded || isSubmitted ? 'hover:opacity-80' : ''}`}
                         >
-                          <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{student.name}</p>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Roll #{student.roll_number}</p>
+                          <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm">{student.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Roll #{student.roll_number}</p>
                         </button>
                         <div className="flex items-center gap-2 shrink-0">
                           {isSubmitted && (
@@ -1259,7 +1259,7 @@ export default function Scan() {
                                 Graded
                               </span>
                               {studentMarks !== '' && studentMarks != null && (
-                                <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                                <span className="text-xs font-medium text-gray-700 dark:text-[#A8A8A8]">
                                   {studentMarks}/{writtenTotalMarks ?? '—'}
                                 </span>
                               )}
@@ -1276,7 +1276,7 @@ export default function Scan() {
                             <button
                               type="button"
                               onClick={() => handleExpandWrittenStudent(student.id)}
-                              className="text-gray-400 dark:text-gray-500 text-xs px-1"
+                              className="text-gray-400 dark:text-[#A8A8A8] text-xs px-1"
                             >
                               {isExpanded ? '▲' : '▼'}
                             </button>
@@ -1285,7 +1285,7 @@ export default function Scan() {
                       </div>
 
                       {isExpanded && !reviewStudentId && (
-                        <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700 space-y-4">
+                        <div className="px-4 pb-4 border-t border-gray-100 dark:border-[#363636] space-y-4">
                           <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mt-3">
                             <p className="text-sm text-yellow-800 font-medium">
                               Select questions with poor or wrong answers
@@ -1293,7 +1293,7 @@ export default function Scan() {
                           </div>
 
                           <div>
-                            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                            <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">
                               Marks obtained / {writtenTotalMarks ?? '—'}
                             </label>
                             <input
@@ -1308,7 +1308,7 @@ export default function Scan() {
                                 }))
                               }
                               placeholder={writtenTotalMarks ? `0 – ${writtenTotalMarks}` : 'Set total marks on exam'}
-                              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700"
+                              className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 text-sm dark:bg-[#262626]"
                             />
                           </div>
 
@@ -1361,7 +1361,7 @@ export default function Scan() {
               <button
                 type="button"
                 onClick={() => setWrittenStep(1)}
-                className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300"
+                className="text-sm text-gray-500 dark:text-[#A8A8A8] hover:text-gray-700 dark:text-[#A8A8A8]"
               >
                 ← Change class / exam
               </button>
@@ -1375,30 +1375,30 @@ export default function Scan() {
 
             return (
               <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto relative">
+                <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto relative">
                   <button
                     type="button"
                     onClick={() => setReviewStudentId(null)}
-                    className="absolute top-4 right-4 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 text-lg leading-none"
+                    className="absolute top-4 right-4 text-gray-400 dark:text-[#A8A8A8] hover:text-gray-600 dark:text-[#A8A8A8] text-lg leading-none"
                     aria-label="Close review"
                   >
                     ✕
                   </button>
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-1 pr-8">Review Grading</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-[#FFFFFF] mb-1 pr-8">Review Grading</h3>
+                  <p className="text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">
                     {reviewStudent.name} · Roll #{reviewStudent.roll_number}
                   </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">{writtenSelectedExam?.name}</p>
+                  <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mb-4">{writtenSelectedExam?.name}</p>
 
-                  <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 mb-4">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">Marks obtained</p>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  <div className="bg-gray-50 dark:bg-[#262626] rounded-xl p-4 mb-4">
+                    <p className="text-sm text-gray-600 dark:text-[#A8A8A8]">Marks obtained</p>
+                    <p className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">
                       {review.marks}/{writtenTotalMarks ?? '—'}
                     </p>
                   </div>
 
                   <div className="mb-4">
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Good answers (green)</p>
+                    <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">Good answers (green)</p>
                     <div className="flex flex-wrap gap-1.5">
                       {review.good.map((qNum) => (
                         <span
@@ -1409,13 +1409,13 @@ export default function Scan() {
                         </span>
                       ))}
                       {review.good.length === 0 && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">None</span>
+                        <span className="text-xs text-gray-400 dark:text-[#A8A8A8]">None</span>
                       )}
                     </div>
                   </div>
 
                   <div className="mb-4">
-                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Poor / wrong answers (red)</p>
+                    <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">Poor / wrong answers (red)</p>
                     <div className="flex flex-wrap gap-1.5">
                       {review.poor.map((qNum) => (
                         <span
@@ -1426,14 +1426,14 @@ export default function Scan() {
                         </span>
                       ))}
                       {review.poor.length === 0 && (
-                        <span className="text-xs text-gray-400 dark:text-gray-500">None</span>
+                        <span className="text-xs text-gray-400 dark:text-[#A8A8A8]">None</span>
                       )}
                     </div>
                   </div>
 
                   {Object.keys(review.topicPoorMap).length > 0 && (
                     <div className="mb-5">
-                      <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Topics needing improvement</p>
+                      <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">Topics needing improvement</p>
                       <ul className="space-y-2">
                         {Object.entries(review.topicPoorMap).map(([topic, qNums]) => (
                           <li
@@ -1454,7 +1454,7 @@ export default function Scan() {
                     <button
                       type="button"
                       onClick={() => handleEditFromReview(reviewStudentId)}
-                      className="flex-1 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2.5 rounded-xl text-sm font-medium dark:bg-gray-700"
+                      className="flex-1 border border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] py-2.5 rounded-xl text-sm font-medium dark:bg-[#262626]"
                     >
                       Edit
                     </button>
@@ -1478,18 +1478,18 @@ export default function Scan() {
         <button
           type="button"
           onClick={() => setGradingMode(null)}
-          className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 mb-4"
+          className="text-sm text-gray-500 dark:text-[#A8A8A8] hover:text-gray-700 dark:text-[#A8A8A8] mb-4"
         >
           ← Back
         </button>
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 1 && (
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Step 1 — Select Exam</h2>
-          <label className="block text-sm text-gray-600 dark:text-gray-400">Exam</label>
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Step 1 — Select Exam</h2>
+          <label className="block text-sm text-gray-600 dark:text-[#A8A8A8]">Exam</label>
           <select
-            className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700"
+            className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
             value={examId}
             onChange={(e) => setExamId(e.target.value)}
           >
@@ -1501,9 +1501,9 @@ export default function Scan() {
             ))}
           </select>
           {selectedExam && (
-            <div className="bg-blue-50 border border-blue-100 dark:border-gray-700 rounded-lg p-4 text-sm">
-              <p className="font-medium text-gray-900 dark:text-gray-100 truncate max-w-[200px] md:max-w-none">{selectedExam.name}</p>
-              <p className="text-gray-600 dark:text-gray-400">
+            <div className="bg-blue-50 border border-blue-100 dark:border-[#363636] rounded-lg p-4 text-sm">
+              <p className="font-medium text-gray-900 dark:text-[#FFFFFF] truncate max-w-[200px] md:max-w-none">{selectedExam.name}</p>
+              <p className="text-gray-600 dark:text-[#A8A8A8]">
                 Total questions: {selectedExam.total_questions ?? DEFAULT_QUESTION_COUNT}
               </p>
             </div>
@@ -1520,9 +1520,9 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 2 && !showReview && (
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Step 2 — Select Student + Scan</h2>
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Step 2 — Select Student + Scan</h2>
             {sessionRecords.length > 0 && (
               <button
                 type="button"
@@ -1533,14 +1533,14 @@ export default function Scan() {
               </button>
             )}
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">
             Exam:{' '}
-            <span className="font-medium text-gray-800 dark:text-gray-100 truncate max-w-[200px] md:max-w-none inline-block align-bottom">
+            <span className="font-medium text-gray-800 dark:text-[#FFFFFF] truncate max-w-[200px] md:max-w-none inline-block align-bottom">
               {selectedExam?.name}
             </span>
           </p>
 
-          <div className="grid grid-cols-3 gap-1 bg-gray-100 dark:bg-gray-700 rounded-xl p-1 mb-4">
+          <div className="grid grid-cols-3 gap-1 bg-gray-100 dark:bg-[#262626] rounded-xl p-1 mb-4">
             {[
               { id: 'class', label: '📋 Class' },
               { id: 'rollscan', label: '🔢 Roll No' },
@@ -1553,7 +1553,7 @@ export default function Scan() {
                 className={`py-2 text-xs font-medium rounded-lg transition-colors text-center ${
                   scanTab === tab.id
                     ? 'bg-blue-600 text-white'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300'
+                    : 'text-gray-500 dark:text-[#A8A8A8] hover:text-gray-700 dark:text-[#A8A8A8]'
                 }`}
               >
                 {tab.label}
@@ -1564,9 +1564,9 @@ export default function Scan() {
           {scanTab === 'class' && (
             <>
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Select Class</label>
+                <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Select Class</label>
                 <select
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700"
+                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={selectedClassId}
                   onChange={(e) => {
                     setSelectedClassId(e.target.value)
@@ -1583,9 +1583,9 @@ export default function Scan() {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Enter Roll Number</label>
+                <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Enter Roll Number</label>
                 <input
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700"
+                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={rollNumber}
                   onChange={(e) => setRollNumber(e.target.value)}
                   placeholder="e.g. 101"
@@ -1596,9 +1596,9 @@ export default function Scan() {
               </div>
 
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Or select student</label>
+                <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Or select student</label>
                 <select
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700"
+                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={studentId}
                   onChange={(e) => handleStudentSelect(e.target.value)}
                 >
@@ -1628,7 +1628,7 @@ export default function Scan() {
                 📷 Take Photo / Upload OMR
               </button>
 
-              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+              <p className="text-xs text-gray-500 dark:text-[#A8A8A8] text-center mt-2">
                 💡 Tip: Place the OMR sheet on a dark surface for best scanning accuracy
               </p>
 
@@ -1640,13 +1640,13 @@ export default function Scan() {
 
               {sessionRecords.length > 0 && (
                 <div className="border-t pt-3">
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                  <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">
                     Scanned: {sessionRecords.length}
                   </p>
                   <ul className="space-y-1">
                     {sessionRecords.map((r, i) => (
                       <li key={i} className="flex items-center justify-between py-2 text-sm gap-2">
-                        <span className="flex-1 min-w-0 truncate text-gray-700 dark:text-gray-300">{r.studentName}</span>
+                        <span className="flex-1 min-w-0 truncate text-gray-700 dark:text-[#A8A8A8]">{r.studentName}</span>
                         <span className="shrink-0 text-xs font-medium text-green-700">{r.score}%</span>
                       </li>
                     ))}
@@ -1669,11 +1669,11 @@ export default function Scan() {
           {scanTab === 'rollscan' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">
                   Enter Roll Number
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700"
+                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={rollScanRoll}
                   onChange={(e) => setRollScanRoll(e.target.value)}
                   placeholder="e.g. 007"
@@ -1710,9 +1710,9 @@ export default function Scan() {
               {scanError && <p className="text-sm text-red-600">{scanError}</p>}
 
               {rollScanRecords.length > 0 && (
-                <div className="border-t border-gray-100 dark:border-gray-700 pt-3 mt-3">
+                <div className="border-t border-gray-100 dark:border-[#363636] pt-3 mt-3">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                    <p className="text-xs font-semibold text-gray-700 dark:text-[#A8A8A8]">
                       Scanned: {rollScanRecords.length} students
                     </p>
                   </div>
@@ -1723,10 +1723,10 @@ export default function Scan() {
                         key={i}
                         className="flex items-center justify-between py-1.5 text-sm border-b border-gray-50 last:border-0"
                       >
-                        <span className="font-medium text-gray-900 dark:text-gray-100 flex-1 min-w-0 truncate">
+                        <span className="font-medium text-gray-900 dark:text-[#FFFFFF] flex-1 min-w-0 truncate">
                           {r.name}
                         </span>
-                        <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0 ml-2">
+                        <span className="text-xs text-gray-500 dark:text-[#A8A8A8] shrink-0 ml-2">
                           Roll #{r.roll}
                         </span>
                         <span className="text-xs font-medium text-green-600 shrink-0 ml-2">
@@ -1754,11 +1754,11 @@ export default function Scan() {
           {scanTab === 'absent' && (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+                <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">
                   Enter Roll Number
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-gray-700"
+                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={absentRoll}
                   onChange={(e) => setAbsentRoll(e.target.value)}
                   placeholder="e.g. 007"
@@ -1799,23 +1799,23 @@ export default function Scan() {
               </button>
 
               {absentList.length > 0 && (
-                <div className="border-t border-gray-100 dark:border-gray-700 pt-3">
-                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
+                <div className="border-t border-gray-100 dark:border-[#363636] pt-3">
+                  <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">
                     Marked Absent: {absentList.length}
                   </p>
                   <ul className="space-y-1 mb-3">
                     {absentList.map((s, i) => (
                       <li key={i} className="flex items-center justify-between text-sm py-1">
                         <div>
-                          <span className="font-medium text-gray-900 dark:text-gray-100">{s.name}</span>
-                          <span className="text-gray-400 dark:text-gray-500 ml-2">Roll #{s.roll}</span>
+                          <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{s.name}</span>
+                          <span className="text-gray-400 dark:text-[#A8A8A8] ml-2">Roll #{s.roll}</span>
                         </div>
                         <button
                           type="button"
                           onClick={() =>
                             setAbsentList((prev) => prev.filter((_, idx) => idx !== i))
                           }
-                          className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500"
+                          className="text-xs text-gray-400 dark:text-[#A8A8A8] hover:text-red-500"
                         >
                           Remove
                         </button>
@@ -1840,21 +1840,21 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 2 && showReview && (
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">
               Review & Post Results
             </h2>
             <button
               type="button"
               onClick={() => setShowReview(false)}
-              className="text-sm text-gray-500 dark:text-gray-400"
+              className="text-sm text-gray-500 dark:text-[#A8A8A8]"
             >
               ← Back
             </button>
           </div>
 
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+          <p className="text-sm text-gray-600 dark:text-[#A8A8A8]">
             Scanned: {sessionRecords.length} · Not scanned:{' '}
             {reviewStudents.filter(
               (s) => !sessionRecords.find((r) => r.studentId === s.id)
@@ -1872,8 +1872,8 @@ export default function Scan() {
                   className="flex items-center justify-between min-h-[52px] py-2 border-b border-gray-50 last:border-0 gap-2"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{student.name}</p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">Roll #{student.roll_number}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF] truncate">{student.name}</p>
+                    <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">Roll #{student.roll_number}</p>
                   </div>
                   {scanned ? (
                     <span className="shrink-0 text-xs bg-green-100 text-green-700 px-3 py-2 rounded-lg font-medium min-w-[44px] text-center">
@@ -1893,7 +1893,7 @@ export default function Scan() {
                       className={`shrink-0 px-3 py-2 rounded-lg border text-xs font-medium min-w-[44px] transition-colors ${
                         isAbsent
                           ? 'bg-red-100 text-red-700 border-red-300'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600'
+                          : 'bg-gray-100 dark:bg-[#262626] text-gray-500 dark:text-[#A8A8A8] border-gray-300 dark:border-[#363636]'
                       }`}
                     >
                       {isAbsent ? '❌ Absent' : 'Mark Absent'}
@@ -1916,11 +1916,11 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 3 && (
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Step 3 — Review Detected Answers</h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Step 3 — Review Detected Answers</h2>
+          <p className="text-sm text-gray-600 dark:text-[#A8A8A8]">
             Student: {selectedStudent?.name ?? studentName} · Confidence:{' '}
-            <span className="font-semibold text-gray-900 dark:text-gray-100">
+            <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">
               {confidence != null ? `${Math.round(confidence * 100)}%` : '—'}
             </span>
           </p>
@@ -1941,7 +1941,7 @@ export default function Scan() {
                   className={`text-left px-2 py-2 rounded-lg border text-sm ${
                     ambiguous
                       ? 'border-red-400 bg-red-50 text-red-800'
-                      : 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900'
+                      : 'border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626]'
                   }`}
                 >
                   Q{n} → {val || '—'}
@@ -1949,7 +1949,7 @@ export default function Scan() {
               )
             })}
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Click a question to cycle A → B → C → D</p>
+          <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Click a question to cycle A → B → C → D</p>
 
           <div className="flex gap-3">
             <button
@@ -1966,7 +1966,7 @@ export default function Scan() {
                 resetStudentFields()
                 setStep(2)
               }}
-              className="flex-1 border border-gray-300 dark:border-gray-600 py-2.5 rounded-lg font-medium dark:bg-gray-700"
+              className="flex-1 border border-gray-300 dark:border-[#363636] py-2.5 rounded-lg font-medium dark:bg-[#262626]"
             >
               Rescan
             </button>
@@ -1976,17 +1976,17 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 4 && sessionSummary && (
-        <section className="bg-white dark:bg-gray-800 rounded-2xl shadow p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Session Summary</h2>
-          <p className="text-gray-700 dark:text-gray-300">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Session Summary</h2>
+          <p className="text-gray-700 dark:text-[#A8A8A8]">
             Students scanned: <strong>{sessionSummary.count}</strong>
           </p>
-          <p className="text-gray-700 dark:text-gray-300">
+          <p className="text-gray-700 dark:text-[#A8A8A8]">
             Average score: <strong>{Math.round(sessionSummary.avg)}%</strong>
           </p>
           <div>
-            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100 mb-2">Topic-wise class performance</h3>
-            <ul className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-[#FFFFFF] mb-2">Topic-wise class performance</h3>
+            <ul className="space-y-1 text-sm text-gray-600 dark:text-[#A8A8A8]">
               {Object.entries(sessionSummary.topicAgg).map(([tid, { score, total }]) => (
                 <li key={tid}>
                   Topic {tid}: {Math.round((score / total) * 100)}% ({score}/{total})
@@ -2003,7 +2003,7 @@ export default function Scan() {
           <button
             type="button"
             onClick={() => setStep(2)}
-            className="w-full border border-gray-300 dark:border-gray-600 py-2.5 rounded-lg text-sm dark:bg-gray-700"
+            className="w-full border border-gray-300 dark:border-[#363636] py-2.5 rounded-lg text-sm dark:bg-[#262626]"
           >
             Continue scanning
           </button>

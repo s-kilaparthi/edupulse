@@ -359,7 +359,7 @@ export default function Admin() {
   if (loadingRole) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
+        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading…</p>
       </div>
     )
   }
@@ -367,7 +367,7 @@ export default function Admin() {
   if (role !== 'admin') {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-500 dark:text-gray-400">Access denied. Admin only.</p>
+        <p className="text-gray-500 dark:text-[#A8A8A8]">Access denied. Admin only.</p>
       </div>
     )
   }
@@ -376,17 +376,17 @@ export default function Admin() {
     <div className="flex flex-col gap-8">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse</p>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">Admin Dashboard</h1>
       </div>
 
-      <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-[#363636]">
         {ADMIN_TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={`shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium relative ${
-              activeTab === tab.id ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+              activeTab === tab.id ? 'text-gray-900 dark:text-[#FFFFFF]' : 'text-gray-500 dark:text-[#A8A8A8]'
             }`}
           >
             {tab.label}
@@ -398,8 +398,8 @@ export default function Admin() {
       </div>
 
       {activeTab === 'access' && (
-        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">
+        <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">
             Access Control
           </h2>
 
@@ -411,11 +411,11 @@ export default function Admin() {
               searchUsers(e.target.value)
             }}
             placeholder="Search teacher or student by name or roll number..."
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm mb-4 dark:bg-gray-700"
+            className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm mb-4 dark:bg-[#262626]"
           />
 
           {searchingAccess && (
-            <p className="text-xs text-gray-400 dark:text-gray-500">Searching...</p>
+            <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">Searching...</p>
           )}
 
           {accessResults.length > 0 && (
@@ -423,13 +423,13 @@ export default function Admin() {
               {accessResults.map((user) => (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-3 border border-gray-100 dark:border-gray-700 rounded-xl"
+                  className="flex items-center justify-between p-3 border border-gray-100 dark:border-[#363636] rounded-xl"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                    <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">
                       {user.name}
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                    <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">
                       {user.role === 'student'
                         ? `Student · ${user.classes?.name ?? 'No class'} · Roll #${user.roll_number}`
                         : 'Teacher'}
@@ -449,7 +449,7 @@ export default function Admin() {
                         : 'bg-gray-300'
                     }`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-gray-800 shadow transition-transform ${
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white dark:bg-[#1C1C1C] shadow transition-transform ${
                       (user.is_active ?? true)
                         ? 'translate-x-6'
                         : 'translate-x-1'
@@ -463,7 +463,7 @@ export default function Admin() {
           {accessSearch.length >= 2
             && accessResults.length === 0
             && !searchingAccess && (
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
+            <p className="text-sm text-gray-400 dark:text-[#A8A8A8] text-center py-4">
               No users found.
             </p>
           )}
@@ -479,30 +479,30 @@ export default function Admin() {
           { label: 'Total Exams', value: examCount },
           { label: 'Institute Avg', value: `${instituteAvg}%` },
         ].map(({ label, value }) => (
-          <div key={label} className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-            <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
+          <div key={label} className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm">
+            <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">{label}</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">{value}</p>
           </div>
         ))}
       </div>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Subject Performance</h2>
-        <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Subject Performance</h2>
+        <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
           <table className="min-w-[400px] w-full text-sm">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Subject</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Teacher</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Avg Score</th>
-                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Topics</th>
+              <tr className="bg-gray-50 dark:bg-[#262626] border-b border-gray-200 dark:border-[#363636]">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Subject</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Teacher</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Avg Score</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Topics</th>
               </tr>
             </thead>
             <tbody>
               {subjects.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500 dark:text-gray-400">No subjects found.</td>
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-500 dark:text-[#A8A8A8]">No subjects found.</td>
                 </tr>
               )}
               {subjects.map((subject) => {
@@ -511,16 +511,16 @@ export default function Admin() {
                 const topics = topicData[subject.id] ?? []
                 return (
                   <Fragment key={subject.id}>
-                    <tr className="border-b border-gray-100 dark:border-gray-700">
-                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-gray-100">{subject.name}</td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{subject.users?.name ?? '—'}</td>
+                    <tr className="border-b border-gray-100 dark:border-[#363636]">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-[#FFFFFF]">{subject.name}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-[#A8A8A8]">{subject.users?.name ?? '—'}</td>
                       <td className="px-4 py-3 text-center">
                         {avg != null ? (
                           <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${topicBadgeClass(avg)}`}>
                             {avg}%
                           </span>
                         ) : (
-                          <span className="text-gray-400 dark:text-gray-500">—</span>
+                          <span className="text-gray-400 dark:text-[#A8A8A8]">—</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-center">
@@ -534,19 +534,19 @@ export default function Admin() {
                       </td>
                     </tr>
                     {isExpanded && (
-                      <tr className="bg-gray-50 dark:bg-gray-900">
+                      <tr className="bg-gray-50 dark:bg-[#262626]">
                         <td colSpan={4} className="px-4 py-4">
                           {loadingTopics === subject.id && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Loading topics…</p>
+                            <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading topics…</p>
                           )}
                           {loadingTopics !== subject.id && topics.length === 0 && (
-                            <p className="text-sm text-gray-500 dark:text-gray-400">No topic data yet.</p>
+                            <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No topic data yet.</p>
                           )}
                           {topics.length > 0 && (
                             <div className="flex flex-col gap-3">
                               {topics.map((topic) => (
                                 <div key={topic.name} className="flex items-center gap-4">
-                                  <span className="w-40 shrink-0 text-sm font-medium text-gray-900 dark:text-gray-100">{topic.name}</span>
+                                  <span className="w-40 shrink-0 text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">{topic.name}</span>
                                   <div className="flex-1 h-2 rounded-full bg-gray-200 overflow-hidden">
                                     <div
                                       className={`h-full rounded-full ${topicBarClass(topic.avg)}`}
@@ -572,19 +572,19 @@ export default function Admin() {
         </div>
       </section>
 
-      <section className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Edit Student Marks</h2>
+      <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Edit Student Marks</h2>
 
         <div className="flex flex-col md:flex-row gap-3 mb-6">
           <div className="w-full md:w-auto md:flex-1">
-            <label htmlFor="edit-exam" className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            <label htmlFor="edit-exam" className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">
               Step 1 — Select Exam
             </label>
             <select
               id="edit-exam"
               value={editExamId}
               onChange={(e) => setEditExamId(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
             >
               <option value="">Choose an exam</option>
               {recentExams.map((exam) => (
@@ -594,7 +594,7 @@ export default function Admin() {
           </div>
 
           <div className="w-full md:w-auto md:flex-1">
-            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">
+            <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">
               Step 2 — Search by Roll Number
             </label>
             <div className="flex flex-col sm:flex-row gap-2">
@@ -604,7 +604,7 @@ export default function Admin() {
                 onChange={(e) => setSearchRoll(e.target.value)}
                 placeholder="Enter roll number..."
                 disabled={!editExamId}
-                className="w-full md:w-auto flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm disabled:opacity-50 dark:bg-gray-700"
+                className="w-full md:w-auto flex-1 rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm disabled:opacity-50 dark:bg-[#262626]"
               />
               <button
                 type="button"
@@ -634,11 +634,11 @@ export default function Admin() {
         )}
 
         {editingMarks && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading answers…</p>
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading answers…</p>
         )}
 
         {!editingMarks && editExamId && editStudentId && omrResults.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No scan results found for this student.</p>
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No scan results found for this student.</p>
         )}
 
         {!editingMarks && omrResults.length > 0 && (
@@ -646,23 +646,23 @@ export default function Admin() {
             <div className="overflow-x-auto">
               <table className="min-w-[500px] w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Q#</th>
-                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Topic</th>
-                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Correct</th>
-                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Given</th>
-                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Status</th>
+                  <tr className="border-b border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626]">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Q#</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Topic</th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Correct</th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Given</th>
+                    <th className="px-3 py-2 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {omrResults.map((row) => {
                     const correctAnswer = String(row.questions?.correct_answer ?? '').toUpperCase()
                     return (
-                      <tr key={row.id} className="border-b border-gray-100 dark:border-gray-700">
-                        <td className="px-3 py-2 font-medium text-gray-900 dark:text-gray-100">
+                      <tr key={row.id} className="border-b border-gray-100 dark:border-[#363636]">
+                        <td className="px-3 py-2 font-medium text-gray-900 dark:text-[#FFFFFF]">
                           {row.questions?.question_number ?? '—'}
                         </td>
-                        <td className="px-3 py-2 text-gray-600 dark:text-gray-400">
+                        <td className="px-3 py-2 text-gray-600 dark:text-[#A8A8A8]">
                           {row.questions?.topics?.name ?? '—'}
                         </td>
                         <td className="px-3 py-2 text-center">
@@ -676,7 +676,7 @@ export default function Admin() {
                             onChange={(e) =>
                               handleAnswerChange(row.id, e.target.value, correctAnswer)
                             }
-                            className="rounded border border-gray-200 dark:border-gray-700 px-2 py-1 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600"
+                            className="rounded border border-gray-200 dark:border-[#363636] px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
                           >
                             <option value="">—</option>
                             {['A', 'B', 'C', 'D'].map((opt) => (
@@ -710,19 +710,19 @@ export default function Admin() {
       </section>
 
       <section>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Exams</h2>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Recent Exams</h2>
         {recentExams.length === 0 ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">No exams found.</p>
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No exams found.</p>
         ) : (
-          <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+          <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm">
             <table className="min-w-[500px] w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Exam</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Date</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Questions</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Scanned</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Avg Score</th>
+                <tr className="bg-gray-50 dark:bg-[#262626] border-b border-gray-200 dark:border-[#363636]">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Exam</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Date</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Questions</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Scanned</th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Avg Score</th>
                 </tr>
               </thead>
               <tbody>
@@ -732,20 +732,20 @@ export default function Admin() {
                     ? new Date(exam.exam_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
                     : '—'
                   return (
-                    <tr key={exam.id} className="border-b border-gray-100 dark:border-gray-700 last:border-0">
+                    <tr key={exam.id} className="border-b border-gray-100 dark:border-[#363636] last:border-0">
                       <td className="px-4 py-3">
                         <button
                           type="button"
                           onClick={() => navigate('/results', { state: { examId: exam.id, tab: 'heatmap' } })}
-                          className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 transition-colors text-left"
+                          className="font-semibold text-gray-900 dark:text-[#FFFFFF] hover:text-blue-600 transition-colors text-left"
                         >
                           {exam.name}
                         </button>
                       </td>
-                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400 whitespace-nowrap">{date}</td>
-                      <td className="px-4 py-3 text-center text-gray-700 dark:text-gray-300">{exam.total_questions ?? '—'}</td>
-                      <td className="px-4 py-3 text-center font-bold text-gray-900 dark:text-gray-100">{stats.scanned}</td>
-                      <td className="px-4 py-3 text-center font-bold text-gray-900 dark:text-gray-100">{stats.avg}%</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-[#A8A8A8] whitespace-nowrap">{date}</td>
+                      <td className="px-4 py-3 text-center text-gray-700 dark:text-[#A8A8A8]">{exam.total_questions ?? '—'}</td>
+                      <td className="px-4 py-3 text-center font-bold text-gray-900 dark:text-[#FFFFFF]">{stats.scanned}</td>
+                      <td className="px-4 py-3 text-center font-bold text-gray-900 dark:text-[#FFFFFF]">{stats.avg}%</td>
                     </tr>
                   )
                 })}

@@ -61,8 +61,8 @@ function getRoleTimeGreeting(name) {
 }
 
 function AdminStatCard({ icon, label, value, borderColor, onClick }) {
-  const className = `rounded-xl shadow-sm bg-white dark:bg-gray-800 p-4 border-t-4 ${borderColor} ${
-    onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200 dark:border-gray-700 transition-all text-left w-full' : ''
+  const className = `rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border-t-4 ${borderColor} ${
+    onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200 dark:border-[#363636] transition-all text-left w-full' : ''
   }`
 
   const content = (
@@ -71,8 +71,8 @@ function AdminStatCard({ icon, label, value, borderColor, onClick }) {
         <span className="text-xl">{icon}</span>
         {onClick && <span className="text-xs text-blue-600 font-medium shrink-0">→</span>}
       </div>
-      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-2">{value}</p>
-      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{label}</p>
+      <p className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mt-2">{value}</p>
+      <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-1">{label}</p>
     </>
   )
 
@@ -91,7 +91,7 @@ function AdminSectionTitle({ title, barColor = 'bg-blue-500' }) {
   return (
     <div className="flex items-center gap-2 mb-3">
       <div className={`w-1 h-5 ${barColor} rounded-full`} />
-      <h2 className="font-bold text-gray-800 dark:text-gray-100 text-base">{title}</h2>
+      <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">{title}</h2>
     </div>
   )
 }
@@ -100,7 +100,7 @@ function AdminZoneHeader({ label, barColor = 'bg-blue-500' }) {
   return (
     <div className="flex items-center gap-2">
       <div className={`w-1.5 h-6 ${barColor} rounded-full`} />
-      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{label}</h2>
+      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-[#A8A8A8]">{label}</h2>
     </div>
   )
 }
@@ -142,18 +142,18 @@ function studentCanSeeAnnouncement(announcement, studentClassId, studentId) {
 }
 
 function StatCard({ label, value, sub, onClick, hint }) {
-  const className = `rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm ${
+  const className = `rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm ${
     onClick ? 'cursor-pointer hover:border-blue-300 hover:shadow-md transition-all' : ''
   }`
 
   const content = (
     <>
       <div className="flex items-start justify-between gap-2">
-        <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">{label}</p>
         {hint && <span className="text-xs text-blue-600 font-medium shrink-0">{hint}</span>}
       </div>
-      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
-      {sub && <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{sub}</p>}
+      <p className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">{value}</p>
+      {sub && <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-1">{sub}</p>}
     </>
   )
 
@@ -270,20 +270,20 @@ function TodoListSection({ userId }) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm overflow-hidden">
+    <div className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
-        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:bg-gray-900 transition-colors"
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
       >
-        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+        <span className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
           📋 My Tasks ({pendingCount} pending)
         </span>
-        <span className="text-xs text-gray-400 dark:text-gray-500 shrink-0">{expanded ? '▲' : '▼'}</span>
+        <span className="text-xs text-gray-400 dark:text-[#A8A8A8] shrink-0">{expanded ? '▲' : '▼'}</span>
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
+        <div className="px-4 pb-4 border-t border-gray-100 dark:border-[#363636]">
           <div className="flex flex-col sm:flex-row gap-2 mt-3 mb-4">
             <input
               type="text"
@@ -296,15 +296,15 @@ function TodoListSection({ userId }) {
                 }
               }}
               placeholder="Enter task..."
-              className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
+              className="flex-1 rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
             />
             <div className="flex flex-col shrink-0">
-              <label className="text-xs text-gray-500 dark:text-gray-400 mb-1">Deadline</label>
+              <label className="text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">Deadline</label>
               <input
                 type="date"
                 value={taskDeadline}
                 onChange={(e) => setTaskDeadline(e.target.value)}
-                className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
+                className="rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
               />
             </div>
             <button
@@ -318,7 +318,7 @@ function TodoListSection({ userId }) {
           </div>
 
           {sortedTasks.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">No tasks yet. Add one above! ✨</p>
+            <p className="text-sm text-gray-400 dark:text-[#A8A8A8] text-center py-4">No tasks yet. Add one above! ✨</p>
           ) : (
             <ul className="space-y-2">
               {sortedTasks.map((task) => {
@@ -326,7 +326,7 @@ function TodoListSection({ userId }) {
                 return (
                   <li
                     key={task.id}
-                    className={`flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-gray-700 ${
+                    className={`flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-[#363636] ${
                       task.is_completed ? 'opacity-50' : ''
                     }`}
                   >
@@ -337,12 +337,12 @@ function TodoListSection({ userId }) {
                       type="checkbox"
                       checked={task.is_completed}
                       onChange={() => handleToggleComplete(task)}
-                      className="rounded border-gray-300 dark:border-gray-600 shrink-0"
+                      className="rounded border-gray-300 dark:border-[#363636] shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <p
-                        className={`text-sm text-gray-900 dark:text-gray-100 ${
-                          task.is_completed ? 'line-through text-gray-500 dark:text-gray-400' : ''
+                        className={`text-sm text-gray-900 dark:text-[#FFFFFF] ${
+                          task.is_completed ? 'line-through text-gray-500 dark:text-[#A8A8A8]' : ''
                         }`}
                       >
                         {task.title}
@@ -350,7 +350,7 @@ function TodoListSection({ userId }) {
                       {deadlineInfo && (
                         <p
                           className={`text-xs mt-0.5 ${
-                            deadlineInfo.overdue ? 'text-red-600 font-medium' : 'text-gray-500 dark:text-gray-400'
+                            deadlineInfo.overdue ? 'text-red-600 font-medium' : 'text-gray-500 dark:text-[#A8A8A8]'
                           }`}
                         >
                           {deadlineInfo.text}
@@ -360,7 +360,7 @@ function TodoListSection({ userId }) {
                     <button
                       type="button"
                       onClick={() => handleDeleteTask(task.id)}
-                      className="text-gray-400 dark:text-gray-500 hover:text-red-600 text-sm shrink-0 p-1"
+                      className="text-gray-400 dark:text-[#A8A8A8] hover:text-red-600 text-sm shrink-0 p-1"
                       aria-label="Delete task"
                     >
                       🗑️
@@ -380,7 +380,7 @@ function AnnouncementsSection({ announcements, navigate }) {
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Recent Announcements</h2>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Recent Announcements</h2>
         <button
           type="button"
           onClick={() => navigate('/announcements')}
@@ -390,7 +390,7 @@ function AnnouncementsSection({ announcements, navigate }) {
         </button>
       </div>
       {announcements.length === 0 && (
-        <p className="text-sm text-gray-400 dark:text-gray-500">No announcements yet.</p>
+        <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No announcements yet.</p>
       )}
       {announcements.map((a) => (
         <button
@@ -401,14 +401,14 @@ function AnnouncementsSection({ announcements, navigate }) {
         >
           <div
             className={`rounded-xl border p-4 mb-3 shadow-sm overflow-hidden ${
-              a.is_pinned ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+              a.is_pinned ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800' : 'bg-white dark:bg-[#1C1C1C] border-gray-200 dark:border-[#363636]'
             }`}
           >
             <div className="flex items-center gap-2">
               {a.is_pinned && <span className="text-xs text-yellow-600">📌</span>}
-              <p className="font-medium text-gray-900 dark:text-gray-100 text-sm">{a.title}</p>
+              <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm">{a.title}</p>
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-1">
               {a.subjects?.name ?? 'Institute-wide'} · {new Date(a.created_at).toLocaleDateString()}
             </p>
           </div>
@@ -857,7 +857,7 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Loading dashboard…</p>
+        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading dashboard…</p>
       </div>
     )
   }
@@ -868,8 +868,8 @@ export default function Dashboard() {
     <div className="max-w-4xl flex flex-col gap-5">
       {(userRole === 'student' || userRole === 'parent') && (
         <>
-          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 border border-blue-100 dark:border-gray-700 p-5 shadow-sm">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] border border-blue-100 dark:border-[#363636] p-5 shadow-sm">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">
               {getRoleTimeGreeting(userRole === 'parent' ? parentName : userName)}
             </h1>
             {instituteName && (
@@ -900,36 +900,36 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Today&apos;s Schedule</h2>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{formatTodayDate()}</span>
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Today&apos;s Schedule</h2>
+              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">{formatTodayDate()}</span>
             </div>
             {todaySchedule.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-2xl mb-2">📅</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">No classes scheduled today</p>
+                <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No classes scheduled today</p>
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto md:flex-wrap md:overflow-visible pb-1 md:pb-0">
                 {todaySchedule.map((slot, index) => (
                   <div
                     key={slot.period_number}
-                    className="flex rounded-xl shadow-sm bg-white dark:bg-gray-800 p-4 min-w-[160px] shrink-0 border border-gray-100 dark:border-gray-700 overflow-hidden"
+                    className="flex rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 min-w-[160px] shrink-0 border border-gray-100 dark:border-[#363636] overflow-hidden"
                   >
                     <div
                       className={`w-1 shrink-0 rounded-full ${BAR_COLORS[index % BAR_COLORS.length]}`}
                     />
                     <div className="pl-3 flex flex-col gap-0.5 min-w-0">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Period {slot.period_number}</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                      <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Period {slot.period_number}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-[#FFFFFF] whitespace-nowrap">
                         {formatTime12(slot.start_time)} –{' '}
                         {formatTime12(getPeriodEndTime(slot.period_number, slot.start_time))}
                       </p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      <p className="text-lg font-semibold text-gray-900 dark:text-[#FFFFFF] truncate">
                         {slot.subjects?.name ?? 'Subject'}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-gray-500 dark:text-[#A8A8A8] truncate">
                         👤 {slot.users?.name ?? 'Teacher'}
                       </p>
                     </div>
@@ -951,8 +951,8 @@ export default function Dashboard() {
 
       {userRole === 'teacher' && (
         <>
-          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 border border-blue-100 dark:border-gray-700 p-5 shadow-sm">
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] border border-blue-100 dark:border-[#363636] p-5 shadow-sm">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">
               {getRoleTimeGreeting(userName)}
             </h1>
             {instituteName && (
@@ -963,42 +963,42 @@ export default function Dashboard() {
             </span>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <div className="w-1 h-5 bg-blue-500 rounded-full" />
-                <h2 className="font-bold text-gray-800 dark:text-gray-100 text-base">Today&apos;s Schedule</h2>
+                <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">Today&apos;s Schedule</h2>
               </div>
-              <span className="text-xs text-gray-500 dark:text-gray-400">{formatTodayDate()}</span>
+              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">{formatTodayDate()}</span>
             </div>
             {todaySchedule.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-2xl mb-2">📅</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">No classes scheduled today</p>
+                <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No classes scheduled today</p>
               </div>
             ) : (
               <div className="flex gap-3 overflow-x-auto md:flex-wrap md:overflow-visible pb-1 md:pb-0">
                 {todaySchedule.map((slot, index) => (
                   <div
                     key={`${slot.period_number}-${index}`}
-                    className="flex rounded-xl shadow-sm bg-white dark:bg-gray-800 p-4 min-w-[160px] shrink-0 border border-gray-100 dark:border-gray-700 overflow-hidden"
+                    className="flex rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 min-w-[160px] shrink-0 border border-gray-100 dark:border-[#363636] overflow-hidden"
                   >
                     <div
                       className={`w-1 shrink-0 rounded-full ${BAR_COLORS[index % BAR_COLORS.length]}`}
                     />
                     <div className="pl-3 flex flex-col gap-0.5 min-w-0">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Period {slot.period_number}</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-gray-100 whitespace-nowrap">
+                      <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Period {slot.period_number}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-[#FFFFFF] whitespace-nowrap">
                         {formatTime12(slot.start_time)} –{' '}
                         {formatTime12(
                           slot.end_time?.slice(0, 5) ??
                             getPeriodEndTime(slot.period_number, slot.start_time)
                         )}
                       </p>
-                      <p className="text-lg font-semibold text-gray-900 dark:text-gray-100 truncate">
+                      <p className="text-lg font-semibold text-gray-900 dark:text-[#FFFFFF] truncate">
                         {slot.subjects?.name ?? 'Subject'}
                       </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                      <p className="text-xs text-gray-500 dark:text-[#A8A8A8] truncate">
                         🏫 {slot.classes?.name ?? 'Class'}
                       </p>
                     </div>
@@ -1014,16 +1014,16 @@ export default function Dashboard() {
             <>
               <div className="flex items-center gap-2 mb-3">
                 <div className="w-1 h-5 bg-purple-500 rounded-full" />
-                <h2 className="font-bold text-gray-800 dark:text-gray-100 text-base">My Classes</h2>
+                <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">My Classes</h2>
               </div>
               <div className="grid grid-cols-2 gap-3">
               {teacherClassCards.map((cls, index) => (
                 <div
                   key={cls.classId}
-                  className={`rounded-xl shadow-sm bg-white dark:bg-gray-800 p-3 border border-gray-100 dark:border-gray-700 border-t-4 ${CLASS_CARD_TOP_BORDERS[index % CLASS_CARD_TOP_BORDERS.length]} hover:shadow-md transition-shadow`}
+                  className={`rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border border-gray-100 dark:border-[#363636] border-t-4 ${CLASS_CARD_TOP_BORDERS[index % CLASS_CARD_TOP_BORDERS.length]} hover:shadow-md transition-shadow`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">{cls.className}</p>
+                    <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{cls.className}</p>
                     {cls.attendanceMarked ? (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium shrink-0">
                         ✅ Marked
@@ -1038,10 +1038,10 @@ export default function Dashboard() {
                       </button>
                     )}
                   </div>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-2 line-clamp-2">
+                  <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mb-2 line-clamp-2">
                     {cls.subjects.length > 0 ? cls.subjects.join(', ') : 'No subjects assigned'}
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">👥 {cls.studentCount} Students</p>
+                  <p className="text-xs text-gray-600 dark:text-[#A8A8A8]">👥 {cls.studentCount} Students</p>
                 </div>
               ))}
               </div>
@@ -1092,16 +1092,16 @@ export default function Dashboard() {
           <div className="flex flex-col gap-5">
             <AdminZoneHeader label="Today" barColor="bg-blue-500" />
 
-            <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 border border-blue-100 dark:border-gray-700 p-5 shadow-sm">
+            <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] border border-blue-100 dark:border-[#363636] p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">
                     {timeGreeting.text}, Admin! {timeGreeting.emoji}
                   </h1>
                   {instituteName && (
                     <p className="text-sm text-indigo-700 font-medium mt-1">{instituteName}</p>
                   )}
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  <p className="text-sm text-gray-600 dark:text-[#A8A8A8] mt-2">
                     {adminStats.students} Students · {adminStats.teachers} Teachers · {adminStats.classes} Classes
                   </p>
                 </div>
@@ -1113,16 +1113,16 @@ export default function Dashboard() {
 
             <AdminSectionTitle title="Today's Attendance" barColor="bg-green-500" />
             {adminAttendanceClasses.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500">No classes in this institute yet.</p>
+              <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No classes in this institute yet.</p>
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {adminAttendanceClasses.map((cls) => (
                   <div
                     key={cls.id}
-                    className="rounded-xl shadow-sm bg-white dark:bg-gray-800 p-3 border border-gray-100 dark:border-gray-700"
+                    className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border border-gray-100 dark:border-[#363636]"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm truncate">{cls.name}</p>
+                      <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{cls.name}</p>
                       {cls.marked ? (
                         <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium shrink-0">
                           ✅ Marked
@@ -1146,16 +1146,16 @@ export default function Dashboard() {
 
             <AdminSectionTitle title="Today's Exams" barColor="bg-orange-500" />
             {adminTodayExams.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-gray-500">No exams scheduled today</p>
+              <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No exams scheduled today</p>
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {adminTodayExams.map((exam) => (
                   <div
                     key={exam.id}
-                    className="rounded-xl shadow-sm bg-white dark:bg-gray-800 p-3 border border-gray-100 dark:border-gray-700"
+                    className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border border-gray-100 dark:border-[#363636]"
                   >
-                    <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{exam.name}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{formatExamClassLabel(exam)}</p>
+                    <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">{exam.name}</p>
+                    <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-1">{formatExamClassLabel(exam)}</p>
                     <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">
                       {exam.exam_types?.name ?? (exam.exam_type === 'written' ? 'Written' : 'MCQ')}
                     </span>
@@ -1184,11 +1184,11 @@ export default function Dashboard() {
                 {adminPendingGrading.map((exam) => (
                   <div
                     key={exam.id}
-                    className="rounded-xl shadow-sm bg-white dark:bg-gray-800 p-3 border border-orange-100 border-l-4 border-l-orange-400"
+                    className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border border-orange-100 border-l-4 border-l-orange-400"
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{exam.name}</p>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 font-medium">
+                      <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">{exam.name}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] font-medium">
                         {formatExamDate(exam.exam_date)}
                       </span>
                       <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
@@ -1202,22 +1202,22 @@ export default function Dashboard() {
 
             <AdminSectionTitle title="This Week's Activity" barColor="bg-pink-500" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-xl shadow-sm bg-white dark:bg-gray-800 p-4 border border-gray-100 dark:border-gray-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Announcements posted this week</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+              <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border border-gray-100 dark:border-[#363636]">
+                <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Announcements posted this week</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">
                   {adminWeekActivity.announcementCount}
                 </p>
                 {adminWeekActivity.lastAnnouncementTitle ? (
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-2 truncate">
+                  <p className="text-xs text-gray-600 dark:text-[#A8A8A8] mt-2 truncate">
                     Latest: {adminWeekActivity.lastAnnouncementTitle}
                   </p>
                 ) : (
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">No announcements this week</p>
+                  <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-2">No announcements this week</p>
                 )}
               </div>
-              <div className="rounded-xl shadow-sm bg-white dark:bg-gray-800 p-4 border border-gray-100 dark:border-gray-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Exams graded this week</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mt-1">
+              <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border border-gray-100 dark:border-[#363636]">
+                <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Exams graded this week</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">
                   {adminWeekActivity.gradedExamsCount}
                 </p>
               </div>
@@ -1269,26 +1269,26 @@ export default function Dashboard() {
 
             <AdminSectionTitle title="Best & Worst Class" barColor="bg-amber-500" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-xl shadow-sm bg-white dark:bg-gray-800 p-4 border border-green-100 border-t-4 border-t-green-500">
-                <p className="text-xs text-gray-500 dark:text-gray-400">🏆 Best</p>
+              <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border border-green-100 border-t-4 border-t-green-500">
+                <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">🏆 Best</p>
                 {adminBestClass ? (
                   <>
-                    <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">{adminBestClass.name}</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">{adminBestClass.name}</p>
                     <p className="text-sm text-green-600 font-medium mt-1">{adminBestClass.avg}% avg</p>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">No score data yet</p>
+                  <p className="text-sm text-gray-400 dark:text-[#A8A8A8] mt-2">No score data yet</p>
                 )}
               </div>
-              <div className="rounded-xl shadow-sm bg-white dark:bg-gray-800 p-4 border border-orange-100 border-t-4 border-t-orange-500">
-                <p className="text-xs text-gray-500 dark:text-gray-400">⚠️ Needs Attention</p>
+              <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border border-orange-100 border-t-4 border-t-orange-500">
+                <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">⚠️ Needs Attention</p>
                 {adminWorstClass ? (
                   <>
-                    <p className="text-lg font-bold text-gray-900 dark:text-gray-100 mt-1">{adminWorstClass.name}</p>
+                    <p className="text-lg font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">{adminWorstClass.name}</p>
                     <p className="text-sm text-orange-600 font-medium mt-1">{adminWorstClass.avg}% avg</p>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">No score data yet</p>
+                  <p className="text-sm text-gray-400 dark:text-[#A8A8A8] mt-2">No score data yet</p>
                 )}
               </div>
             </div>

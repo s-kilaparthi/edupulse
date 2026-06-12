@@ -110,7 +110,7 @@ function StudentList({
   saving,
 }) {
   return (
-    <div className="border-t border-gray-100 dark:border-gray-700 p-4">
+    <div className="border-t border-gray-100 dark:border-[#363636] p-4">
       <div className="space-y-2 max-h-80 overflow-y-auto mb-4">
         {students.map((student) => (
           <div
@@ -118,8 +118,8 @@ function StudentList({
             className="flex items-center justify-between min-h-[60px] py-3 border-b border-gray-50 last:border-0 gap-2"
           >
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{student.name}</p>
-              <p className="text-xs text-gray-400 dark:text-gray-500">Roll #{student.roll_number}</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">{student.name}</p>
+              <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">Roll #{student.roll_number}</p>
             </div>
             <div className="flex gap-2 shrink-0">
               {STATUS_OPTIONS.map((status) => (
@@ -132,7 +132,7 @@ function StudentList({
                   className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors min-w-[44px] flex items-center justify-center ${
                     attendanceMap[student.id] === status
                       ? STATUS_COLORS[status]
-                      : 'bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700'
+                      : 'bg-gray-50 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8] border-gray-200 dark:border-[#363636]'
                   }`}
                 >
                   {STATUS_ICONS[status]}
@@ -144,7 +144,7 @@ function StudentList({
       </div>
 
       <div className="flex items-center justify-between">
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">
           {Object.values(attendanceMap).filter((s) => s === 'present').length} present ·{' '}
           {Object.values(attendanceMap).filter((s) => s === 'absent').length} absent ·{' '}
           {Object.values(attendanceMap).filter((s) => s === 'late').length} late
@@ -174,13 +174,13 @@ function SlotCard({
   saving,
 }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] shadow-sm overflow-hidden">
       <div className="flex items-center justify-between p-4">
         <div>
-          <p className="font-semibold text-gray-900 dark:text-gray-100">
+          <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">
             {slot.subjects?.name} — {slot.classes?.name}
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+          <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-0.5">
             Period {slot.period_number} · {slot.start_time?.slice(0, 5)} -{' '}
             {slot.end_time?.slice(0, 5)}
           </p>
@@ -214,8 +214,8 @@ function SlotCard({
         />
       )}
       {isActive && students.length === 0 && (
-        <div className="border-t border-gray-100 dark:border-gray-700 p-4">
-          <p className="text-sm text-gray-500 dark:text-gray-400">No students in this class.</p>
+        <div className="border-t border-gray-100 dark:border-[#363636] p-4">
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No students in this class.</p>
         </div>
       )}
     </div>
@@ -633,7 +633,7 @@ export default function Attendance() {
               setReportClassId(e.target.value)
               setReportStudentId('')
             }}
-            className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
+            className="rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
           >
             <option value="">Select class...</option>
             {classList.map((c) => (
@@ -647,7 +647,7 @@ export default function Attendance() {
             <select
               value={reportStudentId}
               onChange={(e) => setReportStudentId(e.target.value)}
-              className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
+              className="rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
             >
               <option value="">Select student...</option>
               {reportStudents.map((s) => (
@@ -661,24 +661,24 @@ export default function Attendance() {
 
         {reportStudentId && (
           <>
-            <div className="flex flex-wrap gap-3 mb-4 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
+            <div className="flex flex-wrap gap-3 mb-4 p-4 bg-gray-50 dark:bg-[#262626] rounded-xl">
               <div className="flex flex-col items-center min-w-[60px]">
                 <span className="text-lg">✅</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Present</span>
+                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Present</span>
                 <span className="text-sm font-semibold text-green-600">{present}</span>
               </div>
               <div className="flex flex-col items-center min-w-[60px]">
                 <span className="text-lg">❌</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Absent</span>
+                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Absent</span>
                 <span className="text-sm font-semibold text-red-600">{absent}</span>
               </div>
               <div className="flex flex-col items-center min-w-[60px]">
                 <span className="text-lg">🕐</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">Late</span>
+                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Late</span>
                 <span className="text-sm font-semibold text-yellow-600">{late}</span>
               </div>
               <div className="flex flex-col items-center min-w-[60px]">
-                <span className="text-xs text-gray-500 dark:text-gray-400">Overall</span>
+                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Overall</span>
                 <span className={`text-sm font-bold ${pct >= 75 ? 'text-green-600' : 'text-red-600'}`}>
                   {pct}%{pct < 75 && ' ⚠️'}
                 </span>
@@ -686,24 +686,24 @@ export default function Attendance() {
             </div>
 
             {studentAttendance.length === 0 ? (
-              <p className="text-sm text-gray-500 dark:text-gray-400">No attendance records for this student.</p>
+              <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No attendance records for this student.</p>
             ) : (
-              <div className="overflow-x-auto bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+              <div className="overflow-x-auto bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636]">
                 <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-900 text-left">
-                      <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">Date</th>
-                      <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">Subject</th>
-                      <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">Period</th>
-                      <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-gray-400">Status</th>
+                    <tr className="bg-gray-50 dark:bg-[#262626] text-left">
+                      <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-[#A8A8A8]">Date</th>
+                      <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-[#A8A8A8]">Subject</th>
+                      <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-[#A8A8A8]">Period</th>
+                      <th className="px-3 py-2 text-xs font-medium text-gray-500 dark:text-[#A8A8A8]">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {studentAttendance.map((a, i) => (
-                      <tr key={i} className="border-t border-gray-100 dark:border-gray-700">
+                      <tr key={i} className="border-t border-gray-100 dark:border-[#363636]">
                         <td className="px-3 py-2">{a.date}</td>
                         <td className="px-3 py-2">{a.subjects?.name}</td>
-                        <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400">
+                        <td className="px-3 py-2 text-xs text-gray-500 dark:text-[#A8A8A8]">
                           Period {a.schedule_slots?.period_number} ·{' '}
                           {a.schedule_slots?.start_time?.slice(0, 5)}
                         </td>
@@ -737,11 +737,11 @@ export default function Attendance() {
       <>
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Class</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Class</label>
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
+              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
             >
               <option value="">Select class…</option>
               {classList.map((c) => (
@@ -752,22 +752,22 @@ export default function Attendance() {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">From</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">From</label>
             <input
               type="date"
               value={reportFromDate}
               onChange={(e) => setReportFromDate(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
+              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">To</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">To</label>
             <input
               type="date"
               value={reportToDate}
               max={todayStr()}
               onChange={(e) => setReportToDate(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
+              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
             />
           </div>
           <div className="flex items-end">
@@ -783,30 +783,30 @@ export default function Attendance() {
         </div>
 
         {reportRows.length > 0 && (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700">
+          <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636]">
             <div className="overflow-x-auto">
             <table className="min-w-[500px] w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-gray-400">Student</th>
-                  <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-gray-400">Present</th>
-                  <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-gray-400">Absent</th>
-                  <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-gray-400">Late</th>
-                  <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-gray-400">Total</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-gray-400">%</th>
+                <tr className="border-b border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626]">
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">Student</th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">Present</th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">Absent</th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">Late</th>
+                  <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">Total</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">%</th>
                 </tr>
               </thead>
               <tbody>
                 {reportRows.map((row) => (
-                  <tr key={row.name + row.roll_number} className="border-b border-gray-100 dark:border-gray-700">
+                  <tr key={row.name + row.roll_number} className="border-b border-gray-100 dark:border-[#363636]">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{row.name}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">Roll #{row.roll_number}</p>
+                      <p className="font-medium text-gray-900 dark:text-[#FFFFFF]">{row.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">Roll #{row.roll_number}</p>
                     </td>
                     <td className="text-center px-3 py-3 text-green-600">{row.present}</td>
                     <td className="text-center px-3 py-3 text-red-600">{row.absent}</td>
                     <td className="text-center px-3 py-3 text-yellow-600">{row.late}</td>
-                    <td className="text-center px-3 py-3 text-gray-700 dark:text-gray-300">{row.total}</td>
+                    <td className="text-center px-3 py-3 text-gray-700 dark:text-[#A8A8A8]">{row.total}</td>
                     <td
                       className={`text-center px-4 py-3 font-bold ${
                         row.pct >= 75 ? 'text-green-600' : 'text-red-600'
@@ -837,14 +837,14 @@ export default function Attendance() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
           {showClassSelector && (
             <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Class</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Class</label>
               <select
                 value={selectedClassId}
                 onChange={(e) => {
                   setSelectedClassId(e.target.value)
                   setActiveSlotId(null)
                 }}
-                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
+                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
               >
                 <option value="">Select class…</option>
                 {classes.map((c) => (
@@ -856,7 +856,7 @@ export default function Attendance() {
             </div>
           )}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Date</label>
             <input
               type="date"
               value={selectedDate}
@@ -865,24 +865,24 @@ export default function Attendance() {
                 setSelectedDate(e.target.value)
                 setActiveSlotId(null)
               }}
-              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
+              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
             />
           </div>
         </div>
 
         {isTeacher && !selectedAttendanceClassId && (
-          <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-8">
+          <p className="text-sm text-gray-400 dark:text-[#A8A8A8] text-center py-8">
             Select a class to mark attendance.
           </p>
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading slots…</p>
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading slots…</p>
         ) : showClassSelector && !selectedClassId ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Select a class to view schedule slots.</p>
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Select a class to view schedule slots.</p>
         ) : isTeacher && !selectedAttendanceClassId ? null : displayedSlots.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <p className="text-gray-500 dark:text-gray-400">No scheduled classes for this day.</p>
+          <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-8 text-center">
+            <p className="text-gray-500 dark:text-[#A8A8A8]">No scheduled classes for this day.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -908,7 +908,7 @@ export default function Attendance() {
 
   return (
     <div className="max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Attendance</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mb-6">Attendance</h1>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-6">
@@ -918,14 +918,14 @@ export default function Attendance() {
 
       {isTeacher && (
         <>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-gray-700 mb-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-[#363636] mb-6">
             {TEACHER_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setTeacherTab(tab.id)}
                 className={`shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium relative ${
-                  teacherTab === tab.id ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+                  teacherTab === tab.id ? 'text-gray-900 dark:text-[#FFFFFF]' : 'text-gray-500 dark:text-[#A8A8A8]'
                 }`}
               >
                 {tab.label}
@@ -940,7 +940,7 @@ export default function Attendance() {
             <>
               {userRole === 'teacher' && (
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
                     Select Class
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -955,7 +955,7 @@ export default function Attendance() {
                         className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                           selectedAttendanceClassId === c.id
                             ? 'bg-blue-600 text-white border-blue-600'
-                            : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
+                            : 'border-gray-300 dark:border-[#363636] text-gray-600 dark:text-[#A8A8A8]'
                         }`}
                       >
                         {c.name}
@@ -974,10 +974,10 @@ export default function Attendance() {
 
       {isStudentView && (
         loading ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Loading attendance…</p>
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading attendance…</p>
         ) : Object.keys(studentSummary).length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-8 text-center">
-            <p className="text-gray-500 dark:text-gray-400">No attendance records yet.</p>
+          <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-8 text-center">
+            <p className="text-gray-500 dark:text-[#A8A8A8]">No attendance records yet.</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -989,18 +989,18 @@ export default function Attendance() {
               return (
                 <div
                   key={subject}
-                  className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] overflow-hidden"
                 >
                   <button
                     type="button"
                     onClick={() =>
                       setExpandedStudentSubject((prev) => (prev === subject ? null : subject))
                     }
-                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:bg-gray-900 transition-colors"
+                    className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
                   >
                     <div>
-                      <p className="font-medium text-gray-900 dark:text-gray-100">{subject}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                      <p className="font-medium text-gray-900 dark:text-[#FFFFFF]">{subject}</p>
+                      <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">
                         {present}/{total} classes
                       </p>
                     </div>
@@ -1012,14 +1012,14 @@ export default function Attendance() {
                       >
                         {pct}%{pct < 75 && ' ⚠️'}
                       </span>
-                      <span className="text-gray-400 dark:text-gray-500 text-xs">{isExpanded ? '▲' : '▼'}</span>
+                      <span className="text-gray-400 dark:text-[#A8A8A8] text-xs">{isExpanded ? '▲' : '▼'}</span>
                     </div>
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-gray-100 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-gray-900">
+                    <div className="border-t border-gray-100 dark:border-[#363636] px-4 py-3 bg-gray-50 dark:bg-[#262626]">
                       {records.length === 0 ? (
-                        <p className="text-sm text-gray-500 dark:text-gray-400">No attendance records yet</p>
+                        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No attendance records yet</p>
                       ) : (
                         <ul className="space-y-2">
                           {records.map((record, i) => (
@@ -1027,7 +1027,7 @@ export default function Attendance() {
                               key={`${record.date}-${i}`}
                               className="flex items-center justify-between text-sm"
                             >
-                              <span className="text-gray-700 dark:text-gray-300">
+                              <span className="text-gray-700 dark:text-[#A8A8A8]">
                                 {formatDateDDMMYYYY(record.date)}
                               </span>
                               <span
@@ -1056,14 +1056,14 @@ export default function Attendance() {
 
       {isAdmin && (
         <>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-gray-700 mb-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-[#363636] mb-6">
             {ADMIN_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => setAdminTab(tab.id)}
                 className={`shrink-0 whitespace-nowrap px-4 py-2 text-sm font-medium relative ${
-                  adminTab === tab.id ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
+                  adminTab === tab.id ? 'text-gray-900 dark:text-[#FFFFFF]' : 'text-gray-500 dark:text-[#A8A8A8]'
                 }`}
               >
                 {tab.label}

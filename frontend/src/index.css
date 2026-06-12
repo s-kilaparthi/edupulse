@@ -3,6 +3,16 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Instagram-style dark theme tokens (reference) */
+@theme {
+  --color-ig-page: #000000;
+  --color-ig-surface: #1c1c1c;
+  --color-ig-elevated: #262626;
+  --color-ig-border: #363636;
+  --color-ig-text: #ffffff;
+  --color-ig-muted: #a8a8a8;
+}
+
 @layer base {
   html.dark {
     color-scheme: dark;

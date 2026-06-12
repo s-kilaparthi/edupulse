@@ -57,9 +57,9 @@ function OverallScoreCard({ result }) {
 
   if (notGraded) {
     return (
-      <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
-        <p className="text-sm text-gray-500 dark:text-gray-400">Overall Score</p>
-        <p className="mt-1 text-lg font-medium text-gray-500 dark:text-gray-400">Not graded</p>
+      <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
+        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Overall Score</p>
+        <p className="mt-1 text-lg font-medium text-gray-500 dark:text-[#A8A8A8]">Not graded</p>
       </div>
     )
   }
@@ -67,30 +67,30 @@ function OverallScoreCard({ result }) {
   const youPct = totalMax > 0 ? (totalScore / totalMax) * 100 : 0
   const topPct = totalMax > 0 ? (classTop / totalMax) * 100 : 0
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+    <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Overall Score</p>
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Overall Score</p>
           <div className="mt-1 flex items-baseline gap-2 flex-wrap">
             <span className="text-2xl md:text-4xl font-bold text-green-600 whitespace-nowrap">{totalScore} / {totalMax}</span>
-            <span className="text-lg font-medium text-gray-500 dark:text-gray-400">({percentage}%)</span>
+            <span className="text-lg font-medium text-gray-500 dark:text-[#A8A8A8]">({percentage}%)</span>
           </div>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-xs text-gray-500 dark:text-gray-400">Class Top</p>
-          <p className="text-lg font-semibold text-gray-900 dark:text-gray-100">{classTop}</p>
+          <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Class Top</p>
+          <p className="text-lg font-semibold text-gray-900 dark:text-[#FFFFFF]">{classTop}</p>
         </div>
       </div>
       <div className="mt-5 flex items-center gap-4">
-        <div className="relative h-2.5 w-[70%] overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+        <div className="relative h-2.5 w-[70%] overflow-hidden rounded-full bg-gray-100 dark:bg-[#262626]">
           <div className="h-full rounded-full bg-green-500" style={{ width: `${youPct}%` }} />
         </div>
         <div className="flex w-[30%] flex-col gap-1.5 text-xs">
-          <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1.5 text-gray-500 dark:text-[#A8A8A8]">
             <span className="h-2.5 w-2.5 rounded-full bg-green-500 shrink-0" />
             You {Math.round(youPct)}%
           </span>
-          <span className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400">
+          <span className="flex items-center gap-1.5 text-gray-500 dark:text-[#A8A8A8]">
             <span className="h-2.5 w-2.5 rounded-full bg-gray-900 shrink-0" />
             Top {Math.round(topPct)}%
           </span>
@@ -102,12 +102,12 @@ function OverallScoreCard({ result }) {
 
 function SubjectTabs({ subjects, active, onChange }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 border-b border-gray-200 dark:border-gray-700">
+    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 border-b border-gray-200 dark:border-[#363636]">
         {subjects.map((s) => {
           const isActive = s.subject_id === active
           return (
             <button key={s.subject_id} type="button" onClick={() => onChange(s.subject_id)}
-              className={`relative shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-gray-100'}`}>
+              className={`relative shrink-0 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${isActive ? 'text-gray-900 dark:text-[#FFFFFF]' : 'text-gray-500 dark:text-[#A8A8A8] hover:text-gray-900 dark:text-[#FFFFFF]'}`}>
               {s.name}
               {isActive && <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-green-500" />}
             </button>
@@ -119,8 +119,8 @@ function SubjectTabs({ subjects, active, onChange }) {
 
 function TopicPerformance({ subject }) {
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
-      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Topic Performance</h2>
+    <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
+      <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Topic Performance</h2>
       <div className="mt-4 flex flex-col gap-4">
         {subject.topics.map((t) => {
           const status = topicStatus(t.percentage)
@@ -128,12 +128,12 @@ function TopicPerformance({ subject }) {
             <div key={t.name}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-gray-100">{t.name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{t.score} / {t.total} questions</p>
+                  <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{t.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">{t.score} / {t.total} questions</p>
                 </div>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusPillClass[status]}`}>{t.percentage}%</span>
               </div>
-              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-gray-700">
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-[#262626]">
                 <div className={`h-full rounded-full ${statusBarClass[status]}`} style={{ width: `${t.percentage}%` }} />
               </div>
             </div>
@@ -154,10 +154,10 @@ function TopicSummary({ subject }) {
           <ArrowUp className="h-4 w-4" />Strong Topics
         </h3>
         <ul className="mt-3 flex flex-col gap-2">
-          {strong.length === 0 && <li className="text-sm text-gray-500 dark:text-gray-400">No topics above 60% yet.</li>}
+          {strong.length === 0 && <li className="text-sm text-gray-500 dark:text-[#A8A8A8]">No topics above 60% yet.</li>}
           {strong.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-900 dark:text-gray-100">{t.name}</span>
+              <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
               <span className="font-semibold text-green-700">{t.percentage}%</span>
             </li>
           ))}
@@ -168,10 +168,10 @@ function TopicSummary({ subject }) {
           <ArrowDown className="h-4 w-4" />Needs Improvement
         </h3>
         <ul className="mt-3 flex flex-col gap-2">
-          {weak.length === 0 && <li className="text-sm text-gray-500 dark:text-gray-400">Great — nothing below 60%!</li>}
+          {weak.length === 0 && <li className="text-sm text-gray-500 dark:text-[#A8A8A8]">Great — nothing below 60%!</li>}
           {weak.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-900 dark:text-gray-100">{t.name}</span>
+              <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
               <span className="font-semibold text-red-600">{t.percentage}%</span>
             </li>
           ))}
@@ -185,7 +185,7 @@ function TrendIcon({ first, last }) {
   const diff = last - first
   if (diff > 5) return <span className="flex items-center gap-1 text-green-600 text-xs font-medium"><ArrowUp className="h-3 w-3" />+{diff}%</span>
   if (diff < -5) return <span className="flex items-center gap-1 text-red-500 text-xs font-medium"><ArrowDown className="h-3 w-3" />{diff}%</span>
-  return <span className="flex items-center gap-1 text-gray-400 dark:text-gray-500 text-xs font-medium"><Minus className="h-3 w-3" />Stable</span>
+  return <span className="flex items-center gap-1 text-gray-400 dark:text-[#A8A8A8] text-xs font-medium"><Minus className="h-3 w-3" />Stable</span>
 }
 
 function PerformanceTrend({ trendData, totalExams }) {
@@ -195,23 +195,23 @@ function PerformanceTrend({ trendData, totalExams }) {
   }
   if (!trendData || trendData.length === 0) return null
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-5 shadow-sm">
+    <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
       <div className="mb-4">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Performance Trend</h2>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Across all {totalExams} exams — click a subject to see topic breakdown</p>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Performance Trend</h2>
+        <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-0.5">Across all {totalExams} exams — click a subject to see topic breakdown</p>
       </div>
       <div className="flex flex-col gap-2">
         {trendData.map((subject) => {
           const isExpanded = expandedSubjects[subject.subject_id]
           const status = topicStatus(subject.avgPct)
           return (
-            <div key={subject.subject_id} className="rounded-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+            <div key={subject.subject_id} className="rounded-xl border border-gray-100 dark:border-[#363636] overflow-hidden">
               <button type="button" onClick={() => toggleSubject(subject.subject_id)}
-                className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-[#262626] hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors">
                 <div className="flex items-center gap-2">
-                  {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" /> : <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 shrink-0" />}
-                  <span className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{subject.name}</span>
-                  <span className="text-xs text-gray-400 dark:text-gray-500">{subject.examCount} / {totalExams} exams</span>
+                  {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400 dark:text-[#A8A8A8] shrink-0" /> : <ChevronRight className="h-4 w-4 text-gray-400 dark:text-[#A8A8A8] shrink-0" />}
+                  <span className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">{subject.name}</span>
+                  <span className="text-xs text-gray-400 dark:text-[#A8A8A8]">{subject.examCount} / {totalExams} exams</span>
                 </div>
                 <div className="flex items-center gap-3 shrink-0">
                   <TrendIcon first={subject.firstPct} last={subject.lastPct} />
@@ -219,24 +219,24 @@ function PerformanceTrend({ trendData, totalExams }) {
                 </div>
               </button>
               {isExpanded && (
-                <div className="divide-y divide-gray-50 dark:divide-gray-700">
-                  <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-white dark:bg-gray-800">
-                    <div className="col-span-4 text-xs font-medium text-gray-400 dark:text-gray-500">Topic</div>
-                    <div className="col-span-4 text-xs font-medium text-gray-400 dark:text-gray-500">Coverage</div>
-                    <div className="col-span-2 text-xs font-medium text-gray-400 dark:text-gray-500 text-center">Avg</div>
-                    <div className="col-span-2 text-xs font-medium text-gray-400 dark:text-gray-500 text-center">Trend</div>
+                <div className="divide-y divide-gray-50 dark:divide-[#363636]">
+                  <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-white dark:bg-[#1C1C1C]">
+                    <div className="col-span-4 text-xs font-medium text-gray-400 dark:text-[#A8A8A8]">Topic</div>
+                    <div className="col-span-4 text-xs font-medium text-gray-400 dark:text-[#A8A8A8]">Coverage</div>
+                    <div className="col-span-2 text-xs font-medium text-gray-400 dark:text-[#A8A8A8] text-center">Avg</div>
+                    <div className="col-span-2 text-xs font-medium text-gray-400 dark:text-[#A8A8A8] text-center">Trend</div>
                   </div>
                   {subject.topics.map((topic) => {
                     const tStatus = topicStatus(topic.avgPct)
                     const fillPct = Math.round((topic.examCount / totalExams) * 100)
                     return (
-                      <div key={topic.name} className="grid grid-cols-12 gap-2 px-4 py-3 bg-white dark:bg-gray-800 items-center">
+                      <div key={topic.name} className="grid grid-cols-12 gap-2 px-4 py-3 bg-white dark:bg-[#1C1C1C] items-center">
                         <div className="col-span-4">
-                          <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{topic.name}</p>
-                          <p className="text-xs text-gray-400 dark:text-gray-500">{topic.examCount}/{totalExams} exams</p>
+                          <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">{topic.name}</p>
+                          <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">{topic.examCount}/{totalExams} exams</p>
                         </div>
                         <div className="col-span-4">
-                          <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                          <div className="h-1.5 w-full rounded-full bg-gray-100 dark:bg-[#262626] overflow-hidden">
                             <div className="h-full rounded-full bg-blue-400" style={{ width: `${fillPct}%` }} />
                           </div>
                         </div>
@@ -313,7 +313,7 @@ function ClassHeatmap({ examId, exams }) {
   }, [examId, subjectId])
 
   function cellColor(pct) {
-    if (pct === undefined) return 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+    if (pct === undefined) return 'bg-gray-100 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8]'
     if (pct >= 75) return 'bg-green-100 text-green-700'
     if (pct >= 50) return 'bg-yellow-100 text-yellow-700'
     return 'bg-red-100 text-red-700'
@@ -322,31 +322,31 @@ function ClassHeatmap({ examId, exams }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Subject</label>
+        <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Subject</label>
         <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
-          className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 shadow-sm outline-none focus:ring-2 focus:ring-blue-600">
+          className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600">
           {examSubjects.map((es) => (
             <option key={es.subject_id} value={es.subject_id}>{es.subjects?.name}</option>
           ))}
         </select>
       </div>
 
-      {loading && <p className="text-sm text-gray-500 dark:text-gray-400">Loading heatmap…</p>}
+      {loading && <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading heatmap…</p>}
 
       {!loading && heatmapData.students?.length === 0 && (
-        <p className="text-sm text-gray-500 dark:text-gray-400">No data found for this exam and subject.</p>
+        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No data found for this exam and subject.</p>
       )}
 
       {!loading && heatmapData.topics && heatmapData.students?.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="bg-gray-50 dark:bg-gray-900">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400 sticky left-0 bg-gray-50 dark:bg-gray-900">Student</th>
+              <tr className="bg-gray-50 dark:bg-[#262626]">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] sticky left-0 bg-gray-50 dark:bg-[#262626]">Student</th>
                 {heatmapData.topics.map((t) => (
-                  <th key={t} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">{t}</th>
+                  <th key={t} className="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] whitespace-nowrap">{t}</th>
                 ))}
-                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-gray-400">Avg</th>
+                <th className="px-3 py-3 text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Avg</th>
               </tr>
             </thead>
             <tbody>
@@ -357,10 +357,10 @@ function ClassHeatmap({ examId, exams }) {
                   ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
                   : 0
                 return (
-                  <tr key={i} className="border-t border-gray-100 dark:border-gray-700">
-                    <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-gray-800">
-                      <p className="font-medium text-gray-900 dark:text-gray-100 text-xs">{student.name}</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500">#{student.roll}</p>
+                  <tr key={i} className="border-t border-gray-100 dark:border-[#363636]">
+                    <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1C1C1C]">
+                      <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-xs">{student.name}</p>
+                      <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">#{student.roll}</p>
                     </td>
                     {scores.map((pct, j) => (
                       <td key={j} className="px-3 py-2.5 text-center">
@@ -379,8 +379,8 @@ function ClassHeatmap({ examId, exams }) {
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-                <td className="px-4 py-2.5 text-xs font-semibold text-gray-600 dark:text-gray-400 sticky left-0 bg-gray-50 dark:bg-gray-900">Class Avg</td>
+              <tr className="border-t-2 border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626]">
+                <td className="px-4 py-2.5 text-xs font-semibold text-gray-600 dark:text-[#A8A8A8] sticky left-0 bg-gray-50 dark:bg-[#262626]">Class Avg</td>
                 {heatmapData.topics.map((t) => {
                   const vals = heatmapData.students.map((s) => s.topics[t]).filter((v) => v !== undefined)
                   const avg = vals.length > 0 ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : 0
@@ -1109,7 +1109,7 @@ export default function Results() {
           <select
             value={selectedExamTypeId}
             onChange={(e) => setSelectedExamTypeId(e.target.value)}
-            className="w-full md:w-64 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full md:w-64 rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-green-500"
           >
             <option value="">All Exam Types</option>
             {instituteExamTypes.map((t) => (
@@ -1129,8 +1129,8 @@ export default function Results() {
         </div>
 
         {blocked && blockedMessage && (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center shadow-sm">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">{blockedMessage}</p>
+          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+            <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">{blockedMessage}</p>
           </div>
         )}
 
@@ -1139,13 +1139,13 @@ export default function Results() {
             {loadingSummaries && (
               <div className="flex items-center justify-center py-12">
                 <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">Loading exams…</span>
+                <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading exams…</span>
               </div>
             )}
 
             {!loadingSummaries && exams.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center shadow-sm">
-                <p className="text-gray-500 dark:text-gray-400 text-sm">No exams found.</p>
+              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+                <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No exams found.</p>
               </div>
             )}
 
@@ -1156,12 +1156,12 @@ export default function Results() {
                     key={exam.id}
                     type="button"
                     onClick={() => setExamId(exam.id)}
-                    className="w-full rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm text-left hover:border-green-300 hover:shadow-md transition-all"
+                    className="w-full rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 shadow-sm text-left hover:border-green-300 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="font-semibold text-gray-900 dark:text-gray-100 truncate">{exam.name}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">{formatExamDate(exam.exam_date)}</p>
+                        <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] truncate">{exam.name}</p>
+                        <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-0.5">{formatExamDate(exam.exam_date)}</p>
                         <div className="flex flex-wrap gap-1.5 mt-2">
                           <ExamTypeBadge examType={exam.exam_type} />
                           <InstituteExamTypeBadge name={exam.exam_types?.name} />
@@ -1169,12 +1169,12 @@ export default function Results() {
                       </div>
                       <div className="text-right shrink-0">
                         {notGraded ? (
-                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Not graded</p>
+                          <p className="text-sm font-medium text-gray-500 dark:text-[#A8A8A8]">Not graded</p>
                         ) : !hasResult ? (
-                          <p className="text-sm font-medium text-gray-400 dark:text-gray-500">No results</p>
+                          <p className="text-sm font-medium text-gray-400 dark:text-[#A8A8A8]">No results</p>
                         ) : (
                           <>
-                            <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{score} / {total}</p>
+                            <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">{score} / {total}</p>
                             <p className="text-xs text-green-600 font-medium">{percentage}%</p>
                           </>
                         )}
@@ -1194,14 +1194,14 @@ export default function Results() {
         {examId && !blocked && loading && (
           <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-            <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">Loading results…</span>
+            <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading results…</span>
           </div>
         )}
 
         {examId && !blocked && !loading && !result && (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center shadow-sm">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">No results found for this exam yet.</p>
-            <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Scan some OMR sheets first.</p>
+          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+            <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No results found for this exam yet.</p>
+            <p className="text-gray-400 dark:text-[#A8A8A8] text-xs mt-1">Scan some OMR sheets first.</p>
           </div>
         )}
 
@@ -1209,7 +1209,7 @@ export default function Results() {
           <>
             {selectedExam && (
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{selectedExam.name}</h2>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-[#FFFFFF]">{selectedExam.name}</h2>
                 <ExamTypeBadge examType={selectedExam.exam_type} />
                 <InstituteExamTypeBadge name={selectedExam.exam_types?.name} />
               </div>
@@ -1229,7 +1229,7 @@ export default function Results() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 px-4 py-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#000000] px-4 py-6">
       <div className="mx-auto flex max-w-4xl flex-col gap-5">
         {navState?.studentName && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 flex items-center justify-between">
@@ -1249,14 +1249,14 @@ export default function Results() {
         <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-green-600">EduPulse</p>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">My Performance</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">My Performance</h1>
           </div>
           {isTeacherMainView && (
             <div className="flex flex-wrap gap-2 items-center">
               <select
                 value={selectedExamTypeId}
                 onChange={(e) => setSelectedExamTypeId(e.target.value)}
-                className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">All Exam Types</option>
                 {instituteExamTypes.map((t) => (
@@ -1266,7 +1266,7 @@ export default function Results() {
               <select
                 value={examId}
                 onChange={(e) => setExamId(e.target.value)}
-                className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-green-500"
               >
                 <option value="">All Exams</option>
                 {exams.map((exam) => (
@@ -1282,7 +1282,7 @@ export default function Results() {
                     setSelectedStudentId('')
                     setStudentSearch('')
                   }}
-                  className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm font-medium text-gray-900 dark:text-gray-100 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
                 >
                   <option value="">All Classes</option>
                   {classes.map((c) => (
@@ -1295,14 +1295,14 @@ export default function Results() {
         </header>
 
         {isTeacherMainView && (
-          <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-5">
+          <div className="flex gap-1 border-b border-gray-200 dark:border-[#363636] mb-5">
             <button onClick={() => setActiveTab('student')}
-              className={`px-4 py-2.5 text-sm font-medium relative ${activeTab === 'student' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+              className={`px-4 py-2.5 text-sm font-medium relative ${activeTab === 'student' ? 'text-gray-900 dark:text-[#FFFFFF]' : 'text-gray-500 dark:text-[#A8A8A8]'}`}>
               Student Performance
               {activeTab === 'student' && <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />}
             </button>
             <button onClick={() => setActiveTab('heatmap')}
-              className={`px-4 py-2.5 text-sm font-medium relative ${activeTab === 'heatmap' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'}`}>
+              className={`px-4 py-2.5 text-sm font-medium relative ${activeTab === 'heatmap' ? 'text-gray-900 dark:text-[#FFFFFF]' : 'text-gray-500 dark:text-[#A8A8A8]'}`}>
               Class Heatmap
               {activeTab === 'heatmap' && <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />}
             </button>
@@ -1310,8 +1310,8 @@ export default function Results() {
         )}
 
         {isTeacherMainView && activeTab === 'heatmap' && !examId && (
-          <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center shadow-sm">
-            <p className="text-gray-500 dark:text-gray-400 text-sm">Select an exam to view the class heatmap.</p>
+          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+            <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">Select an exam to view the class heatmap.</p>
           </div>
         )}
 
@@ -1332,44 +1332,44 @@ export default function Results() {
                 placeholder="Search by name, roll number, or exam..."
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
               />
             </div>
 
             {!examId && loadingTeacherOverview && (
               <div className="flex items-center justify-center py-12">
                 <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">Loading results…</span>
+                <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading results…</span>
               </div>
             )}
 
             {!examId && !loadingTeacherOverview && searchedOverviewRows.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center shadow-sm">
-                <p className="text-gray-500 dark:text-gray-400 text-sm">No results found.</p>
+              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+                <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No results found.</p>
               </div>
             )}
 
             {!examId && !loadingTeacherOverview && searchedOverviewRows.length > 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-                <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm">
+                <div className="p-4 border-b border-gray-100 dark:border-[#363636]">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
                     All Results — {searchedOverviewRows.length} entries
                   </h2>
                 </div>
-                <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                <div className="divide-y divide-gray-50 dark:divide-[#363636]">
                   {searchedOverviewRows.map((row) => (
                     <div
                       key={`${row.studentId}-${row.examId}`}
                       className="flex items-center gap-3 px-4 py-3"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{row.studentName}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">
+                        <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{row.studentName}</p>
+                        <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">
                           Roll #{row.rollNumber}
                           {row.className && ` · ${row.className}`}
                         </p>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-1 truncate">{row.examName}</p>
-                        <p className="text-xs text-gray-400 dark:text-gray-500">{formatExamDate(row.examDate)}</p>
+                        <p className="text-sm text-gray-700 dark:text-[#A8A8A8] mt-1 truncate">{row.examName}</p>
+                        <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">{formatExamDate(row.examDate)}</p>
                         <div className="flex flex-wrap gap-1.5 mt-1.5">
                           <ExamTypeBadge examType={row.examType} />
                           <InstituteExamTypeBadge name={row.instituteExamTypeName} />
@@ -1377,13 +1377,13 @@ export default function Results() {
                       </div>
                       <div className="text-right shrink-0">
                         {row.notGraded ? (
-                          <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Not graded</p>
+                          <p className="text-sm font-medium text-gray-500 dark:text-[#A8A8A8]">Not graded</p>
                         ) : !row.attended ? (
-                          <p className="text-sm font-medium text-gray-400 dark:text-gray-500">Absent</p>
+                          <p className="text-sm font-medium text-gray-400 dark:text-[#A8A8A8]">Absent</p>
                         ) : (
                           <>
-                            <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">{row.score} / {row.total}</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500">{row.percentage}%</p>
+                            <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">{row.score} / {row.total}</p>
+                            <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">{row.percentage}%</p>
                           </>
                         )}
                       </div>
@@ -1394,28 +1394,28 @@ export default function Results() {
             )}
 
             {examId && displayedRankings.length === 0 && studentRankings.length > 0 && selectedClassId && (
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center shadow-sm">
-                <p className="text-gray-500 dark:text-gray-400 text-sm">No students in this class</p>
+              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+                <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No students in this class</p>
               </div>
             )}
 
             {examId && studentRankings.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-8 text-center shadow-sm">
-                <p className="text-gray-500 dark:text-gray-400 text-sm">No students found for this exam</p>
+              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+                <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No students found for this exam</p>
               </div>
             )}
 
             {examId && displayedRankings.length > 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
-                <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm">
+                <div className="p-4 border-b border-gray-100 dark:border-[#363636]">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
                     Class Results — {displayedRankings.length} students
                     {selectedExam && (
-                      <span className="font-normal text-gray-500 dark:text-gray-400"> · {selectedExam.name}</span>
+                      <span className="font-normal text-gray-500 dark:text-[#A8A8A8]"> · {selectedExam.name}</span>
                     )}
                   </h2>
                 </div>
-                <div className="divide-y divide-gray-50 dark:divide-gray-700">
+                <div className="divide-y divide-gray-50 dark:divide-[#363636]">
                   {searchedRankings.map((s) => {
                     const index = displayedRankings.indexOf(s)
                     return (
@@ -1426,29 +1426,29 @@ export default function Results() {
                             setExpandedStudentId((prev) => (prev === s.id ? null : s.id))
                             setSelectedStudentId(s.id)
                           }}
-                          className={`w-full min-h-[56px] flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:bg-gray-900 transition-colors text-left ${
+                          className={`w-full min-h-[56px] flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors text-left ${
                             expandedStudentId === s.id ? 'bg-blue-50' : ''
                           }`}
                         >
                           <span
                             className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                               !s.attended
-                                ? 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                                ? 'bg-gray-100 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8]'
                                 : index === 0
                                   ? 'bg-yellow-100 text-yellow-700'
                                   : index === 1
-                                    ? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                                    ? 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8]'
                                     : index === 2
                                       ? 'bg-orange-100 text-orange-700'
-                                      : 'bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-400'
+                                      : 'bg-gray-50 dark:bg-[#262626] text-gray-500 dark:text-[#A8A8A8]'
                             }`}
                           >
                             {s.attended ? index + 1 : '—'}
                           </span>
 
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-900 dark:text-gray-100 text-sm truncate">{s.name}</p>
-                            <p className="text-xs text-gray-400 dark:text-gray-500">
+                            <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{s.name}</p>
+                            <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">
                               Roll #{s.roll_number}
                               {!selectedClassId && s.classes?.name && ` · ${s.classes.name}`}
                             </p>
@@ -1457,16 +1457,16 @@ export default function Results() {
                           <div className="text-right shrink-0">
                             {s.attended ? (
                               <>
-                                <p className="font-semibold text-gray-900 dark:text-gray-100 text-sm">
+                                <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">
                                   {s.score} / {s.totalQ}
                                 </p>
-                                <p className="text-xs text-gray-400 dark:text-gray-500">
+                                <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">
                                   {s.totalQ > 0 ? Math.round((s.score / s.totalQ) * 100) : 0}%
                                 </p>
                               </>
                             ) : (
                               <div>
-                                <p className="font-semibold text-gray-500 dark:text-gray-400 text-sm">0 / {s.totalQ}</p>
+                                <p className="font-semibold text-gray-500 dark:text-[#A8A8A8] text-sm">0 / {s.totalQ}</p>
                                 <p className="text-xs text-red-400">Absent</p>
                               </div>
                             )}
@@ -1476,20 +1476,20 @@ export default function Results() {
                         {expandedStudentId === s.id && loading && (
                           <div className="flex items-center justify-center py-8 mx-4 mb-4">
                             <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                            <span className="ml-3 text-sm text-gray-500 dark:text-gray-400">Loading results…</span>
+                            <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading results…</span>
                           </div>
                         )}
 
                         {expandedStudentId === s.id && !loading && !result && examId && (
-                          <div className="mx-4 mb-4 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 text-center">
-                            <p className="text-gray-500 dark:text-gray-400 text-sm">No results found for this exam yet.</p>
-                            <p className="text-gray-400 dark:text-gray-500 text-xs mt-1">Scan some OMR sheets first.</p>
+                          <div className="mx-4 mb-4 rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-6 text-center">
+                            <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No results found for this exam yet.</p>
+                            <p className="text-gray-400 dark:text-[#A8A8A8] text-xs mt-1">Scan some OMR sheets first.</p>
                           </div>
                         )}
 
                         {expandedStudentId === s.id && !loading && result && (
-                          <div className="mx-4 mb-4 border border-blue-100 dark:border-gray-700 rounded-xl overflow-hidden bg-white dark:bg-gray-800">
-                            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-100 dark:border-gray-700">
+                          <div className="mx-4 mb-4 border border-blue-100 dark:border-[#363636] rounded-xl overflow-hidden bg-white dark:bg-[#1C1C1C]">
+                            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-100 dark:border-[#363636]">
                               <p className="text-xs font-medium text-blue-700">
                                 {s.name}&apos;s Performance
                               </p>
@@ -1525,7 +1525,7 @@ export default function Results() {
                     )
                   })}
                   {searchedRankings.length === 0 && (
-                    <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-4">
+                    <p className="text-sm text-gray-400 dark:text-[#A8A8A8] text-center py-4">
                       No students found matching &quot;{studentSearch}&quot;
                     </p>
                   )}
