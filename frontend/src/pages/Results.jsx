@@ -149,8 +149,8 @@ function TopicSummary({ subject }) {
   const weak = subject.topics.filter((t) => t.percentage < 60)
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="rounded-2xl border border-green-200 bg-green-50 p-5 shadow-sm">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-green-700">
+      <div className="rounded-2xl border border-green-200 bg-green-50 dark:bg-green-900/20 p-5 shadow-sm">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-green-800 dark:text-green-300">
           <ArrowUp className="h-4 w-4" />Strong Topics
         </h3>
         <ul className="mt-3 flex flex-col gap-2">
@@ -158,13 +158,13 @@ function TopicSummary({ subject }) {
           {strong.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
               <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
-              <span className="font-semibold text-green-700">{t.percentage}%</span>
+              <span className="font-semibold text-green-700 dark:text-green-400">{t.percentage}%</span>
             </li>
           ))}
         </ul>
       </div>
-      <div className="rounded-2xl border border-red-200 bg-red-50 p-5 shadow-sm">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-red-600">
+      <div className="rounded-2xl border border-red-200 bg-red-50 dark:bg-red-900/20 p-5 shadow-sm">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-red-800 dark:text-red-300">
           <ArrowDown className="h-4 w-4" />Needs Improvement
         </h3>
         <ul className="mt-3 flex flex-col gap-2">
@@ -172,7 +172,7 @@ function TopicSummary({ subject }) {
           {weak.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
               <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
-              <span className="font-semibold text-red-600">{t.percentage}%</span>
+              <span className="font-semibold text-red-600 dark:text-red-400">{t.percentage}%</span>
             </li>
           ))}
         </ul>
@@ -912,7 +912,6 @@ export default function Results() {
         .single()
 
       const isWrittenExam = examMeta?.exam_type === 'written'
-      const resultStudentId = isTeacher ? selectedStudentId : effectiveStudentId
 
       let query = supabase
         .from('topic_scores')
@@ -940,11 +939,51 @@ export default function Results() {
       const subjects = Object.values(subjectMap).map((s) => ({ ...s, percentage: s.max > 0 ? Math.round((s.score / s.max) * 100) : 0 }))
 
       if (isWrittenExam) {
+        let studentId = null
+        if (isTeacher) {
+          studentId = selectedStudentId
+        } else if (userRole === 'student') {
+          studentId = session.user.id
+        } else if (userRole === 'parent') {
+          const { data: parentData } = await supabase
+            .from('users')
+            .select('roll_number, institute_id')
+            .eq('id', session.user.id)
+            .single()
+
+          if (parentData?.roll_number != null && parentData?.institute_id) {
+            const { data: linkedStudent } = await supabase
+              .from('users')
+              .select('id')
+              .eq('roll_number', parentData.roll_number)
+              .eq('role', 'student')
+              .eq('institute_id', parentData.institute_id)
+              .limit(1)
+              .maybeSingle()
+
+            studentId = linkedStudent?.id ?? null
+          }
+        }
+
+        if (!studentId) {
+          setResult({
+            notGraded: true,
+            totalScore: 0,
+            totalMax: 0,
+            percentage: 0,
+            classTop: 0,
+            subjects,
+          })
+          setActiveSubject(subjects.length > 0 ? subjects[0].subject_id : '')
+          setLoading(false)
+          return
+        }
+
         const { data: summary } = await supabase
           .from('omr_results')
           .select('marks_obtained, total_marks')
           .eq('exam_id', examId)
-          .eq('student_id', resultStudentId)
+          .eq('student_id', studentId)
           .is('question_id', null)
           .maybeSingle()
 
