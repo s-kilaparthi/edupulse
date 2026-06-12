@@ -305,6 +305,40 @@ function filterClassesByGroup(allClasses, groupId, classGroups) {
   return allClasses.filter((c) => groupClassIds.has(c.id))
 }
 
+function isExamVisibleToTeacher(exam, teacherId) {
+  if (!exam || !teacherId) return false
+  if (exam.created_by === teacherId) return true
+  return (exam.exam_teachers ?? []).some((et) => et.teacher_id === teacherId)
+}
+
+async function aggregateSubjectScores(examIds, subjectId, studentIds) {
+  if (!examIds.length || !subjectId || !studentIds.length) return {}
+
+  const { data } = await supabase
+    .from('topic_scores')
+    .select('student_id, score, total')
+    .in('exam_id', examIds)
+    .eq('subject_id', subjectId)
+    .in('student_id', studentIds)
+
+  const agg = {}
+  for (const sid of studentIds) {
+    agg[sid] = { obtained: 0, total: 0 }
+  }
+  for (const row of data ?? []) {
+    if (!agg[row.student_id]) agg[row.student_id] = { obtained: 0, total: 0 }
+    agg[row.student_id].obtained += row.score ?? 0
+    agg[row.student_id].total += row.total ?? 0
+  }
+  return agg
+}
+
+const REPORT_SELECT_CLASS =
+  'w-full sm:w-auto min-w-[160px] rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none'
+
+const REPORT_FILTER_ROW_CLASS = 'flex flex-col sm:flex-row sm:flex-wrap gap-3 w-full'
+const REPORT_FILTER_ITEM_CLASS = 'flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto'
+
 function ClassBadge({ name }) {
   return (
     <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#262626] text-gray-700 dark:text-[#A8A8A8] font-medium border border-current">
@@ -417,6 +451,264 @@ function ReportRankingsMobile({ rankings, onStudentClick, showClassBadge = false
         )
       })}
     </div>
+  )
+}
+
+function StudentReportsPanel({
+  classGroups,
+  reportClasses,
+  reportGroupClasses,
+  instituteExamTypes,
+  reportExams,
+  reportGroupId,
+  setReportGroupId,
+  reportExamTypeId,
+  setReportExamTypeId,
+  reportExamId,
+  setReportExamId,
+  reportClassId,
+  setReportClassId,
+  reportSelectedClassIds,
+  setReportSelectedClassIds,
+  reportViewMode,
+  setReportViewMode,
+  reportSubjects,
+  reportSubjectId,
+  setReportSubjectId,
+  showSubjectFilter,
+  loadingReportRankings,
+  reportRankings,
+  sectionWiseRankings,
+  groupOverallAvg,
+  onStudentClick,
+}) {
+  return (
+    <>
+      <div className="flex flex-col gap-4">
+        <div className={REPORT_FILTER_ROW_CLASS}>
+          <div className={REPORT_FILTER_ITEM_CLASS}>
+            <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] shrink-0">Group</label>
+            <select
+              value={reportGroupId}
+              onChange={(e) => setReportGroupId(e.target.value)}
+              className={REPORT_SELECT_CLASS}
+            >
+              <option value="">All Groups</option>
+              {classGroups.map((g) => (
+                <option key={g.id} value={g.id}>{g.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className={REPORT_FILTER_ITEM_CLASS}>
+            <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] shrink-0">Exam Type</label>
+            <select
+              value={reportExamTypeId}
+              onChange={(e) => {
+                setReportExamTypeId(e.target.value)
+                setReportExamId('')
+              }}
+              className={REPORT_SELECT_CLASS}
+            >
+              <option value="">All Types</option>
+              {instituteExamTypes.map((t) => (
+                <option key={t.id} value={t.id}>{t.name}</option>
+              ))}
+            </select>
+          </div>
+          <div className={REPORT_FILTER_ITEM_CLASS}>
+            <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] shrink-0">Exam Name</label>
+            <select
+              value={reportExamId}
+              onChange={(e) => setReportExamId(e.target.value)}
+              className={REPORT_SELECT_CLASS}
+            >
+              <option value="">All Exams</option>
+              {reportExams.map((exam) => (
+                <option key={exam.id} value={exam.id}>{exam.name}</option>
+              ))}
+            </select>
+          </div>
+          {!reportGroupId && (
+            <div className={REPORT_FILTER_ITEM_CLASS}>
+              <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] shrink-0">Class</label>
+              <select
+                value={reportClassId}
+                onChange={(e) => setReportClassId(e.target.value)}
+                className={REPORT_SELECT_CLASS}
+              >
+                <option value="">All Classes</option>
+                {reportClasses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+        </div>
+
+        {reportGroupId && reportGroupClasses.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">Classes in group</p>
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+              {reportGroupClasses.map((cls) => {
+                const checked = reportSelectedClassIds.includes(cls.id)
+                return (
+                  <label
+                    key={cls.id}
+                    className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm transition-colors ${
+                      checked
+                        ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500 text-blue-700 dark:text-blue-300'
+                        : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => {
+                        setReportSelectedClassIds((prev) =>
+                          checked ? prev.filter((id) => id !== cls.id) : [...prev, cls.id],
+                        )
+                      }}
+                      className="rounded border-gray-300 dark:border-gray-600 text-blue-600 shrink-0"
+                    />
+                    {cls.name}
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {showSubjectFilter && reportSubjects.length > 0 && (
+          <div>
+            <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">Subject</p>
+            <div className="flex flex-wrap sm:flex-nowrap gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+              <button
+                type="button"
+                onClick={() => setReportSubjectId('')}
+                className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  !reportSubjectId
+                    ? 'bg-blue-500 text-white'
+                    : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+                }`}
+              >
+                All Subjects
+              </button>
+              {reportSubjects.map((sub) => (
+                <button
+                  key={sub.id}
+                  type="button"
+                  onClick={() => setReportSubjectId(sub.id)}
+                  className={`shrink-0 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    reportSubjectId === sub.id
+                      ? 'bg-blue-500 text-white'
+                      : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+                  }`}
+                >
+                  {sub.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {reportGroupId && (
+          <div className="flex w-full gap-2">
+            <button
+              type="button"
+              onClick={() => setReportViewMode('mixed')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                reportViewMode === 'mixed'
+                  ? 'bg-blue-500 text-white'
+                  : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+              }`}
+            >
+              Mixed Ranking
+            </button>
+            <button
+              type="button"
+              onClick={() => setReportViewMode('section')}
+              className={`flex-1 sm:flex-none px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                reportViewMode === 'section'
+                  ? 'bg-blue-500 text-white'
+                  : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+              }`}
+            >
+              Section-wise
+            </button>
+          </div>
+        )}
+      </div>
+
+      {loadingReportRankings && (
+        <div className="flex items-center justify-center py-12">
+          <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading rankings…</span>
+        </div>
+      )}
+
+      {!loadingReportRankings && reportRankings.length === 0 && (
+        <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center">
+          <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No graded exams found for selected filters</p>
+        </div>
+      )}
+
+      {!loadingReportRankings && reportRankings.length > 0 && reportViewMode === 'mixed' && (
+        <>
+          <ReportRankingsTable
+            rankings={reportRankings}
+            showClassBadge={!!reportGroupId}
+            onStudentClick={onStudentClick}
+          />
+          <ReportRankingsMobile
+            rankings={reportRankings}
+            showClassBadge={!!reportGroupId}
+            onStudentClick={onStudentClick}
+          />
+        </>
+      )}
+
+      {!loadingReportRankings && reportRankings.length > 0 && reportGroupId && reportViewMode === 'section' && (
+        <div className="flex flex-col gap-5">
+          {sectionWiseRankings.map((section) => (
+            <div
+              key={section.classId}
+              className={`rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm overflow-hidden border-l-4 ${SECTION_ACCENT_COLORS[section.accentIndex % SECTION_ACCENT_COLORS.length]}`}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">{section.className}</h3>
+                <span className={`text-sm font-semibold ${heatmapPctClass(section.avgPct)}`}>
+                  Avg: {section.avgPct}%
+                </span>
+              </div>
+              {section.students.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-[#A8A8A8] text-center py-6">No graded students in this class</p>
+              ) : (
+                <>
+                  <ReportRankingsTable
+                    rankings={section.students}
+                    showClassBadge={false}
+                    onStudentClick={onStudentClick}
+                  />
+                  <ReportRankingsMobile
+                    rankings={section.students}
+                    showClassBadge={false}
+                    onStudentClick={onStudentClick}
+                  />
+                </>
+              )}
+            </div>
+          ))}
+          {groupOverallAvg !== null && (
+            <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-6 text-center w-full">
+              <p className="text-xl font-bold text-gray-900 dark:text-[#FFFFFF]">
+                Group Overall Avg:{' '}
+                <span className={heatmapPctClass(groupOverallAvg)}>{groupOverallAvg}%</span>
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -903,6 +1195,9 @@ export default function Results() {
   const [reportSelectedClassIds, setReportSelectedClassIds] = useState([])
   const [reportViewMode, setReportViewMode] = useState('mixed')
   const [studentGroupId, setStudentGroupId] = useState('')
+  const [teacherClasses, setTeacherClasses] = useState([])
+  const [teacherClassGroups, setTeacherClassGroups] = useState([])
+  const [reportSubjectId, setReportSubjectId] = useState('')
 
   const effectiveStudentId =
     userRole === 'parent'
@@ -935,21 +1230,60 @@ export default function Results() {
   const isTeacherStudentView = fromStudentsNav && isTeacher && roleLoaded
   const isAdminStudentView = fromStudentsNav && userRole === 'admin' && roleLoaded
   const isAdminMainView = userRole === 'admin' && !fromStudentsNav && roleLoaded
-  const isAdminReportsStudentView = isAdminMainView && activeTab === 'reports' && !!reportsStudentId
-  const showExamTypeSummaryBanner = isLearnerView || isAdminStudentView || isAdminReportsStudentView
+  const isReportsMainView =
+    (isAdminMainView || (userRole === 'teacher' && isTeacherMainView)) &&
+    activeTab === 'reports' &&
+    !reportsStudentId
+  const isReportsStudentView =
+    (isAdminMainView || (userRole === 'teacher' && isTeacherMainView)) &&
+    activeTab === 'reports' &&
+    !!reportsStudentId
+  const isAdminReportsStudentView = isReportsStudentView
+  const showExamTypeSummaryBanner = isLearnerView || isAdminStudentView || isReportsStudentView
   const isTeacherMainView = isTeacher && !fromStudentsNav && roleLoaded
-  const isCardExamView = isLearnerView || isTeacherStudentView || isAdminReportsStudentView
+  const isCardExamView = isLearnerView || isTeacherStudentView || isReportsStudentView
 
   const reportExams = useMemo(() => {
-    if (!reportExamTypeId) return allExams
-    return allExams.filter((e) => e.exam_type_id === reportExamTypeId)
-  }, [allExams, reportExamTypeId])
+    let list = allExams
+    if (userRole === 'teacher' && session?.user?.id) {
+      list = list.filter((e) => isExamVisibleToTeacher(e, session.user.id))
+    }
+    if (reportExamTypeId) {
+      list = list.filter((e) => e.exam_type_id === reportExamTypeId)
+    }
+    return list
+  }, [allExams, reportExamTypeId, userRole, session])
+
+  const reportsClassGroups = userRole === 'teacher' ? teacherClassGroups : classGroups
+  const reportsClasses = userRole === 'teacher' ? teacherClasses : classes
 
   const reportGroupClasses = useMemo(() => {
     if (!reportGroupId) return []
-    const group = classGroups.find((g) => g.id === reportGroupId)
-    return extractGroupClasses(group)
-  }, [reportGroupId, classGroups])
+    const group = reportsClassGroups.find((g) => g.id === reportGroupId)
+    let cls = extractGroupClasses(group)
+    if (userRole === 'teacher') {
+      const teacherIds = new Set(teacherClasses.map((c) => c.id))
+      cls = cls.filter((c) => teacherIds.has(c.id))
+    }
+    return cls
+  }, [reportGroupId, reportsClassGroups, userRole, teacherClasses])
+
+  const reportSubjects = useMemo(() => {
+    const examList = reportExamId
+      ? reportExams.filter((e) => e.id === reportExamId)
+      : reportExams
+    const subjectMap = new Map()
+    for (const exam of examList) {
+      for (const es of exam.exam_subjects ?? []) {
+        if (es.subject_id && es.subjects?.name) {
+          subjectMap.set(es.subject_id, es.subjects.name)
+        }
+      }
+    }
+    return Array.from(subjectMap.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [reportExams, reportExamId])
 
   const studentFilteredClasses = useMemo(
     () => filterClassesByGroup(classes, studentGroupId, classGroups),
@@ -975,10 +1309,10 @@ export default function Results() {
     return Math.round(reportRankings.reduce((sum, s) => sum + s.percentage, 0) / reportRankings.length)
   }, [reportGroupId, reportRankings])
 
-  const cardExamId = isAdminReportsStudentView ? reportViewExamId : examId
-  const cardExamTypeId = isAdminReportsStudentView ? reportExamTypeId : selectedExamTypeId
-  const cardExams = isAdminReportsStudentView ? reportExams : exams
-  const cardStudentId = isAdminReportsStudentView
+  const cardExamId = isReportsStudentView ? reportViewExamId : examId
+  const cardExamTypeId = isReportsStudentView ? reportExamTypeId : selectedExamTypeId
+  const cardExams = isReportsStudentView ? reportExams : exams
+  const cardStudentId = isReportsStudentView
     ? reportsStudentId
     : isTeacherStudentView
       ? selectedStudentId
@@ -1164,7 +1498,7 @@ export default function Results() {
   }, [isTeacherMainView, session])
 
   useEffect(() => {
-    if ((!isAdminMainView && !isTeacherMainView) || !session?.user?.id) return
+    if (!isAdminMainView || !session?.user?.id) return
 
     async function loadClassGroups() {
       const { data: userData } = await supabase
@@ -1188,7 +1522,73 @@ export default function Results() {
     }
 
     loadClassGroups()
-  }, [isAdminMainView, isTeacherMainView, session])
+  }, [isAdminMainView, session])
+
+  useEffect(() => {
+    if (userRole !== 'teacher' || !session?.user?.id) {
+      setTeacherClasses([])
+      setTeacherClassGroups([])
+      return
+    }
+
+    async function loadTeacherClassesAndGroups() {
+      const { data: assignments } = await supabase
+        .from('class_teachers')
+        .select('class_id, classes(id, name)')
+        .eq('teacher_id', session.user.id)
+
+      const unique = []
+      const seen = new Set()
+      const teacherClassIds = []
+      for (const row of assignments ?? []) {
+        if (row.classes && !seen.has(row.class_id)) {
+          seen.add(row.class_id)
+          unique.push(row.classes)
+          teacherClassIds.push(row.class_id)
+        }
+      }
+      unique.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+      setTeacherClasses(unique)
+
+      if (!teacherClassIds.length) {
+        setTeacherClassGroups([])
+        return
+      }
+
+      const { data: members } = await supabase
+        .from('class_group_members')
+        .select('group_id')
+        .in('class_id', teacherClassIds)
+
+      const groupIds = [...new Set((members ?? []).map((m) => m.group_id))]
+      if (!groupIds.length) {
+        setTeacherClassGroups([])
+        return
+      }
+
+      const { data: userData } = await supabase
+        .from('users')
+        .select('institute_id')
+        .eq('id', session.user.id)
+        .single()
+
+      if (!userData?.institute_id) {
+        setTeacherClassGroups([])
+        return
+      }
+
+      const { data: groups } = await supabase
+        .from('class_groups')
+        .select('id, name, class_group_members(class_id, classes(id, name))')
+        .eq('institute_id', userData.institute_id)
+        .in('id', groupIds)
+        .order('name')
+
+      setTeacherClassGroups(groups ?? [])
+    }
+
+    loadTeacherClassesAndGroups()
+  }, [userRole, session])
 
   useEffect(() => {
     if (reportGroupId && reportGroupClasses.length) {
@@ -1210,7 +1610,13 @@ export default function Results() {
   }, [studentGroupId, studentFilteredClasses, selectedClassId])
 
   useEffect(() => {
-    if (!isAdminMainView || activeTab !== 'reports' || reportsStudentId || !session?.user?.id) {
+    if (!reportSubjects.some((s) => s.id === reportSubjectId)) {
+      setReportSubjectId('')
+    }
+  }, [reportSubjects, reportSubjectId])
+
+  useEffect(() => {
+    if (!isReportsMainView || !session?.user?.id) {
       if (activeTab !== 'reports') setReportRankings([])
       return
     }
@@ -1225,6 +1631,15 @@ export default function Results() {
         .single()
 
       if (!userData?.institute_id) {
+        setReportRankings([])
+        setLoadingReportRankings(false)
+        return
+      }
+
+      const teacherClassIdList = teacherClasses.map((c) => c.id)
+      const teacherClassIdSet = new Set(teacherClassIdList)
+
+      if (userRole === 'teacher' && !teacherClassIdList.length) {
         setReportRankings([])
         setLoadingReportRankings(false)
         return
@@ -1245,7 +1660,14 @@ export default function Results() {
         }
         studentQuery = studentQuery.in('class_id', reportSelectedClassIds)
       } else if (reportClassId) {
+        if (userRole === 'teacher' && !teacherClassIdSet.has(reportClassId)) {
+          setReportRankings([])
+          setLoadingReportRankings(false)
+          return
+        }
         studentQuery = studentQuery.eq('class_id', reportClassId)
+      } else if (userRole === 'teacher') {
+        studentQuery = studentQuery.in('class_id', teacherClassIdList)
       }
 
       const { data: students } = await studentQuery
@@ -1258,6 +1680,32 @@ export default function Results() {
       const studentIds = students.map((s) => s.id)
 
       if (reportExamId) {
+        if (reportSubjectId) {
+          const agg = await aggregateSubjectScores([reportExamId], reportSubjectId, studentIds)
+          const rankings = students
+            .filter((s) => agg[s.id]?.total > 0)
+            .map((s) => {
+              const { obtained, total } = agg[s.id]
+              const percentage = total > 0 ? Math.round((obtained / total) * 100) : 0
+              return {
+                id: s.id,
+                name: s.name,
+                roll_number: s.roll_number,
+                class_id: s.class_id,
+                className: s.classes?.name ?? '—',
+                score: obtained,
+                total,
+                percentage,
+                mode: 'single',
+              }
+            })
+            .sort((a, b) => b.score - a.score)
+
+          setReportRankings(rankings)
+          setLoadingReportRankings(false)
+          return
+        }
+
         const { data: examData } = await supabase
           .from('exams')
           .select('total_questions, exam_type, total_marks')
@@ -1329,9 +1777,36 @@ export default function Results() {
         return
       }
 
-      let examsForAgg = allExams
-      if (reportExamTypeId) {
+      let examsForAgg = userRole === 'teacher' ? reportExams : allExams
+      if (userRole !== 'teacher' && reportExamTypeId) {
         examsForAgg = examsForAgg.filter((e) => e.exam_type_id === reportExamTypeId)
+      }
+
+      if (reportSubjectId) {
+        const examIds = examsForAgg.map((e) => e.id)
+        const agg = await aggregateSubjectScores(examIds, reportSubjectId, studentIds)
+        const rankings = students
+          .filter((s) => agg[s.id]?.total > 0)
+          .map((s) => {
+            const { obtained, total } = agg[s.id]
+            const percentage = total > 0 ? Math.round((obtained / total) * 100) : 0
+            return {
+              id: s.id,
+              name: s.name,
+              roll_number: s.roll_number,
+              class_id: s.class_id,
+              className: s.classes?.name ?? '—',
+              score: obtained,
+              total,
+              percentage,
+              mode: 'aggregate',
+            }
+          })
+          .sort((a, b) => b.score - a.score)
+
+        setReportRankings(rankings)
+        setLoadingReportRankings(false)
+        return
       }
 
       const writtenExamIds = examsForAgg.filter((e) => e.exam_type === 'written').map((e) => e.id)
@@ -1409,7 +1884,22 @@ export default function Results() {
     }
 
     loadReportRankings()
-  }, [isAdminMainView, activeTab, reportsStudentId, reportExamTypeId, reportExamId, reportClassId, reportGroupId, reportSelectedClassIds, allExams, session])
+  }, [
+    isReportsMainView,
+    activeTab,
+    reportsStudentId,
+    reportExamTypeId,
+    reportExamId,
+    reportClassId,
+    reportGroupId,
+    reportSelectedClassIds,
+    reportSubjectId,
+    allExams,
+    reportExams,
+    teacherClasses,
+    userRole,
+    session,
+  ])
 
   useEffect(() => {
     if (fromStudentsNav) {
@@ -1425,7 +1915,7 @@ export default function Results() {
   useEffect(() => {
     supabase
       .from('exams')
-      .select('id, name, exam_date, exam_type, exam_type_id, scope, total_questions, total_marks, exam_types(name), exam_subjects(subject_id, subjects(name)), exam_classes(class_id)')
+      .select('id, name, exam_date, exam_type, exam_type_id, scope, total_questions, total_marks, created_by, exam_types(name), exam_subjects(subject_id, subjects(name)), exam_classes(class_id), exam_teachers(teacher_id)')
       .order('created_at', { ascending: false })
       .then(({ data }) => {
         if (data) {
@@ -2206,7 +2696,7 @@ export default function Results() {
               Class Heatmap
               {activeTab === 'heatmap' && <span className="absolute inset-x-2 -bottom-px h-0.5 bg-blue-600 rounded-full" />}
             </button>
-            {userRole === 'admin' && (
+            {isTeacherMainView && (
               <button
                 onClick={() => setActiveTab('reports')}
                 className={`px-4 py-2.5 text-sm font-medium relative ${activeTab === 'reports' ? 'text-gray-900 dark:text-[#FFFFFF]' : 'text-gray-500 dark:text-[#A8A8A8]'}`}
@@ -2228,220 +2718,42 @@ export default function Results() {
           <ClassHeatmap examId={examId} exams={exams} session={session} userRole={userRole} />
         )}
 
-        {isAdminMainView && activeTab === 'reports' && !reportsStudentId && (
-          <>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Group</label>
-                  <select
-                    value={reportGroupId}
-                    onChange={(e) => setReportGroupId(e.target.value)}
-                    className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-                  >
-                    <option value="">All Groups</option>
-                    {classGroups.map((g) => (
-                      <option key={g.id} value={g.id}>{g.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Exam Type</label>
-                  <select
-                    value={reportExamTypeId}
-                    onChange={(e) => {
-                      setReportExamTypeId(e.target.value)
-                      setReportExamId('')
-                    }}
-                    className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-                  >
-                    <option value="">All Types</option>
-                    {instituteExamTypes.map((t) => (
-                      <option key={t.id} value={t.id}>{t.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Exam Name</label>
-                  <select
-                    value={reportExamId}
-                    onChange={(e) => setReportExamId(e.target.value)}
-                    className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-                  >
-                    <option value="">All Exams</option>
-                    {reportExams.map((exam) => (
-                      <option key={exam.id} value={exam.id}>{exam.name}</option>
-                    ))}
-                  </select>
-                </div>
-                {!reportGroupId && (
-                  <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Class</label>
-                    <select
-                      value={reportClassId}
-                      onChange={(e) => setReportClassId(e.target.value)}
-                      className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-                    >
-                      <option value="">All Classes</option>
-                      {classes.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              {reportGroupId && reportGroupClasses.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">Classes in group</p>
-                  <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-                    {reportGroupClasses.map((cls) => {
-                      const checked = reportSelectedClassIds.includes(cls.id)
-                      return (
-                        <label
-                          key={cls.id}
-                          className={`shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-lg cursor-pointer text-sm transition-colors ${
-                            checked
-                              ? 'bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-500 text-blue-700 dark:text-blue-300'
-                              : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => {
-                              setReportSelectedClassIds((prev) =>
-                                checked ? prev.filter((id) => id !== cls.id) : [...prev, cls.id],
-                              )
-                            }}
-                            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 shrink-0"
-                          />
-                          {cls.name}
-                        </label>
-                      )
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {reportGroupId && (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setReportViewMode('mixed')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      reportViewMode === 'mixed'
-                        ? 'bg-blue-500 text-white'
-                        : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
-                    }`}
-                  >
-                    Mixed Ranking
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setReportViewMode('section')}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                      reportViewMode === 'section'
-                        ? 'bg-blue-500 text-white'
-                        : 'border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
-                    }`}
-                  >
-                    Section-wise
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {loadingReportRankings && (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading rankings…</span>
-              </div>
-            )}
-
-            {!loadingReportRankings && reportRankings.length === 0 && (
-              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center">
-                <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No graded exams found for selected filters</p>
-              </div>
-            )}
-
-            {!loadingReportRankings && reportRankings.length > 0 && reportViewMode === 'mixed' && (
-              <>
-                <ReportRankingsTable
-                  rankings={reportRankings}
-                  showClassBadge={!!reportGroupId}
-                  onStudentClick={(s) => {
-                    setReportsStudentId(s.id)
-                    setReportsStudentName(s.name)
-                    setReportViewExamId('')
-                  }}
-                />
-                <ReportRankingsMobile
-                  rankings={reportRankings}
-                  showClassBadge={!!reportGroupId}
-                  onStudentClick={(s) => {
-                    setReportsStudentId(s.id)
-                    setReportsStudentName(s.name)
-                    setReportViewExamId('')
-                  }}
-                />
-              </>
-            )}
-
-            {!loadingReportRankings && reportRankings.length > 0 && reportGroupId && reportViewMode === 'section' && (
-              <div className="flex flex-col gap-5">
-                {sectionWiseRankings.map((section) => (
-                  <div
-                    key={section.classId}
-                    className={`rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm overflow-hidden border-l-4 ${SECTION_ACCENT_COLORS[section.accentIndex % SECTION_ACCENT_COLORS.length]}`}
-                  >
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">{section.className}</h3>
-                      <span className={`text-sm font-semibold ${heatmapPctClass(section.avgPct)}`}>
-                        Avg: {section.avgPct}%
-                      </span>
-                    </div>
-                    {section.students.length === 0 ? (
-                      <p className="text-sm text-gray-500 dark:text-[#A8A8A8] text-center py-6">No graded students in this class</p>
-                    ) : (
-                      <>
-                        <ReportRankingsTable
-                          rankings={section.students}
-                          showClassBadge={false}
-                          onStudentClick={(s) => {
-                            setReportsStudentId(s.id)
-                            setReportsStudentName(s.name)
-                            setReportViewExamId('')
-                          }}
-                        />
-                        <ReportRankingsMobile
-                          rankings={section.students}
-                          showClassBadge={false}
-                          onStudentClick={(s) => {
-                            setReportsStudentId(s.id)
-                            setReportsStudentName(s.name)
-                            setReportViewExamId('')
-                          }}
-                        />
-                      </>
-                    )}
-                  </div>
-                ))}
-                {groupOverallAvg !== null && (
-                  <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-6 text-center w-full">
-                    <p className="text-xl font-bold text-gray-900 dark:text-[#FFFFFF]">
-                      Group Overall Avg:{' '}
-                      <span className={heatmapPctClass(groupOverallAvg)}>{groupOverallAvg}%</span>
-                    </p>
-                  </div>
-                )}
-              </div>
-            )}
-
-          </>
+        {isReportsMainView && (
+          <StudentReportsPanel
+            classGroups={reportsClassGroups}
+            reportClasses={reportsClasses}
+            reportGroupClasses={reportGroupClasses}
+            instituteExamTypes={instituteExamTypes}
+            reportExams={reportExams}
+            reportGroupId={reportGroupId}
+            setReportGroupId={setReportGroupId}
+            reportExamTypeId={reportExamTypeId}
+            setReportExamTypeId={setReportExamTypeId}
+            reportExamId={reportExamId}
+            setReportExamId={setReportExamId}
+            reportClassId={reportClassId}
+            setReportClassId={setReportClassId}
+            reportSelectedClassIds={reportSelectedClassIds}
+            setReportSelectedClassIds={setReportSelectedClassIds}
+            reportViewMode={reportViewMode}
+            setReportViewMode={setReportViewMode}
+            reportSubjects={reportSubjects}
+            reportSubjectId={reportSubjectId}
+            setReportSubjectId={setReportSubjectId}
+            showSubjectFilter={userRole === 'teacher'}
+            loadingReportRankings={loadingReportRankings}
+            reportRankings={reportRankings}
+            sectionWiseRankings={sectionWiseRankings}
+            groupOverallAvg={groupOverallAvg}
+            onStudentClick={(s) => {
+              setReportsStudentId(s.id)
+              setReportsStudentName(s.name)
+              setReportViewExamId('')
+            }}
+          />
         )}
 
-        {isAdminReportsStudentView && renderCardExamFlow({
+        {isReportsStudentView && renderCardExamFlow({
           flowOverride: {
             examTypeId: reportExamTypeId,
             setExamTypeId: setReportExamTypeId,
@@ -2457,7 +2769,7 @@ export default function Results() {
           },
         })}
 
-        {isCardExamView && !isAdminReportsStudentView && renderCardExamFlow({
+        {isCardExamView && !isReportsStudentView && renderCardExamFlow({
           blocked: isParentView && !linkedStudentId,
           blockedMessage: 'No linked student found for this parent account.',
         })}
