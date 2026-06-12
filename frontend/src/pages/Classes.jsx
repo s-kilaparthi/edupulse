@@ -2,6 +2,38 @@ import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
+const GROUP_ACCENT_COLORS = [
+  'border-l-blue-500',
+  'border-l-green-500',
+  'border-l-orange-500',
+  'border-l-purple-500',
+]
+
+const INPUT_CLASS =
+  'rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] bg-white dark:bg-[#262626] outline-none focus:border-blue-500 dark:focus:border-blue-400'
+
+const SELECT_CLASS =
+  'rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:border-blue-500 dark:focus:border-blue-400'
+
+const CARD_CLASS =
+  'bg-white dark:bg-[#1C1C1C] rounded-2xl border-2 border-gray-300 dark:border-gray-600 p-5 shadow-sm'
+
+const PRIMARY_BTN_CLASS =
+  'bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shadow-sm'
+
+const DELETE_BTN_CLASS =
+  'text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded px-1.5 py-0.5 font-medium transition-colors'
+
+const GROUP_CHECKBOX_CLASS = (checked) =>
+  `flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 cursor-pointer text-sm transition-colors ${
+    checked
+      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
+      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+  }`
+
+const ROW_CLASS =
+  'flex items-center justify-between gap-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] px-3 py-2'
+
 export default function Classes() {
   const { session } = useOutletContext()
   const [role, setRole] = useState(null)
@@ -638,20 +670,20 @@ export default function Classes() {
 
         <form
           onSubmit={handleCreateGroup}
-          className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm flex flex-col sm:flex-row gap-3"
+          className={`${CARD_CLASS} flex flex-col sm:flex-row gap-3`}
         >
           <input
             type="text"
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
             placeholder="Group name (e.g. 10th Grade, 1st Year)"
-            className="flex-1 rounded-lg border border-gray-200 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+            className={`flex-1 ${INPUT_CLASS}`}
             required
           />
           <button
             type="submit"
             disabled={creatingGroup}
-            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
+            className={`${PRIMARY_BTN_CLASS} shrink-0`}
           >
             {creatingGroup ? 'Creating…' : 'Create Group'}
           </button>
@@ -663,17 +695,18 @@ export default function Classes() {
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No class groups yet. Create one above.</p>
         ) : (
           <ul className="flex flex-col gap-3">
-            {groups.map((group) => {
+            {groups.map((group, groupIndex) => {
               const isExpanded = expandedGroupId === group.id
               const assignedClassIds = new Set(group.class_group_members?.map((m) => m.class_id) ?? [])
               const availableClasses = classes.filter((c) => !assignedClassIds.has(c.id))
               const assignedSubjectIds = new Set(group.group_subjects?.map((gs) => gs.subject_id) ?? [])
               const availableSubjects = allSubjects.filter((s) => !assignedSubjectIds.has(s.id))
+              const accentColor = GROUP_ACCENT_COLORS[groupIndex % GROUP_ACCENT_COLORS.length]
 
               return (
                 <li
                   key={group.id}
-                  className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm"
+                  className={`bg-white dark:bg-[#1C1C1C] rounded-2xl border-2 border-gray-200 dark:border-gray-600 p-5 shadow-sm border-l-4 ${accentColor}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -681,7 +714,7 @@ export default function Classes() {
                       <button
                         type="button"
                         onClick={() => handleDeleteGroup(group.id, group.name)}
-                        className="text-xs text-red-500 hover:text-red-700 font-medium"
+                        className={`text-xs ${DELETE_BTN_CLASS}`}
                       >
                         Delete
                       </button>
@@ -704,7 +737,7 @@ export default function Classes() {
                             {group.class_group_members.map((member) => (
                               <li
                                 key={member.class_id}
-                                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#363636] px-3 py-2"
+                                className={ROW_CLASS}
                               >
                                 <span className="text-sm text-gray-800 dark:text-[#FFFFFF]">
                                   {member.classes?.name ?? 'Unknown class'}
@@ -712,7 +745,7 @@ export default function Classes() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveClassFromGroup(group.id, member.class_id)}
-                                  className="text-gray-400 hover:text-red-500 text-sm font-bold"
+                                  className={`${DELETE_BTN_CLASS} text-sm font-bold`}
                                   aria-label="Remove class"
                                 >
                                   ×
@@ -731,7 +764,7 @@ export default function Classes() {
                               setAddGroupClassId((prev) => ({ ...prev, [group.id]: classId }))
                               if (classId) handleAddClassToGroup(group.id, classId)
                             }}
-                            className="w-full sm:w-64 rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+                            className={`w-full sm:w-64 ${SELECT_CLASS}`}
                           >
                             <option value="">Add Class</option>
                             {availableClasses.map((c) => (
@@ -748,7 +781,7 @@ export default function Classes() {
                             {group.group_subjects.map((gs) => (
                               <li
                                 key={gs.subject_id}
-                                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#363636] px-3 py-2"
+                                className={ROW_CLASS}
                               >
                                 <span className="text-sm text-gray-800 dark:text-[#FFFFFF]">
                                   {gs.subjects?.name ?? 'Unknown subject'}
@@ -756,7 +789,7 @@ export default function Classes() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveSubjectFromGroup(group.id, gs.subject_id)}
-                                  className="text-gray-400 hover:text-red-500 text-sm font-bold"
+                                  className={`${DELETE_BTN_CLASS} text-sm font-bold`}
                                   aria-label="Remove subject"
                                 >
                                   ×
@@ -775,7 +808,7 @@ export default function Classes() {
                               setAddGroupSubjectId((prev) => ({ ...prev, [group.id]: subjectId }))
                               if (subjectId) handleAddSubjectToGroup(group.id, subjectId)
                             }}
-                            className="w-full sm:w-64 rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+                            className={`w-full sm:w-64 ${SELECT_CLASS}`}
                           >
                             <option value="">Add Subject</option>
                             {availableSubjects.map((s) => (
@@ -799,7 +832,7 @@ export default function Classes() {
 
       <form
         onSubmit={handleCreateClass}
-        className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm flex flex-col gap-4"
+        className={`${CARD_CLASS} flex flex-col gap-4`}
       >
         <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Create Class</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -808,7 +841,7 @@ export default function Classes() {
             value={className}
             onChange={(e) => setClassName(e.target.value)}
             placeholder="Class 11A or JEE Batch 2026"
-            className="w-full rounded-lg border border-gray-200 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+            className={`w-full ${INPUT_CLASS}`}
             required
           />
           <input
@@ -816,7 +849,7 @@ export default function Classes() {
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
             placeholder="2025-26"
-            className="w-full rounded-lg border border-gray-200 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+            className={`w-full ${INPUT_CLASS}`}
           />
         </div>
 
@@ -829,11 +862,7 @@ export default function Classes() {
               {groups.map((g) => (
                 <label
                   key={g.id}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
-                    selectedGroupIdsForClass.includes(g.id)
-                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
-                  }`}
+                  className={GROUP_CHECKBOX_CLASS(selectedGroupIdsForClass.includes(g.id))}
                 >
                   <input
                     type="checkbox"
@@ -891,7 +920,7 @@ export default function Classes() {
         <button
           type="submit"
           disabled={saving}
-          className="self-start bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+          className={`self-start ${PRIMARY_BTN_CLASS}`}
         >
           {saving ? 'Saving…' : 'Save'}
         </button>
@@ -914,7 +943,7 @@ export default function Classes() {
             return (
               <li
                 key={cls.id}
-                className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm"
+                className={CARD_CLASS}
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -939,7 +968,7 @@ export default function Classes() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteClass(cls.id, cls.name)}
-                                className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0"
+                                className={`text-xs ${DELETE_BTN_CLASS} shrink-0`}
                               >
                                 Delete
                               </button>
@@ -982,14 +1011,14 @@ export default function Classes() {
                       value={editClassName}
                       onChange={(e) => setEditClassName(e.target.value)}
                       placeholder="Class name"
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className={`w-full ${INPUT_CLASS}`}
                     />
                     <input
                       type="text"
                       value={editAcademicYear}
                       onChange={(e) => setEditAcademicYear(e.target.value)}
                       placeholder="Academic year e.g. 2025-26"
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className={`w-full ${INPUT_CLASS}`}
                     />
                     {groups.length > 0 && (
                       <div>
@@ -1000,11 +1029,7 @@ export default function Classes() {
                           {groups.map((g) => (
                             <label
                               key={g.id}
-                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
-                                editSelectedGroupIds.includes(g.id)
-                                  ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                                  : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
-                              }`}
+                              className={GROUP_CHECKBOX_CLASS(editSelectedGroupIds.includes(g.id))}
                             >
                               <input
                                 type="checkbox"
@@ -1051,7 +1076,7 @@ export default function Classes() {
                           setSavingClassName(false)
                         }}
                         disabled={savingClassName}
-                        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium disabled:opacity-40"
+                        className={`${PRIMARY_BTN_CLASS} px-4 py-1.5 text-sm`}
                       >
                         {savingClassName ? 'Saving...' : 'Save'}
                       </button>
@@ -1115,11 +1140,11 @@ export default function Classes() {
                         {classStudents.length === 0 ? (
                           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No students in this class.</p>
                         ) : (
-                          <ul className="divide-y divide-gray-100 dark:divide-[#363636] rounded-lg border border-gray-200 dark:border-[#363636]">
+                          <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border-2 border-gray-300 dark:border-gray-600">
                             {classStudents.map((student) => (
                               <li
                                 key={student.id}
-                                className="flex items-center justify-between px-4 py-3"
+                                className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#262626]"
                               >
                                 <div>
                                   <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">{student.name}</p>
@@ -1128,7 +1153,7 @@ export default function Classes() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveStudent(student.id)}
-                                  className="text-xs text-red-500 hover:text-red-700"
+                                  className={`text-xs ${DELETE_BTN_CLASS}`}
                                 >
                                   Unassign
                                 </button>
@@ -1150,7 +1175,7 @@ export default function Classes() {
                               searchUnassignedStudents(e.target.value, cls.id)
                             }}
                             placeholder="Search by name or roll number..."
-                            className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm mb-2 dark:bg-[#262626]"
+                            className={`w-full ${INPUT_CLASS} mb-2`}
                           />
 
                           {searchingStudents && (
@@ -1238,7 +1263,7 @@ export default function Classes() {
                               <button
                                 type="button"
                                 onClick={() => handleAddMultipleStudents(cls.id)}
-                                className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-medium"
+                                className="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-medium shadow-sm hover:bg-blue-700"
                               >
                                 Add to Class
                               </button>
@@ -1253,11 +1278,11 @@ export default function Classes() {
                         {classTeachers.length === 0 ? (
                           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No teachers assigned yet.</p>
                         ) : (
-                          <ul className="divide-y divide-gray-100 dark:divide-[#363636] rounded-lg border border-gray-200 dark:border-[#363636]">
+                          <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border-2 border-gray-300 dark:border-gray-600">
                             {classTeachers.map((ct) => (
                               <li
                                 key={ct.id}
-                                className="flex items-center justify-between px-4 py-3"
+                                className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#262626]"
                               >
                                 <div>
                                   <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">
@@ -1270,7 +1295,7 @@ export default function Classes() {
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveTeacher(ct.id)}
-                                  className="text-xs text-red-500 hover:text-red-700"
+                                  className={`text-xs ${DELETE_BTN_CLASS}`}
                                 >
                                   Unassign
                                 </button>
@@ -1283,7 +1308,7 @@ export default function Classes() {
                           <select
                             value={addTeacherId}
                             onChange={(e) => setAddTeacherId(e.target.value)}
-                            className="flex-1 rounded-lg border border-gray-200 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+                            className={`flex-1 ${SELECT_CLASS}`}
                           >
                             <option value="">Select teacher…</option>
                             {allTeachers.map((t) => (
@@ -1293,7 +1318,7 @@ export default function Classes() {
                           <select
                             value={addSubjectId}
                             onChange={(e) => setAddSubjectId(e.target.value)}
-                            className="flex-1 rounded-lg border border-gray-200 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+                            className={`flex-1 ${SELECT_CLASS}`}
                           >
                             <option value="">Select subject…</option>
                             {allSubjects.map((s) => (
@@ -1304,7 +1329,7 @@ export default function Classes() {
                             type="button"
                             onClick={() => handleAddTeacher(cls.id)}
                             disabled={!addTeacherId || !addSubjectId || addingTeacher}
-                            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
+                            className={`${PRIMARY_BTN_CLASS} shrink-0`}
                           >
                             {addingTeacher ? 'Saving…' : 'Save'}
                           </button>
@@ -1322,11 +1347,11 @@ export default function Classes() {
                           {cls.subject_classes?.length === 0 ? (
                             <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No subjects assigned yet.</p>
                           ) : (
-                            <ul className="divide-y divide-gray-100 dark:divide-[#363636] rounded-lg border border-gray-200 dark:border-[#363636]">
+                            <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border-2 border-gray-300 dark:border-gray-600">
                               {cls.subject_classes.map((sc) => (
                                 <li
                                   key={sc.subject_id}
-                                  className="flex items-center justify-between px-4 py-3"
+                                  className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#262626]"
                                 >
                                   <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">
                                     {sc.subjects?.name ?? '—'}
@@ -1334,7 +1359,7 @@ export default function Classes() {
                                   <button
                                     type="button"
                                     onClick={() => handleRemoveSubjectFromClass(cls.id, sc.subject_id)}
-                                    className="text-xs text-red-500 hover:text-red-700"
+                                    className={`text-xs ${DELETE_BTN_CLASS}`}
                                   >
                                     Unassign
                                   </button>
@@ -1347,7 +1372,7 @@ export default function Classes() {
                             <select
                               value={addClassSubjectId}
                               onChange={(e) => setAddClassSubjectId(e.target.value)}
-                              className="flex-1 rounded-lg border border-gray-200 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+                              className={`flex-1 ${SELECT_CLASS}`}
                             >
                               <option value="">Add subject…</option>
                               {unassignedSubjects.map((s) => (
@@ -1363,7 +1388,7 @@ export default function Classes() {
                                 setAddingClassSubject(false)
                               }}
                               disabled={!addClassSubjectId || addingClassSubject}
-                              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
+                              className={`${PRIMARY_BTN_CLASS} shrink-0`}
                             >
                               {addingClassSubject ? 'Adding…' : 'Add'}
                             </button>
