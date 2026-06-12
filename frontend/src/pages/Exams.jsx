@@ -41,6 +41,7 @@ export default function Exams() {
   const [availableClasses, setAvailableClasses] = useState([])
   const [teacherAssignments, setTeacherAssignments] = useState([])
   const [userRole, setUserRole] = useState(null)
+  const [currentUserId, setCurrentUserId] = useState(null)
   const [instituteId, setInstituteId] = useState(null)
   const [instituteExamTypes, setInstituteExamTypes] = useState([])
   const [newInstituteExamType, setNewInstituteExamType] = useState('')
@@ -135,7 +136,7 @@ export default function Exams() {
 
     const { data, error: fetchError } = await supabase
       .from('exam_types')
-      .select('id, name')
+      .select('id, name, created_by')
       .eq('institute_id', instId)
       .order('name')
 
@@ -160,9 +161,10 @@ export default function Exams() {
     setError(null)
 
     try {
+      const user = await getAuthUser()
       const { error: insertError } = await supabase
         .from('exam_types')
-        .insert({ name, institute_id: instituteId })
+        .insert({ name, institute_id: instituteId, created_by: user.id })
 
       if (insertError) throw new Error(insertError.message)
 
@@ -253,6 +255,7 @@ export default function Exams() {
       const role = userData?.role ?? 'teacher'
       const instId = userData?.institute_id ?? null
       setUserRole(role)
+      setCurrentUserId(user.id)
       setInstituteId(instId)
 
       if (instId) {
@@ -1091,14 +1094,16 @@ export default function Exams() {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-sm"
               >
                 {t.name}
-                <button
-                  type="button"
-                  onClick={() => handleDeleteExamType(t.id, t.name)}
-                  className="text-gray-400 hover:text-red-600 font-medium leading-none"
-                  aria-label={`Delete ${t.name}`}
-                >
-                  ×
-                </button>
+                {(userRole === 'admin' || t.created_by === currentUserId) && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteExamType(t.id, t.name)}
+                    className="text-gray-400 hover:text-red-600 font-medium leading-none"
+                    aria-label={`Delete ${t.name}`}
+                  >
+                    ×
+                  </button>
+                )}
               </span>
             ))
           )}
