@@ -19,6 +19,45 @@ function formatDate(dateStr) {
   return new Date(dateStr + 'T00:00:00').toLocaleDateString()
 }
 
+function filterClassesByGroup(classes, groupId, classGroups) {
+  if (!groupId) return classes
+  const group = classGroups.find((g) => g.id === groupId)
+  const groupClassIds = new Set(group?.class_group_members?.map((m) => m.class_id) ?? [])
+  return classes.filter((c) => groupClassIds.has(c.id))
+}
+
+function computeSubjectIntersection(adminClassSubjects, selectedClassIds) {
+  if (selectedClassIds.length === 0) return []
+
+  const subjectsByClass = {}
+  for (const row of adminClassSubjects) {
+    if (!subjectsByClass[row.class_id]) subjectsByClass[row.class_id] = new Map()
+    if (row.subjects) subjectsByClass[row.class_id].set(row.subject_id, row.subjects)
+  }
+
+  if (selectedClassIds.length === 1) {
+    const classId = selectedClassIds[0]
+    const map = subjectsByClass[classId] ?? new Map()
+    return Array.from(map.values())
+      .map((s) => ({ id: s.id, name: s.name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  let intersection = null
+  for (const classId of selectedClassIds) {
+    const subjectIds = new Set((subjectsByClass[classId] ?? new Map()).keys())
+    intersection = intersection === null
+      ? subjectIds
+      : new Set([...intersection].filter((id) => subjectIds.has(id)))
+  }
+
+  const firstMap = subjectsByClass[selectedClassIds[0]] ?? new Map()
+  return [...(intersection ?? [])]
+    .map((id) => ({ id, name: firstMap.get(id)?.name ?? 'Unknown' }))
+    .filter((s) => s.name)
+    .sort((a, b) => a.name.localeCompare(b.name))
+}
+
 export default function Exams() {
   const [subjects, setSubjects] = useState([])
   const [exams, setExams] = useState([])
@@ -38,6 +77,10 @@ export default function Exams() {
   const [scope, setScope] = useState('class')
   const [selectedClassIds, setSelectedClassIds] = useState([])
   const [classes, setClasses] = useState([])
+  const [classGroups, setClassGroups] = useState([])
+  const [selectedGroupId, setSelectedGroupId] = useState('')
+  const [createStep, setCreateStep] = useState(1)
+  const [adminClassSubjects, setAdminClassSubjects] = useState([])
   const [availableClasses, setAvailableClasses] = useState([])
   const [teacherAssignments, setTeacherAssignments] = useState([])
   const [userRole, setUserRole] = useState(null)
@@ -413,6 +456,17 @@ export default function Exams() {
           .eq('institute_id', instId)
           .order('name')
         if (classData) setClasses(classData)
+
+        if (role === 'admin') {
+          const { data: groupsData } = await supabase
+            .from('class_groups')
+            .select('id, name, class_group_members(class_id, classes(id, name))')
+            .eq('institute_id', instId)
+            .order('name')
+          setClassGroups(groupsData ?? [])
+        } else {
+          setClassGroups([])
+        }
       }
 
       if (role === 'teacher') {
@@ -477,6 +531,44 @@ export default function Exams() {
     )
   }, [selectedClassIds, userRole, teacherAssignments])
 
+  useEffect(() => {
+    if (userRole !== 'admin' || selectedClassIds.length === 0) {
+      setAdminClassSubjects([])
+      return
+    }
+
+    async function loadClassSubjects() {
+      const { data, error: fetchError } = await supabase
+        .from('subject_classes')
+        .select('class_id, subject_id, subjects(id, name)')
+        .in('class_id', selectedClassIds)
+
+      if (fetchError) {
+        setError(fetchError.message)
+        setAdminClassSubjects([])
+        return
+      }
+      setAdminClassSubjects(data ?? [])
+    }
+
+    loadClassSubjects()
+  }, [selectedClassIds, userRole])
+
+  useEffect(() => {
+    if (userRole !== 'admin') return
+
+    const visible = filterClassesByGroup(classes, selectedGroupId, classGroups)
+    setSelectedClassIds((prev) => prev.filter((id) => visible.some((c) => c.id === id)))
+  }, [selectedGroupId, userRole, classes, classGroups])
+
+  useEffect(() => {
+    if (userRole !== 'admin') return
+
+    const intersection = computeSubjectIntersection(adminClassSubjects, selectedClassIds)
+    const validIds = new Set(intersection.map((s) => s.id))
+    setSelectedSubjects((prev) => prev.filter((s) => validIds.has(s.subject_id)))
+  }, [adminClassSubjects, selectedClassIds, userRole])
+
   function toggleSubject(subject) {
     setSelectedSubjects((prev) => {
       const exists = prev.find((s) => s.subject_id === subject.id)
@@ -489,6 +581,38 @@ export default function Exams() {
     setSelectedSubjects((prev) =>
       prev.map((s) => s.subject_id === subject_id ? { ...s, [field]: value } : s)
     )
+  }
+
+  function getAdminExamScope() {
+    if (selectedClassIds.length === 0) return null
+    if (classes.length > 0 && selectedClassIds.length >= classes.length) return 'institute'
+    if (selectedClassIds.length === 1) return 'class'
+    return 'multiple'
+  }
+
+  function handleNextStep(e) {
+    e.preventDefault()
+    const name = examName.trim()
+    const total = parseInt(totalQuestions, 10)
+
+    if (!name || !examDate || !total || total < 1 || !selectedExamTypeId) {
+      setError('Please fill in all exam fields.')
+      return
+    }
+    if (examType === 'written') {
+      const marks = parseInt(totalMarks, 10)
+      if (!marks || marks < 1) {
+        setError('Please enter total marks for written exams.')
+        return
+      }
+    }
+    if (selectedClassIds.length === 0) {
+      setError('Please select at least one class.')
+      return
+    }
+
+    setError(null)
+    setCreateStep(2)
   }
 
   async function handleCreateExam(e) {
@@ -507,10 +631,14 @@ export default function Exams() {
         return
       }
     }
-    const examScope = userRole === 'teacher' ? 'class' : scope
+    const examScope = userRole === 'teacher' ? 'class' : getAdminExamScope()
 
-    if ((examScope === 'class' || examScope === 'multiple') && selectedClassIds.length === 0) {
+    if (!examScope || ((examScope === 'class' || examScope === 'multiple') && selectedClassIds.length === 0)) {
       setError('Please select at least one class.')
+      return
+    }
+    if (userRole === 'admin' && computeSubjectIntersection(adminClassSubjects, selectedClassIds).length === 0) {
+      setError('No common subjects found for selected classes.')
       return
     }
     if (selectedSubjects.length === 0) {
@@ -575,6 +703,8 @@ export default function Exams() {
       setSelectedSubjects([])
       setScope('class')
       setSelectedClassIds([])
+      setSelectedGroupId('')
+      setCreateStep(1)
       setSuccessMessage(`Exam "${name}" created successfully.`)
       await fetchExams()
     } catch (err) {
@@ -980,11 +1110,23 @@ export default function Exams() {
         .map((a) => a.subject_id)
     : []
 
+  const adminDisplayClasses = useMemo(
+    () => filterClassesByGroup(classes, selectedGroupId, classGroups),
+    [classes, selectedGroupId, classGroups],
+  )
+
+  const adminIntersectionSubjects = useMemo(
+    () => computeSubjectIntersection(adminClassSubjects, selectedClassIds),
+    [adminClassSubjects, selectedClassIds],
+  )
+
   const filteredSubjects = userRole === 'teacher'
     ? subjects.filter((s) => relevantSubjectIds.includes(s.id))
-    : subjects
+    : userRole === 'admin'
+      ? adminIntersectionSubjects
+      : subjects
 
-  const displayClasses = userRole === 'admin' ? classes : availableClasses
+  const displayClasses = userRole === 'admin' ? adminDisplayClasses : availableClasses
 
   const filteredExams = useMemo(() => {
     let list = exams
@@ -1015,246 +1157,468 @@ export default function Exams() {
       <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mb-6">Exams</h1>
 
       <form
-        onSubmit={handleCreateExam}
+        onSubmit={(e) => {
+          if (userRole === 'admin' && createStep === 1) {
+            handleNextStep(e)
+            return
+          }
+          handleCreateExam(e)
+        }}
         className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6"
       >
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Create Exam</h2>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">
+          Create Exam
+          {userRole === 'admin' && (
+            <span className="ml-2 text-xs font-normal text-gray-500 dark:text-[#A8A8A8]">
+              Step {createStep} of 2
+            </span>
+          )}
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
-          <div className="sm:col-span-2">
-            <label htmlFor="institute-exam-type" className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
-              Exam Type
-            </label>
-            <select
-              id="institute-exam-type"
-              required
-              value={selectedExamTypeId}
-              onChange={(e) => setSelectedExamTypeId(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-            >
-              <option value="">Select exam type</option>
-              {instituteExamTypes.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-            {instituteExamTypes.length === 0 && (
-              <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-1">Add exam types below before creating an exam.</p>
-            )}
-          </div>
+          {userRole === 'admin' && createStep === 1 && (
+            <>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Exam name</label>
+                <input
+                  type="text"
+                  value={examName}
+                  onChange={(e) => setExamName(e.target.value)}
+                  placeholder="JEE Mains Mock Test 1"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                />
+              </div>
 
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Exam name</label>
-            <input
-              type="text"
-              value={examName}
-              onChange={(e) => setExamName(e.target.value)}
-              placeholder="JEE Mains Mock Test 1"
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-            />
-          </div>
-
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Exam Type</label>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: 'mcq', label: 'MCQ' },
-                { value: 'written', label: 'Written' },
-              ].map((opt) => (
-                <label
-                  key={opt.value}
-                  className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
-                    examType === opt.value
-                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="examType"
-                    value={opt.value}
-                    checked={examType === opt.value}
-                    onChange={() => setExamType(opt.value)}
-                    className="hidden"
-                  />
-                  {opt.label}
+              <div className="sm:col-span-2">
+                <label htmlFor="institute-exam-type" className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
+                  Exam Type
                 </label>
-              ))}
-            </div>
-          </div>
-
-          {userRole === 'admin' && (
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
-                Exam Scope
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {['class', 'multiple', 'institute'].map((s) => (
-                  <label
-                    key={s}
-                    className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
-                      scope === s
-                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="scope"
-                      value={s}
-                      checked={scope === s}
-                      onChange={() => { setScope(s); setSelectedClassIds([]) }}
-                      className="hidden"
-                    />
-                    {s === 'class' ? 'Single Class' : s === 'multiple' ? 'Multiple Classes' : 'Whole Institute'}
-                  </label>
-                ))}
+                <select
+                  id="institute-exam-type"
+                  required
+                  value={selectedExamTypeId}
+                  onChange={(e) => setSelectedExamTypeId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                >
+                  <option value="">Select exam type</option>
+                  {instituteExamTypes.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+                {instituteExamTypes.length === 0 && (
+                  <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-1">Add exam types below before creating an exam.</p>
+                )}
               </div>
-            </div>
-          )}
 
-          {(userRole === 'teacher' || scope === 'class' || scope === 'multiple') && (
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
-                {userRole === 'teacher'
-                  ? 'Select Classes'
-                  : `Select Class${scope === 'multiple' ? 'es' : ''}`}
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {displayClasses.map((c) => (
-                  <label
-                    key={c.id}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
-                      selectedClassIds.includes(c.id)
-                        ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedClassIds.includes(c.id)}
-                      onChange={() => setSelectedClassIds((prev) =>
-                        prev.includes(c.id)
-                          ? prev.filter((id) => id !== c.id)
-                          : userRole === 'teacher' || scope === 'multiple'
-                            ? [...prev, c.id]
-                            : [c.id]
-                      )}
-                      className="hidden"
-                    />
-                    {c.name}
-                  </label>
-                ))}
-              </div>
-              {displayClasses.length === 0 && (
-                <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">
-                  {userRole === 'teacher'
-                    ? 'No assigned classes found.'
-                    : 'No classes found. Create classes first.'}
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Subjects & Question Ranges</label>
-            {userRole === 'teacher' && selectedClassIds.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">Select one or more classes to see subjects.</p>
-            ) : filteredSubjects.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No subjects found. Add subjects on the Subjects page first.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {filteredSubjects.map((s) => {
-                  const selected = selectedSubjects.find((ss) => ss.subject_id === s.id)
-                  return (
-                    <div key={s.id} className="flex flex-wrap items-center gap-2">
-                      <label className={`flex flex-1 min-w-[100px] text-sm items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
-                        selected
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Format</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'mcq', label: 'MCQ' },
+                    { value: 'written', label: 'Written' },
+                  ].map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                        examType === opt.value
                           ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
-                      }`}>
-                        <input
-                          type="checkbox"
-                          checked={!!selected}
-                          onChange={() => toggleSubject(s)}
-                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-600 shrink-0"
-                        />
-                        {s.name}
-                      </label>
-                      {selected && (
-                        <>
-                          <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Q from</span>
-                          <input
-                            type="number"
-                            min={1}
-                            value={selected.question_from}
-                            onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
-                            placeholder="1"
-                            className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-                          />
-                          <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">to</span>
-                          <input
-                            type="number"
-                            min={1}
-                            value={selected.question_to}
-                            onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
-                            placeholder="30"
-                            className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-                          />
-                        </>
-                      )}
-                    </div>
-                  )
-                })}
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="examType"
+                        value={opt.value}
+                        checked={examType === opt.value}
+                        onChange={() => setExamType(opt.value)}
+                        className="hidden"
+                      />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
               </div>
-            )}
-          </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Exam date</label>
-            <input
-              type="date"
-              value={examDate}
-              onChange={(e) => setExamDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-            />
-          </div>
+              {examType === 'written' && (
+                <div className="sm:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Total Marks</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={totalMarks}
+                    onChange={(e) => setTotalMarks(e.target.value)}
+                    placeholder="Total marks (e.g. 100)"
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                  />
+                </div>
+              )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Total questions</label>
-            <input
-              type="number"
-              min={1}
-              value={totalQuestions}
-              onChange={(e) => setTotalQuestions(e.target.value)}
-              placeholder="90"
-              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-            />
-          </div>
+              <div className="sm:col-span-2">
+                <label htmlFor="exam-group" className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
+                  Select Group (optional)
+                </label>
+                <select
+                  id="exam-group"
+                  value={selectedGroupId}
+                  onChange={(e) => setSelectedGroupId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                >
+                  <option value="">All Classes</option>
+                  {classGroups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
 
-          {examType === 'written' && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Total Marks</label>
-              <input
-                type="number"
-                min={1}
-                required
-                value={totalMarks}
-                onChange={(e) => setTotalMarks(e.target.value)}
-                placeholder="Total marks (e.g. 100)"
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-              />
-            </div>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Select Classes</label>
+                <div className="flex flex-wrap gap-2">
+                  {adminDisplayClasses.map((c) => (
+                    <label
+                      key={c.id}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                        selectedClassIds.includes(c.id)
+                          ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedClassIds.includes(c.id)}
+                        onChange={() => setSelectedClassIds((prev) =>
+                          prev.includes(c.id)
+                            ? prev.filter((id) => id !== c.id)
+                            : [...prev, c.id]
+                        )}
+                        className="rounded border-gray-300 dark:border-gray-600 text-blue-600 shrink-0"
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+                {adminDisplayClasses.length === 0 && (
+                  <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">No classes found. Create classes first.</p>
+                )}
+                {selectedClassIds.length > 0 && classes.length > 0 && selectedClassIds.length >= classes.length && (
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">All classes selected — exam will be institute-wide.</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Exam date</label>
+                <input
+                  type="date"
+                  value={examDate}
+                  onChange={(e) => setExamDate(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Total questions</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={totalQuestions}
+                  onChange={(e) => setTotalQuestions(e.target.value)}
+                  placeholder="90"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 transition-colors"
+                >
+                  Next: Subject & Questions →
+                </button>
+              </div>
+            </>
           )}
 
-          <div className="sm:col-span-2">
-            <button
-              type="submit"
-              disabled={savingExam}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-            >
-              {savingExam ? 'Saving…' : 'Save Exam'}
-            </button>
-          </div>
+          {userRole === 'admin' && createStep === 2 && (
+            <>
+              <div className="sm:col-span-2">
+                <button
+                  type="button"
+                  onClick={() => { setCreateStep(1); setError(null) }}
+                  className="text-sm font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                >
+                  ← Back to exam details
+                </button>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Subjects & Question Ranges</label>
+                {selectedClassIds.length === 0 ? (
+                  <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">Select one or more classes first.</p>
+                ) : adminIntersectionSubjects.length === 0 ? (
+                  <p className="text-sm text-amber-600 dark:text-amber-400 font-medium">
+                    No common subjects found for selected classes
+                  </p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {filteredSubjects.map((s) => {
+                      const selected = selectedSubjects.find((ss) => ss.subject_id === s.id)
+                      return (
+                        <div key={s.id} className="flex flex-wrap items-center gap-2">
+                          <label className={`flex flex-1 min-w-[100px] text-sm items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                            selected
+                              ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={!!selected}
+                              onChange={() => toggleSubject(s)}
+                              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-600 shrink-0"
+                            />
+                            {s.name}
+                          </label>
+                          {selected && (
+                            <>
+                              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Q from</span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={selected.question_from}
+                                onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
+                                placeholder="1"
+                                className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                              />
+                              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">to</span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={selected.question_to}
+                                onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
+                                placeholder="30"
+                                className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                              />
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="sm:col-span-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setCreateStep(1); setError(null) }}
+                  className="border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] text-gray-700 dark:text-[#A8A8A8] font-medium px-4 py-2 rounded-lg hover:shadow-md transition-shadow"
+                >
+                  Back
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingExam}
+                  className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {savingExam ? 'Saving…' : 'Save Exam'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {userRole === 'teacher' && (
+            <>
+              <div className="sm:col-span-2">
+                <label htmlFor="institute-exam-type" className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
+                  Exam Type
+                </label>
+                <select
+                  id="institute-exam-type"
+                  required
+                  value={selectedExamTypeId}
+                  onChange={(e) => setSelectedExamTypeId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                >
+                  <option value="">Select exam type</option>
+                  {instituteExamTypes.map((t) => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Exam name</label>
+                <input
+                  type="text"
+                  value={examName}
+                  onChange={(e) => setExamName(e.target.value)}
+                  placeholder="JEE Mains Mock Test 1"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                />
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Format</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: 'mcq', label: 'MCQ' },
+                    { value: 'written', label: 'Written' },
+                  ].map((opt) => (
+                    <label
+                      key={opt.value}
+                      className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                        examType === opt.value
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="examType"
+                        value={opt.value}
+                        checked={examType === opt.value}
+                        onChange={() => setExamType(opt.value)}
+                        className="hidden"
+                      />
+                      {opt.label}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Select Classes</label>
+                <div className="flex flex-wrap gap-2">
+                  {displayClasses.map((c) => (
+                    <label
+                      key={c.id}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                        selectedClassIds.includes(c.id)
+                          ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedClassIds.includes(c.id)}
+                        onChange={() => setSelectedClassIds((prev) =>
+                          prev.includes(c.id)
+                            ? prev.filter((id) => id !== c.id)
+                            : [...prev, c.id]
+                        )}
+                        className="hidden"
+                      />
+                      {c.name}
+                    </label>
+                  ))}
+                </div>
+                {displayClasses.length === 0 && (
+                  <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">No assigned classes found.</p>
+                )}
+              </div>
+
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Subjects & Question Ranges</label>
+                {selectedClassIds.length === 0 ? (
+                  <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">Select one or more classes to see subjects.</p>
+                ) : filteredSubjects.length === 0 ? (
+                  <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No subjects found. Add subjects on the Subjects page first.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {filteredSubjects.map((s) => {
+                      const selected = selectedSubjects.find((ss) => ss.subject_id === s.id)
+                      return (
+                        <div key={s.id} className="flex flex-wrap items-center gap-2">
+                          <label className={`flex flex-1 min-w-[100px] text-sm items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
+                            selected
+                              ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                              : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+                          }`}>
+                            <input
+                              type="checkbox"
+                              checked={!!selected}
+                              onChange={() => toggleSubject(s)}
+                              className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-600 shrink-0"
+                            />
+                            {s.name}
+                          </label>
+                          {selected && (
+                            <>
+                              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Q from</span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={selected.question_from}
+                                onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
+                                placeholder="1"
+                                className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                              />
+                              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">to</span>
+                              <input
+                                type="number"
+                                min={1}
+                                value={selected.question_to}
+                                onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
+                                placeholder="30"
+                                className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                              />
+                            </>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Exam date</label>
+                <input
+                  type="date"
+                  value={examDate}
+                  onChange={(e) => setExamDate(e.target.value)}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Total questions</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={totalQuestions}
+                  onChange={(e) => setTotalQuestions(e.target.value)}
+                  placeholder="90"
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                />
+              </div>
+
+              {examType === 'written' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Total Marks</label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={totalMarks}
+                    onChange={(e) => setTotalMarks(e.target.value)}
+                    placeholder="Total marks (e.g. 100)"
+                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                  />
+                </div>
+              )}
+
+              <div className="sm:col-span-2">
+                <button
+                  type="submit"
+                  disabled={savingExam}
+                  className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                >
+                  {savingExam ? 'Saving…' : 'Save Exam'}
+                </button>
+              </div>
+            </>
+          )}
+
         </div>
       </form>
 
