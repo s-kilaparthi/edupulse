@@ -213,6 +213,14 @@ export default function Exams() {
     )
   }
 
+  function canDeleteExam(exam) {
+    if (!exam || !currentUserId) return false
+    if (showAssignedByAdminBadge(exam)) return false
+    if (userRole === 'admin') return true
+    if (exam.created_by === currentUserId) return true
+    return false
+  }
+
   async function handleAddExamType() {
     const name = newInstituteExamType.trim()
     if (!name || !instituteId) return
@@ -1539,36 +1547,42 @@ export default function Exams() {
                           {activeExam?.id === exam.id ? 'Close' : 'Add Questions'}
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => openAIGenerator(exam)}
-                        className="text-sm font-medium text-purple-600 hover:text-purple-700"
-                      >
-                        🤖 Generate with AI
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openAssignClassesModal(exam.id)}
-                        className="text-xs font-medium text-gray-600 border border-gray-300 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
-                      >
-                        Assign to Class
-                      </button>
-                      {userRole === 'admin' && (
+                      {!showAssignedByAdminBadge(exam) && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => openAIGenerator(exam)}
+                            className="text-sm font-medium text-purple-600 hover:text-purple-700"
+                          >
+                            🤖 Generate with AI
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openAssignClassesModal(exam.id)}
+                            className="text-xs font-medium text-gray-600 border border-gray-300 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                          >
+                            Assign to Class
+                          </button>
+                          {userRole === 'admin' && (
+                            <button
+                              type="button"
+                              onClick={() => openAssignTeachersModal(exam.id)}
+                              className="text-xs font-medium text-gray-600 border border-gray-300 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              Assign Teachers
+                            </button>
+                          )}
+                        </>
+                      )}
+                      {canDeleteExam(exam) && (
                         <button
                           type="button"
-                          onClick={() => openAssignTeachersModal(exam.id)}
-                          className="text-xs font-medium text-gray-600 border border-gray-300 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                          onClick={() => handleDeleteExam(exam.id, exam.name, exam.exam_type)}
+                          className="text-xs text-red-500 hover:text-red-700 font-medium"
                         >
-                          Assign Teachers
+                          Delete
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteExam(exam.id, exam.name, exam.exam_type)}
-                        className="text-xs text-red-500 hover:text-red-700 font-medium"
-                      >
-                        Delete
-                      </button>
                     </div>
                     <p className="text-xs text-gray-500">
                       {exam.exam_subjects?.map((es) => {
