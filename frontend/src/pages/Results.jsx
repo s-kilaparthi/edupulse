@@ -1124,6 +1124,29 @@ export default function Results() {
     )
   })
 
+  const examTypeSummary = useMemo(() => {
+    if (!selectedExamTypeId || !isLearnerView) return null
+
+    const typeName = instituteExamTypes.find((t) => t.id === selectedExamTypeId)?.name ?? 'Exam Type'
+    const gradedExams = examSummaries.filter((s) => !s.notGraded && s.hasResult)
+
+    if (gradedExams.length === 0) {
+      return { typeName, noGraded: true }
+    }
+
+    const sumObtained = gradedExams.reduce((sum, s) => sum + s.score, 0)
+    const sumTotal = gradedExams.reduce((sum, s) => sum + s.total, 0)
+    const percentage = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : 0
+
+    return { typeName, sumObtained, sumTotal, percentage, noGraded: false }
+  }, [selectedExamTypeId, examSummaries, instituteExamTypes, isLearnerView])
+
+  function examTypeSummaryPctClass(pct) {
+    if (pct >= 70) return 'text-green-600 dark:text-green-400'
+    if (pct >= 40) return 'text-orange-600 dark:text-orange-400'
+    return 'text-red-600 dark:text-red-400'
+  }
+
   function renderCardExamFlow({ blocked = false, blockedMessage = null }) {
     return (
       <>
@@ -1149,6 +1172,24 @@ export default function Results() {
             </button>
           )}
         </div>
+
+        {isLearnerView && selectedExamTypeId && !examId && !blocked && !loadingSummaries && examTypeSummary && (
+          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
+              {examTypeSummary.typeName} Summary
+            </h2>
+            {examTypeSummary.noGraded ? (
+              <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mt-2">No graded exams yet</p>
+            ) : (
+              <p className="text-sm text-gray-700 dark:text-[#A8A8A8] mt-2">
+                Total Score: {examTypeSummary.sumObtained} / {examTypeSummary.sumTotal}{' '}
+                <span className={`font-semibold ${examTypeSummaryPctClass(examTypeSummary.percentage)}`}>
+                  ({examTypeSummary.percentage}%)
+                </span>
+              </p>
+            )}
+          </div>
+        )}
 
         {blocked && blockedMessage && (
           <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
