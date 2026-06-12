@@ -41,6 +41,14 @@ export default function Classes() {
   const [editAcademicYear, setEditAcademicYear] = useState('')
   const [savingClassName, setSavingClassName] = useState(false)
 
+  const [groups, setGroups] = useState([])
+  const [loadingGroups, setLoadingGroups] = useState(true)
+  const [expandedGroupId, setExpandedGroupId] = useState(null)
+  const [groupName, setGroupName] = useState('')
+  const [creatingGroup, setCreatingGroup] = useState(false)
+  const [addGroupClassId, setAddGroupClassId] = useState({})
+  const [addGroupSubjectId, setAddGroupSubjectId] = useState({})
+
   useEffect(() => {
     if (!session?.user?.id) return
     supabase
@@ -89,11 +97,32 @@ export default function Classes() {
     setLoading(false)
   }, [instituteId])
 
+  const fetchGroups = useCallback(async () => {
+    if (!instituteId) return
+    setLoadingGroups(true)
+
+    const { data, error: groupsError } = await supabase
+      .from('class_groups')
+      .select('id, name, class_group_members(id, class_id, classes(id, name)), group_subjects(id, subject_id, subjects(id, name))')
+      .eq('institute_id', instituteId)
+      .order('name')
+
+    if (groupsError) {
+      setError(groupsError.message)
+      setGroups([])
+    } else {
+      setGroups(data ?? [])
+    }
+
+    setLoadingGroups(false)
+  }, [instituteId])
+
   useEffect(() => {
     if (role !== 'admin' || !instituteId) return
     setLoading(true)
     fetchClasses()
-  }, [role, instituteId, fetchClasses])
+    fetchGroups()
+  }, [role, instituteId, fetchClasses, fetchGroups])
 
   useEffect(() => {
     if (role !== 'admin' || !instituteId) return
@@ -109,6 +138,192 @@ export default function Classes() {
 
     loadOptions()
   }, [role, instituteId])
+
+  async function syncSubjectsToClass(classId, subjectIds) {
+    if (!subjectIds.length) return
+
+    const { data: existing } = await supabase
+      .from('subject_classes')
+      .select('subject_id')
+      .eq('class_id', classId)
+
+    const existingIds = new Set((existing ?? []).map((r) => r.subject_id))
+    const rows = subjectIds
+      .filter((id) => !existingIds.has(id))
+      .map((subjectId) => ({ class_id: classId, subject_id: subjectId }))
+
+    if (rows.length > 0) {
+      const { error: insertError } = await supabase.from('subject_classes').insert(rows)
+      if (insertError) throw new Error(insertError.message)
+    }
+  }
+
+  async function subjectStillAssignedViaOtherGroup(classId, subjectId, excludeGroupId) {
+    const { data: memberships } = await supabase
+      .from('class_group_members')
+      .select('group_id')
+      .eq('class_id', classId)
+      .neq('group_id', excludeGroupId)
+
+    const otherGroupIds = (memberships ?? []).map((m) => m.group_id)
+    if (otherGroupIds.length === 0) return false
+
+    const { data: stillAssigned } = await supabase
+      .from('group_subjects')
+      .select('group_id')
+      .eq('subject_id', subjectId)
+      .in('group_id', otherGroupIds)
+
+    return (stillAssigned ?? []).length > 0
+  }
+
+  function getGroupStudentCount(group) {
+    const classIds = group.class_group_members?.map((m) => m.class_id) ?? []
+    return classIds.reduce((sum, classId) => sum + (studentCounts[classId] ?? 0), 0)
+  }
+
+  async function handleCreateGroup(e) {
+    e.preventDefault()
+    if (!groupName.trim() || !instituteId) return
+
+    setCreatingGroup(true)
+    setError(null)
+
+    try {
+      const { error: insertError } = await supabase.from('class_groups').insert({
+        name: groupName.trim(),
+        institute_id: instituteId,
+      })
+
+      if (insertError) throw new Error(insertError.message)
+
+      setGroupName('')
+      await fetchGroups()
+    } catch (err) {
+      setError(err.message)
+    }
+
+    setCreatingGroup(false)
+  }
+
+  async function handleDeleteGroup(groupId, name) {
+    if (!window.confirm(`Delete group "${name}"? Classes and subjects will not be deleted.`)) return
+
+    try {
+      const { error: deleteError } = await supabase.from('class_groups').delete().eq('id', groupId)
+      if (deleteError) throw new Error(deleteError.message)
+
+      if (expandedGroupId === groupId) setExpandedGroupId(null)
+      await fetchGroups()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function toggleGroup(groupId) {
+    if (expandedGroupId === groupId) {
+      setExpandedGroupId(null)
+      return
+    }
+    setExpandedGroupId(groupId)
+  }
+
+  async function handleAddClassToGroup(groupId, classId) {
+    if (!classId) return
+    setError(null)
+
+    try {
+      const { error: memberError } = await supabase.from('class_group_members').insert({
+        group_id: groupId,
+        class_id: classId,
+      })
+      if (memberError) throw new Error(memberError.message)
+
+      const group = groups.find((g) => g.id === groupId)
+      const subjectIds = group?.group_subjects?.map((gs) => gs.subject_id) ?? []
+      await syncSubjectsToClass(classId, subjectIds)
+
+      setAddGroupClassId((prev) => ({ ...prev, [groupId]: '' }))
+      await fetchGroups()
+      await fetchClasses()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleRemoveClassFromGroup(memberId) {
+    setError(null)
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('class_group_members')
+        .delete()
+        .eq('id', memberId)
+
+      if (deleteError) throw new Error(deleteError.message)
+
+      await fetchGroups()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleAddSubjectToGroup(groupId, subjectId) {
+    if (!subjectId) return
+    setError(null)
+
+    try {
+      const { error: gsError } = await supabase.from('group_subjects').insert({
+        group_id: groupId,
+        subject_id: subjectId,
+      })
+      if (gsError) throw new Error(gsError.message)
+
+      const group = groups.find((g) => g.id === groupId)
+      const classIds = group?.class_group_members?.map((m) => m.class_id) ?? []
+      for (const classId of classIds) {
+        await syncSubjectsToClass(classId, [subjectId])
+      }
+
+      setAddGroupSubjectId((prev) => ({ ...prev, [groupId]: '' }))
+      await fetchGroups()
+      await fetchClasses()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleRemoveSubjectFromGroup(groupId, subjectId, groupSubjectRowId) {
+    setError(null)
+
+    try {
+      const group = groups.find((g) => g.id === groupId)
+      const memberClassIds = group?.class_group_members?.map((m) => m.class_id) ?? []
+
+      const { error: deleteGsError } = await supabase
+        .from('group_subjects')
+        .delete()
+        .eq('id', groupSubjectRowId)
+
+      if (deleteGsError) throw new Error(deleteGsError.message)
+
+      for (const classId of memberClassIds) {
+        const stillViaGroup = await subjectStillAssignedViaOtherGroup(classId, subjectId, groupId)
+        if (stillViaGroup) continue
+
+        await supabase
+          .from('subject_classes')
+          .delete()
+          .eq('class_id', classId)
+          .eq('subject_id', subjectId)
+      }
+
+      await fetchGroups()
+      await fetchClasses()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   async function loadClassDetails(classId) {
     const [studentsRes, teachersRes] = await Promise.all([
@@ -367,6 +582,173 @@ export default function Classes() {
         <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse</p>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">Class Management</h1>
       </div>
+
+      <section className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <div className="w-1 h-5 bg-blue-500 rounded-full" />
+          <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">Class Groups</h2>
+        </div>
+
+        <form
+          onSubmit={handleCreateGroup}
+          className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm flex flex-col sm:flex-row gap-3"
+        >
+          <input
+            type="text"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            placeholder="Group name (e.g. 10th Grade, 1st Year)"
+            className="flex-1 rounded-lg border border-gray-200 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+            required
+          />
+          <button
+            type="submit"
+            disabled={creatingGroup}
+            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shrink-0"
+          >
+            {creatingGroup ? 'Creating…' : 'Create Group'}
+          </button>
+        </form>
+
+        {loadingGroups ? (
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading groups…</p>
+        ) : groups.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No class groups yet. Create one above.</p>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {groups.map((group) => {
+              const isExpanded = expandedGroupId === group.id
+              const assignedClassIds = new Set(group.class_group_members?.map((m) => m.class_id) ?? [])
+              const availableClasses = classes.filter((c) => !assignedClassIds.has(c.id))
+              const assignedSubjectIds = new Set(group.group_subjects?.map((gs) => gs.subject_id) ?? [])
+              const availableSubjects = allSubjects.filter((s) => !assignedSubjectIds.has(s.id))
+
+              return (
+                <li
+                  key={group.id}
+                  className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{group.name}</p>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteGroup(group.id, group.name)}
+                        className="text-xs text-red-500 hover:text-red-700 font-medium"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.id)}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-700 shrink-0"
+                    >
+                      {isExpanded ? 'Collapse' : 'Manage'}
+                    </button>
+                  </div>
+
+                  {isExpanded && (
+                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#363636] flex flex-col gap-5">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-2">Assigned Classes</p>
+                        {group.class_group_members?.length > 0 ? (
+                          <ul className="flex flex-col gap-2 mb-3">
+                            {group.class_group_members.map((member) => (
+                              <li
+                                key={member.id}
+                                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#363636] px-3 py-2"
+                              >
+                                <span className="text-sm text-gray-800 dark:text-[#FFFFFF]">
+                                  {member.classes?.name ?? 'Unknown class'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveClassFromGroup(member.id)}
+                                  className="text-gray-400 hover:text-red-500 text-sm font-bold"
+                                  aria-label="Remove class"
+                                >
+                                  ×
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mb-3">No classes assigned yet.</p>
+                        )}
+                        {availableClasses.length > 0 && (
+                          <select
+                            value={addGroupClassId[group.id] ?? ''}
+                            onChange={(e) => {
+                              const classId = e.target.value
+                              setAddGroupClassId((prev) => ({ ...prev, [group.id]: classId }))
+                              if (classId) handleAddClassToGroup(group.id, classId)
+                            }}
+                            className="w-full sm:w-64 rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+                          >
+                            <option value="">Add Class</option>
+                            {availableClasses.map((c) => (
+                              <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-2">Assigned Subjects</p>
+                        {group.group_subjects?.length > 0 ? (
+                          <ul className="flex flex-col gap-2 mb-3">
+                            {group.group_subjects.map((gs) => (
+                              <li
+                                key={gs.id}
+                                className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#363636] px-3 py-2"
+                              >
+                                <span className="text-sm text-gray-800 dark:text-[#FFFFFF]">
+                                  {gs.subjects?.name ?? 'Unknown subject'}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSubjectFromGroup(group.id, gs.subject_id, gs.id)}
+                                  className="text-gray-400 hover:text-red-500 text-sm font-bold"
+                                  aria-label="Remove subject"
+                                >
+                                  ×
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mb-3">No subjects assigned yet.</p>
+                        )}
+                        {availableSubjects.length > 0 && (
+                          <select
+                            value={addGroupSubjectId[group.id] ?? ''}
+                            onChange={(e) => {
+                              const subjectId = e.target.value
+                              setAddGroupSubjectId((prev) => ({ ...prev, [group.id]: subjectId }))
+                              if (subjectId) handleAddSubjectToGroup(group.id, subjectId)
+                            }}
+                            className="w-full sm:w-64 rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:ring-2 focus:ring-blue-600"
+                          >
+                            <option value="">Add Subject</option>
+                            {availableSubjects.map((s) => (
+                              <option key={s.id} value={s.id}>{s.name}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+
+                      <p className="text-sm text-gray-600 dark:text-[#A8A8A8]">
+                        <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{getGroupStudentCount(group)}</span> students across all classes in this group
+                      </p>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
 
       <form
         onSubmit={handleCreateClass}
