@@ -11,6 +11,7 @@ export default function Classes() {
   const [className, setClassName] = useState('')
   const [academicYear, setAcademicYear] = useState('')
   const [selectedSubjectIdsForClass, setSelectedSubjectIdsForClass] = useState([])
+  const [selectedGroupIdsForClass, setSelectedGroupIdsForClass] = useState([])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -39,6 +40,7 @@ export default function Classes() {
   const [editingClassId, setEditingClassId] = useState(null)
   const [editClassName, setEditClassName] = useState('')
   const [editAcademicYear, setEditAcademicYear] = useState('')
+  const [editSelectedGroupIds, setEditSelectedGroupIds] = useState([])
   const [savingClassName, setSavingClassName] = useState(false)
 
   const [groups, setGroups] = useState([])
@@ -372,6 +374,43 @@ export default function Classes() {
     setSearchingStudents(false)
   }
 
+  function getClassGroupIds(classId) {
+    return groups
+      .filter((g) => g.class_group_members?.some((m) => m.class_id === classId))
+      .map((g) => g.id)
+  }
+
+  async function assignClassToGroups(classId, groupIds) {
+    for (const groupId of groupIds) {
+      const { error: memberError } = await supabase.from('class_group_members').insert({
+        group_id: groupId,
+        class_id: classId,
+      })
+      if (memberError) throw new Error(memberError.message)
+
+      const group = groups.find((g) => g.id === groupId)
+      const subjectIds = group?.group_subjects?.map((gs) => gs.subject_id) ?? []
+      await syncSubjectsToClass(classId, subjectIds)
+    }
+  }
+
+  async function syncClassGroupMemberships(classId, selectedGroupIds) {
+    const currentGroupIds = getClassGroupIds(classId)
+    const toAdd = selectedGroupIds.filter((id) => !currentGroupIds.includes(id))
+    const toRemove = currentGroupIds.filter((id) => !selectedGroupIds.includes(id))
+
+    for (const groupId of toRemove) {
+      const { error: deleteError } = await supabase
+        .from('class_group_members')
+        .delete()
+        .eq('group_id', groupId)
+        .eq('class_id', classId)
+      if (deleteError) throw new Error(deleteError.message)
+    }
+
+    await assignClassToGroups(classId, toAdd)
+  }
+
   async function handleCreateClass(e) {
     e.preventDefault()
     if (!className.trim() || !instituteId) return
@@ -401,11 +440,17 @@ export default function Classes() {
         if (scError) throw new Error(scError.message)
       }
 
+      if (selectedGroupIdsForClass.length > 0) {
+        await assignClassToGroups(newClass.id, selectedGroupIdsForClass)
+      }
+
       setClassName('')
       setAcademicYear('')
       setSelectedSubjectIdsForClass([])
+      setSelectedGroupIdsForClass([])
       setLoading(true)
       await fetchClasses()
+      await fetchGroups()
     } catch (err) {
       setError(err.message)
     }
@@ -775,6 +820,40 @@ export default function Classes() {
           />
         </div>
 
+        {groups.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
+              Assign to Group(s)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {groups.map((g) => (
+                <label
+                  key={g.id}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
+                    selectedGroupIdsForClass.includes(g.id)
+                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                      : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedGroupIdsForClass.includes(g.id)}
+                    onChange={() =>
+                      setSelectedGroupIdsForClass((prev) =>
+                        prev.includes(g.id)
+                          ? prev.filter((id) => id !== g.id)
+                          : [...prev, g.id]
+                      )
+                    }
+                    className="hidden"
+                  />
+                  {g.name}
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
         {allSubjects.length > 0 && (
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
@@ -851,6 +930,7 @@ export default function Classes() {
                                   setEditingClassId(cls.id)
                                   setEditClassName(cls.name)
                                   setEditAcademicYear(cls.academic_year ?? '')
+                                  setEditSelectedGroupIds(getClassGroupIds(cls.id))
                                 }}
                                 className="text-xs text-blue-500 hover:text-blue-700 font-medium"
                               >
@@ -911,19 +991,63 @@ export default function Classes() {
                       placeholder="Academic year e.g. 2025-26"
                       className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
                     />
+                    {groups.length > 0 && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
+                          Assign to Group(s)
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {groups.map((g) => (
+                            <label
+                              key={g.id}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
+                                editSelectedGroupIds.includes(g.id)
+                                  ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                                  : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={editSelectedGroupIds.includes(g.id)}
+                                onChange={() =>
+                                  setEditSelectedGroupIds((prev) =>
+                                    prev.includes(g.id)
+                                      ? prev.filter((id) => id !== g.id)
+                                      : [...prev, g.id]
+                                  )
+                                }
+                                className="hidden"
+                              />
+                              {g.name}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={async () => {
                           setSavingClassName(true)
-                          await supabase.from('classes')
-                            .update({
-                              name: editClassName,
-                              academic_year: editAcademicYear,
-                            })
-                            .eq('id', cls.id)
-                          setEditingClassId(null)
-                          await fetchClasses()
+                          setError(null)
+                          try {
+                            const { error: updateError } = await supabase.from('classes')
+                              .update({
+                                name: editClassName,
+                                academic_year: editAcademicYear,
+                              })
+                              .eq('id', cls.id)
+                            if (updateError) throw new Error(updateError.message)
+
+                            await syncClassGroupMemberships(cls.id, editSelectedGroupIds)
+
+                            setEditingClassId(null)
+                            setEditSelectedGroupIds([])
+                            await fetchClasses()
+                            await fetchGroups()
+                          } catch (err) {
+                            setError(err.message)
+                          }
                           setSavingClassName(false)
                         }}
                         disabled={savingClassName}
@@ -933,7 +1057,10 @@ export default function Classes() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setEditingClassId(null)}
+                        onClick={() => {
+                          setEditingClassId(null)
+                          setEditSelectedGroupIds([])
+                        }}
                         className="text-gray-500 dark:text-[#A8A8A8] text-sm px-3 py-1.5"
                       >
                         Cancel
