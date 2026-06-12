@@ -39,6 +39,9 @@ export default function Subjects() {
   const [noteTitle, setNoteTitle] = useState('')
   const [noteUrl, setNoteUrl] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [sharePopoverNoteId, setSharePopoverNoteId] = useState(null)
+  const [sharedClassMap, setSharedClassMap] = useState({})
+  const [sharingNoteId, setSharingNoteId] = useState(null)
   const topicInputRef = useRef(null)
 
   useEffect(() => {
@@ -113,14 +116,14 @@ export default function Subjects() {
     // Query 1: notes for specific class
     const { data: classNotes } = await supabase
       .from('subject_notes')
-      .select('id, subject_id, title, url, created_at, class_id')
+      .select('id, subject_id, title, url, created_at, class_id, uploaded_by')
       .in('subject_id', subjectIds)
       .eq('class_id', classId || '')
 
     // Query 2: notes with null class_id (admin/institute-wide)
     const { data: globalNotes } = await supabase
       .from('subject_notes')
-      .select('id, subject_id, title, url, created_at, class_id')
+      .select('id, subject_id, title, url, created_at, class_id, uploaded_by')
       .in('subject_id', subjectIds)
       .is('class_id', null)
 
@@ -133,6 +136,89 @@ export default function Subjects() {
       map[note.subject_id].push(note)
     }
     setSubjectNotes(map)
+  }
+
+  function getShareableClassesForNote(subjectId, sourceClassId) {
+    const classIdsForSubject = [
+      ...new Set(
+        teacherAssignments
+          .filter((a) => a.subject_id === subjectId)
+          .map((a) => a.class_id)
+      ),
+    ]
+    return availableClasses.filter(
+      (c) => classIdsForSubject.includes(c.id) && c.id !== sourceClassId
+    )
+  }
+
+  async function loadSharedClassesForNote(note) {
+    const { data } = await supabase
+      .from('subject_notes')
+      .select('id, class_id')
+      .eq('subject_id', note.subject_id)
+      .eq('title', note.title)
+      .eq('url', note.url)
+      .eq('uploaded_by', session.user.id)
+
+    const map = {}
+    for (const row of data ?? []) {
+      if (row.class_id && row.class_id !== note.class_id) {
+        map[row.class_id] = row.id
+      }
+    }
+    return map
+  }
+
+  async function toggleSharePopover(note) {
+    if (sharePopoverNoteId === note.id) {
+      setSharePopoverNoteId(null)
+      return
+    }
+
+    const map = await loadSharedClassesForNote(note)
+    setSharedClassMap((prev) => ({ ...prev, [note.id]: map }))
+    setSharePopoverNoteId(note.id)
+  }
+
+  async function handleShareClassToggle(note, classId) {
+    const shared = sharedClassMap[note.id] ?? {}
+    const existingId = shared[classId]
+
+    setSharingNoteId(note.id)
+
+    if (existingId) {
+      await supabase.from('subject_notes').delete().eq('id', existingId)
+      setSharedClassMap((prev) => {
+        const next = { ...(prev[note.id] ?? {}) }
+        delete next[classId]
+        return { ...prev, [note.id]: next }
+      })
+    } else {
+      const { data, error: insertError } = await supabase
+        .from('subject_notes')
+        .insert({
+          subject_id: note.subject_id,
+          class_id: classId,
+          title: note.title,
+          url: note.url,
+          uploaded_by: session.user.id,
+        })
+        .select('id')
+        .single()
+
+      if (!insertError && data) {
+        setSharedClassMap((prev) => ({
+          ...prev,
+          [note.id]: { ...(prev[note.id] ?? {}), [classId]: data.id },
+        }))
+      }
+    }
+
+    await fetchSubjectNotes(
+      subjects.map((s) => s.id),
+      selectedClassId
+    )
+    setSharingNoteId(null)
   }
 
   async function fetchSubjects() {
@@ -924,6 +1010,49 @@ export default function Subjects() {
                                       ? '🌐 All Classes'
                                       : availableClasses.find((c) => c.id === note.class_id)?.name ?? 'Class'}
                                   </span>
+                                  {isTeacher &&
+                                    note.class_id != null &&
+                                    note.uploaded_by === session?.user?.id && (
+                                    <div className="relative shrink-0 ml-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleSharePopover(note)}
+                                        className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                                      >
+                                        Share
+                                      </button>
+                                      {sharePopoverNoteId === note.id && (
+                                        <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white border border-gray-200 rounded-lg shadow-lg p-2">
+                                          <p className="text-xs font-medium text-gray-700 mb-2">
+                                            Share to Class
+                                          </p>
+                                          {getShareableClassesForNote(subject.id, note.class_id).length === 0 ? (
+                                            <p className="text-xs text-gray-400">No other classes</p>
+                                          ) : (
+                                            <ul className="space-y-1">
+                                              {getShareableClassesForNote(subject.id, note.class_id).map((cls) => {
+                                                const isShared = Boolean(sharedClassMap[note.id]?.[cls.id])
+                                                return (
+                                                  <li key={cls.id}>
+                                                    <label className="flex items-center gap-2 text-xs text-gray-700 cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5">
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={isShared}
+                                                        disabled={sharingNoteId === note.id}
+                                                        onChange={() => handleShareClassToggle(note, cls.id)}
+                                                        className="rounded border-gray-300"
+                                                      />
+                                                      <span>{cls.name}</span>
+                                                    </label>
+                                                  </li>
+                                                )
+                                              })}
+                                            </ul>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                   {(isTeacher || isAdmin) && (
                                     <button
                                       type="button"
@@ -931,6 +1060,9 @@ export default function Subjects() {
                                         await supabase.from('subject_notes')
                                           .delete()
                                           .eq('id', note.id)
+                                        setSharePopoverNoteId((prev) =>
+                                          prev === note.id ? null : prev
+                                        )
                                         await fetchSubjectNotes(
                                           subjects.map((s) => s.id),
                                           selectedClassId
