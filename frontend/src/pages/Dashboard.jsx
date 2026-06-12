@@ -52,14 +52,31 @@ function getTimeGreeting() {
   return { text: 'Good Evening', emoji: '🌙' }
 }
 
-function AdminStatCard({ icon, label, value, borderColor }) {
-  return (
-    <div className={`rounded-xl shadow-sm bg-white p-4 border-t-4 ${borderColor}`}>
-      <span className="text-xl">{icon}</span>
+function AdminStatCard({ icon, label, value, borderColor, onClick }) {
+  const className = `rounded-xl shadow-sm bg-white p-4 border-t-4 ${borderColor} ${
+    onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200 transition-all text-left w-full' : ''
+  }`
+
+  const content = (
+    <>
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xl">{icon}</span>
+        {onClick && <span className="text-xs text-blue-600 font-medium shrink-0">→</span>}
+      </div>
       <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
       <p className="text-xs text-gray-500 mt-1">{label}</p>
-    </div>
+    </>
   )
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
+    )
+  }
+
+  return <div className={className}>{content}</div>
 }
 
 function AdminSectionTitle({ title, barColor = 'bg-blue-500' }) {
@@ -904,11 +921,11 @@ export default function Dashboard() {
             {adminTodayExams.length === 0 ? (
               <p className="text-sm text-gray-400">No exams scheduled today</p>
             ) : (
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-2 gap-3">
                 {adminTodayExams.map((exam) => (
                   <div
                     key={exam.id}
-                    className="rounded-xl shadow-sm bg-white p-3 border border-gray-100 min-w-[180px] max-w-xs"
+                    className="rounded-xl shadow-sm bg-white p-3 border border-gray-100"
                   >
                     <p className="font-semibold text-gray-900 text-sm">{exam.name}</p>
                     <p className="text-xs text-gray-500 mt-1">{formatExamClassLabel(exam)}</p>
@@ -919,6 +936,13 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+            <button
+              type="button"
+              onClick={() => navigate('/results')}
+              className="text-xs text-blue-600 hover:text-blue-700 font-medium self-start"
+            >
+              View Results →
+            </button>
           </div>
 
           {/* ZONE 2 — This Week */}
@@ -984,30 +1008,35 @@ export default function Dashboard() {
                 label="Total Students"
                 value={adminStats.students}
                 borderColor="border-t-blue-500"
+                onClick={() => navigate('/students')}
               />
               <AdminStatCard
                 icon="👨‍🏫"
                 label="Total Teachers"
                 value={adminStats.teachers}
                 borderColor="border-t-green-500"
+                onClick={() => navigate('/teachers')}
               />
               <AdminStatCard
                 icon="🏫"
                 label="Total Classes"
                 value={adminStats.classes}
                 borderColor="border-t-orange-500"
+                onClick={() => navigate('/classes')}
               />
               <AdminStatCard
                 icon="📊"
                 label="Institute Avg Score"
                 value={`${adminStats.avg}%`}
                 borderColor="border-t-purple-500"
+                onClick={() => navigate('/results')}
               />
               <AdminStatCard
                 icon="📅"
                 label="Classes with Attendance Today"
                 value={`${adminStats.attendanceMarked}/${adminStats.attendanceTotal}`}
                 borderColor="border-t-indigo-500"
+                onClick={() => navigate('/attendance')}
               />
             </div>
 
@@ -1035,58 +1064,6 @@ export default function Dashboard() {
                   <p className="text-sm text-gray-400 mt-2">No score data yet</p>
                 )}
               </div>
-            </div>
-
-            <AdminSectionTitle title="Quick Actions" barColor="bg-emerald-500" />
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => navigate('/classes')}
-                className="bg-blue-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-blue-600 transition-colors"
-              >
-                <span className="text-xl">🏫</span>
-                <span className="text-sm font-semibold">Classes</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/students')}
-                className="bg-emerald-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-600 transition-colors"
-              >
-                <span className="text-xl">👥</span>
-                <span className="text-sm font-semibold">Students</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/teachers')}
-                className="bg-indigo-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-indigo-600 transition-colors"
-              >
-                <span className="text-xl">👨‍🏫</span>
-                <span className="text-sm font-semibold">Teachers</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/exams')}
-                className="bg-orange-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-orange-600 transition-colors"
-              >
-                <span className="text-xl">📝</span>
-                <span className="text-sm font-semibold">Exams</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/results')}
-                className="bg-purple-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-purple-600 transition-colors"
-              >
-                <span className="text-xl">📊</span>
-                <span className="text-sm font-semibold">Results</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => navigate('/announcements')}
-                className="bg-pink-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-pink-600 transition-colors"
-              >
-                <span className="text-xl">📢</span>
-                <span className="text-sm font-semibold">Announcements</span>
-              </button>
             </div>
 
             <AnnouncementsSection announcements={recentAnnouncements} navigate={navigate} />
