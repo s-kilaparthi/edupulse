@@ -259,11 +259,74 @@ function PerformanceTrend({ trendData, totalExams }) {
   )
 }
 
-function ClassHeatmap({ examId, exams }) {
+function heatmapPctClass(pct) {
+  if (pct >= 70) return 'text-green-600 dark:text-green-400'
+  if (pct >= 40) return 'text-orange-600 dark:text-orange-400'
+  return 'text-red-600 dark:text-red-400'
+}
+
+function ClassHeatmap({ examId, exams, session, userRole }) {
+  const [classId, setClassId] = useState('')
+  const [classes, setClasses] = useState([])
   const [subjectId, setSubjectId] = useState('')
   const [examSubjects, setExamSubjects] = useState([])
   const [heatmapData, setHeatmapData] = useState([])
+  const [classAverage, setClassAverage] = useState(null)
   const [loading, setLoading] = useState(false)
+
+  const selectedExam = exams.find((e) => e.id === examId)
+  const selectedClass = classes.find((c) => c.id === classId)
+  const selectedSubject = examSubjects.find((es) => es.subject_id === subjectId)
+
+  useEffect(() => {
+    if (!session?.user?.id) return
+
+    async function loadClasses() {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('institute_id')
+        .eq('id', session.user.id)
+        .single()
+
+      if (!userData?.institute_id) {
+        setClasses([])
+        setClassId('')
+        return
+      }
+
+      if (userRole === 'admin') {
+        const { data } = await supabase
+          .from('classes')
+          .select('id, name')
+          .eq('institute_id', userData.institute_id)
+          .order('name')
+
+        const classList = data ?? []
+        setClasses(classList)
+        setClassId(classList.length === 1 ? classList[0].id : '')
+        return
+      }
+
+      const { data } = await supabase
+        .from('class_teachers')
+        .select('class_id, classes(id, name)')
+        .eq('teacher_id', session.user.id)
+
+      const unique = []
+      const seen = new Set()
+      for (const row of data ?? []) {
+        if (row.classes && !seen.has(row.class_id)) {
+          seen.add(row.class_id)
+          unique.push(row.classes)
+        }
+      }
+      unique.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+      setClasses(unique)
+      setClassId(unique.length === 1 ? unique[0].id : '')
+    }
+
+    loadClasses()
+  }, [session, userRole])
 
   useEffect(() => {
     if (!examId) return
@@ -274,7 +337,13 @@ function ClassHeatmap({ examId, exams }) {
       .then(({ data }) => {
         if (data) {
           setExamSubjects(data)
-          if (data.length > 0) setSubjectId(data[0].subject_id)
+          if (data.length === 1) {
+            setSubjectId(data[0].subject_id)
+          } else if (data.length > 0) {
+            setSubjectId(data[0].subject_id)
+          } else {
+            setSubjectId('')
+          }
         }
       })
   }, [examId])
@@ -284,7 +353,7 @@ function ClassHeatmap({ examId, exams }) {
     setLoading(true)
     supabase
       .from('topic_scores')
-      .select('student_id, topic_id, percentage, topics(name), users(name, roll_number)')
+      .select('student_id, topic_id, percentage, topics(name), users(name, roll_number, class_id)')
       .eq('exam_id', examId)
       .eq('subject_id', subjectId)
       .then(({ data }) => {
@@ -294,6 +363,8 @@ function ClassHeatmap({ examId, exams }) {
         const topicSet = {}
 
         for (const row of data) {
+          if (classId && row.users?.class_id !== classId) continue
+
           const sid = row.student_id
           const tname = row.topics?.name ?? 'Unknown'
           const sname = row.users?.name ?? 'Unknown'
@@ -310,7 +381,78 @@ function ClassHeatmap({ examId, exams }) {
         setHeatmapData({ topics, students })
         setLoading(false)
       })
-  }, [examId, subjectId])
+  }, [examId, subjectId, classId])
+
+  useEffect(() => {
+    if (!classId || !examId) {
+      setClassAverage(null)
+      return
+    }
+
+    const exam = exams.find((e) => e.id === examId)
+    if (!exam) {
+      setClassAverage(null)
+      return
+    }
+
+    async function loadClassAverage() {
+      const { data: classStudents } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role', 'student')
+        .eq('class_id', classId)
+
+      const studentIds = (classStudents ?? []).map((s) => s.id)
+      if (studentIds.length === 0) {
+        setClassAverage({ sumObtained: 0, sumTotal: 0, percentage: 0 })
+        return
+      }
+
+      if (exam.exam_type === 'written') {
+        const { data: summaries } = await supabase
+          .from('omr_results')
+          .select('marks_obtained, total_marks')
+          .eq('exam_id', examId)
+          .in('student_id', studentIds)
+          .is('question_id', null)
+
+        const sumObtained = (summaries ?? []).reduce((sum, r) => sum + (r.marks_obtained ?? 0), 0)
+        const sumTotal = (summaries ?? []).reduce((sum, r) => sum + (r.total_marks ?? 0), 0)
+        const percentage = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : 0
+        setClassAverage({ sumObtained, sumTotal, percentage })
+        return
+      }
+
+      const { data: mcqResults } = await supabase
+        .from('omr_results')
+        .select('student_id, is_correct, question_id')
+        .eq('exam_id', examId)
+        .in('student_id', studentIds)
+        .not('question_id', 'is', null)
+
+      const studentCorrect = {}
+      const attended = new Set()
+      for (const row of mcqResults ?? []) {
+        if (row.question_id == null) continue
+        attended.add(row.student_id)
+        if (!studentCorrect[row.student_id]) studentCorrect[row.student_id] = 0
+        if (row.is_correct) studentCorrect[row.student_id] += 1
+      }
+
+      let sumObtained = 0
+      let sumTotal = 0
+      const totalQ = exam.total_questions ?? 0
+      for (const sid of attended) {
+        sumObtained += studentCorrect[sid] ?? 0
+        sumTotal += totalQ
+      }
+
+      const percentage = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : 0
+      setClassAverage({ sumObtained, sumTotal, percentage })
+    }
+
+    loadClassAverage()
+  }, [classId, examId, exams])
 
   function cellColor(pct) {
     if (pct === undefined) return 'bg-gray-100 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8]'
@@ -321,15 +463,44 @@ function ClassHeatmap({ examId, exams }) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Subject</label>
-        <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
-          className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600">
-          {examSubjects.map((es) => (
-            <option key={es.subject_id} value={es.subject_id}>{es.subjects?.name}</option>
-          ))}
-        </select>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Class</label>
+          <select
+            value={classId}
+            onChange={(e) => setClassId(e.target.value)}
+            className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="">All Classes</option>
+            {classes.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex items-center gap-3">
+          <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Subject</label>
+          <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
+            className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600">
+            {examSubjects.map((es) => (
+              <option key={es.subject_id} value={es.subject_id}>{es.subjects?.name}</option>
+            ))}
+          </select>
+        </div>
       </div>
+
+      {classId && classAverage && selectedExam && (
+        <div className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 text-center shadow-sm">
+          <p className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
+            {selectedClass?.name ?? 'Class'} · {selectedExam.name} · {selectedSubject?.subjects?.name ?? 'Subject'}
+          </p>
+          <p className="mt-2 text-sm text-gray-700 dark:text-[#A8A8A8]">
+            Class Average: {classAverage.sumObtained} / {classAverage.sumTotal}{' '}
+            <span className={`font-semibold ${heatmapPctClass(classAverage.percentage)}`}>
+              ({classAverage.percentage}%)
+            </span>
+          </p>
+        </div>
+      )}
 
       {loading && <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading heatmap…</p>}
 
@@ -1383,7 +1554,7 @@ export default function Results() {
         )}
 
         {isTeacherMainView && activeTab === 'heatmap' && examId && (
-          <ClassHeatmap examId={examId} exams={exams} />
+          <ClassHeatmap examId={examId} exams={exams} session={session} userRole={userRole} />
         )}
 
         {isCardExamView && renderCardExamFlow({
