@@ -249,7 +249,7 @@ export default function Teachers() {
   if (loadingRole) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
       </div>
     )
   }
@@ -257,20 +257,20 @@ export default function Teachers() {
   if (userRole !== 'admin') {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-500">Access denied. Admin only.</p>
+        <p className="text-gray-500 dark:text-gray-400">Access denied. Admin only.</p>
       </div>
     )
   }
 
   return (
     <>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Teachers</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Teachers</h1>
 
-      <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm mb-6">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Add Teacher</h2>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-6">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Add Teacher</h2>
         <form onSubmit={handleCreateTeacher} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="teacher-name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="teacher-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Full name
             </label>
             <input
@@ -279,12 +279,12 @@ export default function Teachers() {
               value={teacherName}
               onChange={(e) => setTeacherName(e.target.value)}
               placeholder="Priya Sharma"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
             />
           </div>
 
           <div>
-            <label htmlFor="teacher-email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="teacher-email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Email
             </label>
             <input
@@ -293,12 +293,12 @@ export default function Teachers() {
               value={teacherEmail}
               onChange={(e) => setTeacherEmail(e.target.value)}
               placeholder="priya@institute.com"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
             />
           </div>
 
           <div>
-            <label htmlFor="teacher-password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="teacher-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Password
             </label>
             <input
@@ -307,7 +307,7 @@ export default function Teachers() {
               value={teacherPassword}
               onChange={(e) => setTeacherPassword(e.target.value)}
               placeholder="e.g. teacher123"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
             />
           </div>
 
@@ -336,25 +336,25 @@ export default function Teachers() {
       )}
 
       <section>
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">All Teachers</h2>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">All Teachers</h2>
 
         {loading ? (
-          <p className="text-gray-500 text-sm">Loading teachers…</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Loading teachers…</p>
         ) : teachers.length === 0 ? (
-          <p className="text-gray-500 text-sm">No teachers yet. Add one above.</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">No teachers yet. Add one above.</p>
         ) : (
           <ul className="space-y-3">
             {teachers.map((teacher) => (
               <li
                 key={teacher.id}
-                className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
+                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     {editingTeacherId !== teacher.id && (
                       <>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium text-gray-900">{teacher.name}</p>
+                          <p className="font-medium text-gray-900 dark:text-gray-100">{teacher.name}</p>
                           <button
                             type="button"
                             onClick={() => {
@@ -375,7 +375,7 @@ export default function Teachers() {
                             Delete
                           </button>
                         </div>
-                        <p className="text-sm text-gray-500 mt-1">{teacher.email}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{teacher.email}</p>
                       </>
                     )}
                   </div>
@@ -391,20 +391,20 @@ export default function Teachers() {
                 </div>
 
                 {editingTeacherId === teacher.id && (
-                  <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+                  <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
                     <input
                       type="text"
                       value={editTeacherName}
                       onChange={(e) => setEditTeacherName(e.target.value)}
                       placeholder="Name"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <input
                       type="email"
                       value={editTeacherEmail}
                       onChange={(e) => setEditTeacherEmail(e.target.value)}
                       placeholder="Email"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <div className="flex gap-2">
                       <button
@@ -418,7 +418,7 @@ export default function Teachers() {
                       <button
                         type="button"
                         onClick={() => setEditingTeacherId(null)}
-                        className="text-gray-500 text-sm px-3 py-1.5"
+                        className="text-gray-500 dark:text-gray-400 text-sm px-3 py-1.5"
                       >
                         Cancel
                       </button>
@@ -427,28 +427,28 @@ export default function Teachers() {
                 )}
 
                 {expandedTeacherId === teacher.id && editingTeacherId !== teacher.id && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
                     {loadingAssignments ? (
-                      <p className="text-sm text-gray-500">Loading assignments…</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Loading assignments…</p>
                     ) : (
                       <>
                         {assignments.length === 0 ? (
-                          <p className="text-sm text-gray-500 mb-4">No class assignments yet.</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">No class assignments yet.</p>
                         ) : (
                           <div className="overflow-x-auto mb-4">
                             <table className="min-w-[400px] w-full text-sm">
                               <thead>
-                                <tr className="border-b border-gray-200 bg-gray-50">
-                                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Class</th>
-                                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500">Subject</th>
-                                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500">Action</th>
+                                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Class</th>
+                                  <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-gray-400">Subject</th>
+                                  <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 dark:text-gray-400">Action</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {assignments.map((row) => (
-                                  <tr key={row.id} className="border-b border-gray-100">
-                                    <td className="px-3 py-2 text-gray-900">{row.classes?.name ?? '—'}</td>
-                                    <td className="px-3 py-2 text-gray-600">{row.subjects?.name ?? '—'}</td>
+                                  <tr key={row.id} className="border-b border-gray-100 dark:border-gray-700">
+                                    <td className="px-3 py-2 text-gray-900 dark:text-gray-100">{row.classes?.name ?? '—'}</td>
+                                    <td className="px-3 py-2 text-gray-600 dark:text-gray-400">{row.subjects?.name ?? '—'}</td>
                                     <td className="px-3 py-2 text-right">
                                       <button
                                         type="button"
@@ -467,11 +467,11 @@ export default function Teachers() {
 
                         <div className="flex flex-col md:flex-row gap-3 items-end">
                           <div className="w-full md:flex-1">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Class</label>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Class</label>
                             <select
                               value={selectedClassId}
                               onChange={(e) => setSelectedClassId(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
                             >
                               <option value="">Select class…</option>
                               {classes.map((c) => (
@@ -480,11 +480,11 @@ export default function Teachers() {
                             </select>
                           </div>
                           <div className="w-full md:flex-1">
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Subject</label>
                             <select
                               value={selectedSubjectId}
                               onChange={(e) => setSelectedSubjectId(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
                             >
                               <option value="">Select subject…</option>
                               {subjects.map((s) => (

@@ -61,8 +61,8 @@ function AnnouncementCard({
 
   return (
     <div
-      className={`rounded-2xl border border-gray-200 p-5 shadow-sm overflow-hidden break-words ${
-        pinnedCard ? 'bg-yellow-50' : 'bg-white'
+      className={`rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm overflow-hidden break-words ${
+        pinnedCard ? 'bg-yellow-50' : 'bg-white dark:bg-gray-800'
       }`}
     >
       <div className="flex items-start justify-between gap-2">
@@ -72,8 +72,8 @@ function AnnouncementCard({
               {pinnedCard && (
                 <span className="text-xs text-yellow-600 font-medium">📌 Pinned</span>
               )}
-              <h3 className="font-semibold text-gray-900 break-words">{item.title}</h3>
-              <p className="text-sm text-gray-500 mt-1 break-words">{item.body}</p>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100 break-words">{item.title}</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 break-words">{item.body}</p>
             </>
           )}
         </div>
@@ -98,13 +98,13 @@ function AnnouncementCard({
       </div>
 
       {isEditing && (
-        <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+        <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
           <input
             key={`edit-title-${editingAnnouncementId}`}
             type="text"
             value={editTitle}
             onChange={(e) => setEditTitle(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
             placeholder="Title"
             autoComplete="off"
           />
@@ -112,17 +112,17 @@ function AnnouncementCard({
             key={`edit-body-${editingAnnouncementId}`}
             value={editBody}
             onChange={(e) => setEditBody(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm resize-none"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm resize-none dark:bg-gray-700"
             rows={3}
             placeholder="Body"
             autoComplete="off"
           />
-          <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
             <input
               type="checkbox"
               checked={editPinned}
               onChange={(e) => setEditPinned(e.target.checked)}
-              className="rounded border-gray-300"
+              className="rounded border-gray-300 dark:border-gray-600"
             />
             📌 Pin this announcement
           </label>
@@ -138,7 +138,7 @@ function AnnouncementCard({
             <button
               type="button"
               onClick={onCancelEdit}
-              className="text-gray-500 text-sm px-3 py-1.5"
+              className="text-gray-500 dark:text-gray-400 text-sm px-3 py-1.5"
             >
               Cancel
             </button>
@@ -146,7 +146,7 @@ function AnnouncementCard({
         </div>
       )}
 
-      <div className="mt-3 flex items-center gap-3 text-xs text-gray-400">
+      <div className="mt-3 flex items-center gap-3 text-xs text-gray-400 dark:text-gray-500">
         <span>By {item.users?.name}</span>
         <span>· {getTargetLabel(item)}</span>
         <span>· {new Date(item.created_at).toLocaleDateString()}</span>
@@ -489,8 +489,8 @@ export default function Announcements() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse</p>
-          <h1 className="text-2xl font-bold text-gray-900">Announcements</h1>
-          <p className="text-sm text-gray-500">Welcome, {userName}</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Announcements</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Welcome, {userName}</p>
         </div>
         {(userRole !== 'teacher' || teacherAnnouncementTab === 'mine') && isTeacher && (
           <button
@@ -511,7 +511,7 @@ export default function Announcements() {
             className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
               teacherAnnouncementTab === 'institute'
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'border-gray-300 text-gray-600'
+                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
             }`}
           >
             📢 From Institute
@@ -522,7 +522,7 @@ export default function Announcements() {
             className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
               teacherAnnouncementTab === 'mine'
                 ? 'bg-blue-600 text-white border-blue-600'
-                : 'border-gray-300 text-gray-600'
+                : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
             }`}
           >
             📝 My Announcements
@@ -533,9 +533,9 @@ export default function Announcements() {
       {(userRole !== 'teacher' || teacherAnnouncementTab === 'mine') && isTeacher && showForm && (
         <form
           onSubmit={handlePost}
-          className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col gap-4"
+          className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm flex flex-col gap-4"
         >
-          <h2 className="text-sm font-semibold text-gray-900">Post Announcement</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Post Announcement</h2>
 
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg px-3 py-2">
@@ -544,31 +544,31 @@ export default function Announcements() {
           )}
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Title</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Title</label>
             <input
               type="text"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600"
               placeholder="Announcement title"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm text-gray-600 mb-1">Body</label>
+            <label className="block text-sm text-gray-600 dark:text-gray-400 mb-1">Body</label>
             <textarea
               value={newBody}
               onChange={(e) => setNewBody(e.target.value)}
               rows={4}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600 resize-none"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600 resize-none"
               placeholder="Write your announcement…"
             />
           </div>
 
           {userRole === 'teacher' && teacherClasses.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Send To
               </label>
               <div className="flex flex-wrap gap-2 mb-3">
@@ -581,7 +581,7 @@ export default function Announcements() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
                     teacherAnnouncementTarget === 'students'
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 text-gray-600'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                   }`}
                 >
                   My Students
@@ -592,7 +592,7 @@ export default function Announcements() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
                     teacherAnnouncementTarget === 'class_students'
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 text-gray-600'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                   }`}
                 >
                   Specific Class Students
@@ -603,7 +603,7 @@ export default function Announcements() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
                     teacherAnnouncementTarget === 'specific_student'
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
-                      : 'border-gray-300 text-gray-600'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                   }`}
                 >
                   👤 Specific Student
@@ -618,7 +618,7 @@ export default function Announcements() {
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
                         teacherTargetClassIds.includes(c.id)
                           ? 'border-blue-600 bg-blue-50 text-blue-700'
-                          : 'border-gray-300 text-gray-600'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                       }`}
                     >
                       <input
@@ -659,7 +659,7 @@ export default function Announcements() {
                       }
                     }}
                     placeholder="Enter roll number..."
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                   />
                   {teacherSpecificStudent && (
                     <p className="text-xs text-green-700 mt-1 font-medium">
@@ -674,7 +674,7 @@ export default function Announcements() {
 
           {isAdmin && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Send To
               </label>
 
@@ -702,7 +702,7 @@ export default function Announcements() {
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       targetType === opt.value
                         ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-600 border-gray-300 hover:border-gray-400'
+                        : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-600 hover:border-gray-400'
                     }`}
                   >
                     {opt.label}
@@ -712,14 +712,14 @@ export default function Announcements() {
 
               {(targetType === 'class_students' || targetType === 'class_teachers') && (
                 <div className="flex flex-wrap gap-2 mb-2">
-                  <p className="w-full text-xs text-gray-500 mb-1">Select classes:</p>
+                  <p className="w-full text-xs text-gray-500 dark:text-gray-400 mb-1">Select classes:</p>
                   {classes.map((c) => (
                     <label
                       key={c.id}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
                         targetIds.includes(c.id)
                           ? 'bg-blue-50 border-blue-500 text-blue-700'
-                          : 'bg-white border-gray-300 text-gray-600'
+                          : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                       }`}
                     >
                       <input
@@ -742,14 +742,14 @@ export default function Announcements() {
 
               {targetType === 'subject_teachers' && (
                 <div className="flex flex-wrap gap-2 mb-2">
-                  <p className="w-full text-xs text-gray-500 mb-1">Select subjects:</p>
+                  <p className="w-full text-xs text-gray-500 dark:text-gray-400 mb-1">Select subjects:</p>
                   {subjects.map((s) => (
                     <label
                       key={s.id}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
                         targetIds.includes(s.id)
                           ? 'bg-blue-50 border-blue-500 text-blue-700'
-                          : 'bg-white border-gray-300 text-gray-600'
+                          : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                       }`}
                     >
                       <input
@@ -774,7 +774,7 @@ export default function Announcements() {
                 <select
                   value={targetIds[0] ?? ''}
                   onChange={(e) => setTargetIds([e.target.value])}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                 >
                   <option value="">Select teacher...</option>
                   {teachers.map((t) => (
@@ -806,7 +806,7 @@ export default function Announcements() {
                       }
                     }}
                     placeholder="Enter student roll number..."
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                   />
                   {foundAnnouncementStudent && (
                     <p className="text-xs text-green-700 mt-1 font-medium">
@@ -819,12 +819,12 @@ export default function Announcements() {
             </div>
           )}
 
-          <label className="flex items-center gap-2 text-sm text-gray-700">
+          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
             <input
               type="checkbox"
               checked={isPinned}
               onChange={(e) => setIsPinned(e.target.checked)}
-              className="rounded border-gray-300"
+              className="rounded border-gray-300 dark:border-gray-600"
             />
             Pin this announcement
           </label>
@@ -840,11 +840,11 @@ export default function Announcements() {
       )}
 
       {loading && (
-        <p className="text-sm text-gray-500">Loading announcements…</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading announcements…</p>
       )}
 
       {!loading && displayedAnnouncements.length === 0 && (
-        <p className="text-sm text-gray-500">No announcements yet.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No announcements yet.</p>
       )}
 
       {!loading && pinned.length > 0 && (

@@ -142,24 +142,24 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-      <div className="bg-white rounded-2xl shadow p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-12 h-12 bg-blue-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
             <span className="text-white font-bold text-xl">E</span>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">EduPulse</h1>
-          <p className="text-gray-500 text-sm mt-1">Sign in to your account</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">EduPulse</h1>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Sign in to your account</p>
         </div>
 
-        <div className="flex rounded-lg border border-gray-200 p-1 mb-6">
+        <div className="flex rounded-lg border border-gray-200 dark:border-gray-700 p-1 mb-6">
           <button
             type="button"
             onClick={() => setLoginMode('email')}
             className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
               loginMode === 'email'
                 ? 'bg-blue-600 text-white'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300'
             }`}
           >
             Teacher
@@ -170,7 +170,7 @@ export default function Login() {
             className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
               loginMode === 'student'
                 ? 'bg-blue-600 text-white'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300'
             }`}
           >
             Student
@@ -181,7 +181,7 @@ export default function Login() {
             className={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
               loginMode === 'parent'
                 ? 'bg-blue-600 text-white'
-                : 'text-gray-500 hover:text-gray-700'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300'
             }`}
           >
             Parent
@@ -191,7 +191,7 @@ export default function Login() {
         <form onSubmit={handleLogin} className="space-y-4">
           {loginMode === 'email' ? (
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email
               </label>
               <input
@@ -201,13 +201,13 @@ export default function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
                 placeholder="you@example.com"
               />
             </div>
           ) : loginMode === 'student' ? (
             <div>
-              <label htmlFor="roll-number" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="roll-number" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Roll number
               </label>
               <input
@@ -216,13 +216,13 @@ export default function Login() {
                 required
                 value={rollNumber}
                 onChange={(e) => setRollNumber(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
                 placeholder="Your roll number e.g. 007"
               />
             </div>
           ) : (
             <div>
-              <label htmlFor="parent-phone" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="parent-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Phone number
               </label>
               <input
@@ -232,14 +232,14 @@ export default function Login() {
                 value={parentPhone}
                 onChange={(e) => setParentPhone(e.target.value)}
                 maxLength={10}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
                 placeholder="Registered phone number"
               />
             </div>
           )}
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Password
             </label>
             <input
@@ -249,7 +249,7 @@ export default function Login() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
               placeholder={loginMode === 'parent' ? 'Student roll number' : '••••••••'}
             />
           </div>
@@ -268,7 +268,7 @@ export default function Login() {
             {loading ? 'Signing in…' : 'Sign in'}
           </button>
 
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
             New institute?{' '}
             <Link to="/register" className="font-medium text-blue-600 hover:text-blue-700">
               Register here

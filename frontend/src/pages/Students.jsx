@@ -282,17 +282,17 @@ export default function Students() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Students</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Students</h1>
 
       {isAdmin && (
         <form
           onSubmit={handleCreateStudent}
-          className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6"
+          className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6"
         >
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Add Student</h2>
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Add Student</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="student-name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="student-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Full name
               </label>
               <input
@@ -301,12 +301,12 @@ export default function Students() {
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
                 placeholder="Rahul Sharma"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
               />
             </div>
 
             <div>
-              <label htmlFor="student-roll" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="student-roll" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Roll number
               </label>
               <input
@@ -315,7 +315,7 @@ export default function Students() {
                 value={rollNumber}
                 onChange={(e) => setRollNumber(e.target.value)}
                 placeholder="101"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
               />
             </div>
 
@@ -323,7 +323,7 @@ export default function Students() {
               <select
                 value={newStudentClassId}
                 onChange={(e) => setNewStudentClassId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
               >
                 <option value="">Assign to class (optional)</option>
                 {allClasses.map((c) => (
@@ -333,7 +333,7 @@ export default function Students() {
             )}
 
             <div>
-              <label htmlFor="parent-name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="parent-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Parent Name
               </label>
               <input
@@ -342,12 +342,12 @@ export default function Students() {
                 value={parentName}
                 onChange={(e) => setParentName(e.target.value)}
                 placeholder="Parent/Guardian name"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
               />
             </div>
 
             <div>
-              <label htmlFor="parent-phone" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="parent-phone" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Parent Phone
               </label>
               <input
@@ -357,7 +357,7 @@ export default function Students() {
                 onChange={(e) => setParentPhone(e.target.value)}
                 placeholder="10-digit mobile number"
                 maxLength={10}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
               />
             </div>
 
@@ -375,13 +375,13 @@ export default function Students() {
       )}
 
       {isAdmin && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm mb-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm mb-4">
           <input
             type="text"
             value={adminSearch}
             onChange={(e) => setAdminSearch(e.target.value)}
             placeholder="Search by roll number or name..."
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
           />
 
           {allClasses.length > 0 && (
@@ -392,7 +392,7 @@ export default function Students() {
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                   adminFilterClassId === ''
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
                 }`}
               >
                 All Classes
@@ -405,7 +405,7 @@ export default function Students() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     adminFilterClassId === c.id
                       ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
                   }`}
                 >
                   {c.name}
@@ -437,7 +437,7 @@ export default function Students() {
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 selectedFilterClass === ''
                   ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
               }`}
             >
               All Classes
@@ -450,7 +450,7 @@ export default function Students() {
                 className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                   selectedFilterClass === c.id
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
                 }`}
               >
                 {c.name}
@@ -466,20 +466,20 @@ export default function Students() {
               value={teacherSearch}
               onChange={(e) => setTeacherSearch(e.target.value)}
               placeholder="Search by roll number or name..."
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
             />
           </div>
         )}
 
-        <p className="text-sm text-gray-600 mb-4">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
           Total students:{' '}
-          <span className="font-semibold text-gray-900">{listStudents.length}</span>
+          <span className="font-semibold text-gray-900 dark:text-gray-100">{listStudents.length}</span>
         </p>
 
         {loading ? (
-          <p className="text-gray-500 text-sm">Loading students…</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Loading students…</p>
         ) : listStudents.length === 0 ? (
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
             {isAdmin ? 'No students yet. Add one above.' : 'No students yet.'}
           </p>
         ) : (
@@ -487,7 +487,7 @@ export default function Students() {
             {listStudents.map((student) => (
               <li
                 key={student.id}
-                className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm"
+                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm"
               >
                 {editingId === student.id ? (
                   <div className="flex flex-col gap-2">
@@ -496,28 +496,28 @@ export default function Students() {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Name"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <input
                       type="text"
                       value={editRoll}
                       onChange={(e) => setEditRoll(e.target.value)}
                       placeholder="Roll number"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <input
                       type="email"
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
                       placeholder="Email"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <input
                       type="text"
                       value={editParentName}
                       onChange={(e) => setEditParentName(e.target.value)}
                       placeholder="Parent/Guardian name"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <input
                       type="text"
@@ -525,7 +525,7 @@ export default function Students() {
                       onChange={(e) => setEditParentPhone(e.target.value)}
                       placeholder="10-digit mobile number"
                       maxLength={10}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <div className="flex gap-2">
                       <button
@@ -539,7 +539,7 @@ export default function Students() {
                       <button
                         type="button"
                         onClick={handleCancelEdit}
-                        className="text-gray-500 text-xs px-3 py-1.5"
+                        className="text-gray-500 dark:text-gray-400 text-xs px-3 py-1.5"
                       >
                         Cancel
                       </button>
@@ -564,10 +564,10 @@ export default function Students() {
                       >
                         {student.name}
                       </button>
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
                         {student.classes?.name ?? 'No class assigned'}
                       </p>
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         roll{student.roll_number}@edupulse.com · Roll {student.roll_number}
                       </p>
                     </div>

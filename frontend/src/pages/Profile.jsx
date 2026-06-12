@@ -135,14 +135,14 @@ export default function Profile() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto">
-        <p className="text-sm text-gray-500">Loading profile…</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading profile…</p>
       </div>
     )
   }
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center">
             <span className="text-white text-xl font-bold">
@@ -150,35 +150,35 @@ export default function Profile() {
             </span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-gray-900">{profile?.name}</h1>
-            <p className="text-sm text-gray-500">{profile?.role}</p>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">{profile?.name}</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{profile?.role}</p>
           </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-500">Roll Number</p>
-            <p className="font-semibold text-gray-900">{profile?.roll_number ?? '—'}</p>
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Roll Number</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{profile?.roll_number ?? '—'}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-500">Class</p>
-            <p className="font-semibold text-gray-900">{profile?.classes?.name ?? '—'}</p>
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Class</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{profile?.classes?.name ?? '—'}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-500">Institute</p>
-            <p className="font-semibold text-gray-900">{profile?.institutes?.name ?? '—'}</p>
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">Institute</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{profile?.institutes?.name ?? '—'}</p>
           </div>
-          <div className="bg-gray-50 rounded-xl p-3">
-            <p className="text-xs text-gray-500">City</p>
-            <p className="font-semibold text-gray-900">{profile?.institutes?.city ?? '—'}</p>
+          <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
+            <p className="text-xs text-gray-500 dark:text-gray-400">City</p>
+            <p className="font-semibold text-gray-900 dark:text-gray-100">{profile?.institutes?.city ?? '—'}</p>
           </div>
         </div>
       </div>
 
       {userRole !== 'parent' && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-900">Change Password</h2>
+            <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Change Password</h2>
             <button
               type="button"
               onClick={() => setEditingPassword(!editingPassword)}
@@ -195,14 +195,14 @@ export default function Profile() {
                 placeholder="New password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
               />
               <input
                 type="password"
                 placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
               />
               {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
               {passwordSuccess && <p className="text-xs text-green-600">{passwordSuccess}</p>}
@@ -220,20 +220,20 @@ export default function Profile() {
       )}
 
       {userRole === 'parent' && linkedStudent && (
-        <p className="text-sm text-gray-500 -mt-2">
+        <p className="text-sm text-gray-500 dark:text-gray-400 -mt-2">
           Viewing student profile: {linkedStudent.name}
         </p>
       )}
 
       {(userRole === 'student' || userRole === 'parent') && attendanceSummary.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">My Attendance</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">My Attendance</h2>
           <div className="space-y-3">
             {attendanceSummary.map((s) => (
               <div key={s.name} className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{s.name}</p>
-                  <p className="text-xs text-gray-400">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{s.name}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">
                     {s.present}/{s.total} classes
                   </p>
                 </div>
@@ -251,8 +251,8 @@ export default function Profile() {
       )}
 
       {(userRole === 'student' || userRole === 'parent') && recentExams.length > 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Recent Exams</h2>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
+          <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Recent Exams</h2>
           <div className="space-y-2">
             {recentExams.map((exam, i) => (
               <div
@@ -260,8 +260,8 @@ export default function Profile() {
                 className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0"
               >
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{exam.name}</p>
-                  <p className="text-xs text-gray-400">{exam.date}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{exam.name}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500">{exam.date}</p>
                 </div>
                 <span
                   className={`text-sm font-bold ${

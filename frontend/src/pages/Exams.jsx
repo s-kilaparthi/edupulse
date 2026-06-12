@@ -1012,17 +1012,17 @@ export default function Exams() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Exams</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Exams</h1>
 
       <form
         onSubmit={handleCreateExam}
-        className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6"
+        className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6"
       >
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Create Exam</h2>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Create Exam</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
           <div className="sm:col-span-2">
-            <label htmlFor="institute-exam-type" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="institute-exam-type" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Exam Type
             </label>
             <select
@@ -1030,7 +1030,7 @@ export default function Exams() {
               required
               value={selectedExamTypeId}
               onChange={(e) => setSelectedExamTypeId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
             >
               <option value="">Select exam type</option>
               {instituteExamTypes.map((t) => (
@@ -1038,23 +1038,23 @@ export default function Exams() {
               ))}
             </select>
             {instituteExamTypes.length === 0 && (
-              <p className="text-xs text-gray-400 mt-1">Add exam types below before creating an exam.</p>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Add exam types below before creating an exam.</p>
             )}
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Exam name</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Exam name</label>
             <input
               type="text"
               value={examName}
               onChange={(e) => setExamName(e.target.value)}
               placeholder="JEE Mains Mock Test 1"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
             />
           </div>
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Exam Type</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Exam Type</label>
             <div className="flex flex-wrap gap-2">
               {[
                 { value: 'mcq', label: 'MCQ' },
@@ -1065,7 +1065,7 @@ export default function Exams() {
                   className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                     examType === opt.value
                       ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-300 text-gray-700'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
                   }`}
                 >
                   <input
@@ -1084,7 +1084,7 @@ export default function Exams() {
 
           {userRole === 'admin' && (
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Exam Scope
               </label>
               <div className="flex flex-wrap gap-2">
@@ -1094,7 +1094,7 @@ export default function Exams() {
                     className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                       scope === s
                         ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                        : 'border-gray-300 text-gray-700'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     <input
@@ -1114,7 +1114,7 @@ export default function Exams() {
 
           {(userRole === 'teacher' || scope === 'class' || scope === 'multiple') && (
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {userRole === 'teacher'
                   ? 'Select Classes'
                   : `Select Class${scope === 'multiple' ? 'es' : ''}`}
@@ -1126,7 +1126,7 @@ export default function Exams() {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                       selectedClassIds.includes(c.id)
                         ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                        : 'border-gray-300 text-gray-700'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300'
                     }`}
                   >
                     <input
@@ -1146,7 +1146,7 @@ export default function Exams() {
                 ))}
               </div>
               {displayClasses.length === 0 && (
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-gray-400 dark:text-gray-500">
                   {userRole === 'teacher'
                     ? 'No assigned classes found.'
                     : 'No classes found. Create classes first.'}
@@ -1156,11 +1156,11 @@ export default function Exams() {
           )}
 
           <div className="sm:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Subjects & Question Ranges</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Subjects & Question Ranges</label>
             {userRole === 'teacher' && selectedClassIds.length === 0 ? (
-              <p className="text-sm text-gray-400">Select one or more classes to see subjects.</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">Select one or more classes to see subjects.</p>
             ) : filteredSubjects.length === 0 ? (
-              <p className="text-sm text-gray-400">No subjects found. Add subjects on the Subjects page first.</p>
+              <p className="text-sm text-gray-400 dark:text-gray-500">No subjects found. Add subjects on the Subjects page first.</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {filteredSubjects.map((s) => {
@@ -1170,35 +1170,35 @@ export default function Exams() {
                       <label className={`flex flex-1 min-w-[100px] text-sm items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                         selected
                           ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                          : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400'
                       }`}>
                         <input
                           type="checkbox"
                           checked={!!selected}
                           onChange={() => toggleSubject(s)}
-                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-600 shrink-0"
+                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-600 shrink-0"
                         />
                         {s.name}
                       </label>
                       {selected && (
                         <>
-                          <span className="text-xs text-gray-500">Q from</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Q from</span>
                           <input
                             type="number"
                             min={1}
                             value={selected.question_from}
                             onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
                             placeholder="1"
-                            className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                            className="w-16 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
                           />
-                          <span className="text-xs text-gray-500">to</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">to</span>
                           <input
                             type="number"
                             min={1}
                             value={selected.question_to}
                             onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
                             placeholder="30"
-                            className="w-16 rounded-lg border border-gray-300 px-2 py-1 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                            className="w-16 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
                           />
                         </>
                       )}
@@ -1210,30 +1210,30 @@ export default function Exams() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Exam date</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Exam date</label>
             <input
               type="date"
               value={examDate}
               onChange={(e) => setExamDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Total questions</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Total questions</label>
             <input
               type="number"
               min={1}
               value={totalQuestions}
               onChange={(e) => setTotalQuestions(e.target.value)}
               placeholder="90"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
             />
           </div>
 
           {examType === 'written' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Total Marks</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Total Marks</label>
               <input
                 type="number"
                 min={1}
@@ -1241,7 +1241,7 @@ export default function Exams() {
                 value={totalMarks}
                 onChange={(e) => setTotalMarks(e.target.value)}
                 placeholder="Total marks (e.g. 100)"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
               />
             </div>
           )}
@@ -1269,23 +1269,23 @@ export default function Exams() {
         </div>
       )}
 
-      <section className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm mb-6">
-        <h2 className="text-sm font-semibold text-gray-900 mb-4">Exam Types</h2>
+      <section className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4">Exam Types</h2>
         <div className="flex flex-wrap gap-2 mb-4">
           {instituteExamTypes.length === 0 ? (
-            <p className="text-sm text-gray-400">No exam types yet. Add one below.</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500">No exam types yet. Add one below.</p>
           ) : (
             instituteExamTypes.map((t) => (
               <span
                 key={t.id}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 text-gray-700 text-sm"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-sm"
               >
                 {t.name}
                 {(userRole === 'admin' || t.created_by === currentUserId) && (
                   <button
                     type="button"
                     onClick={() => handleDeleteExamType(t.id, t.name)}
-                    className="text-gray-400 hover:text-red-600 font-medium leading-none"
+                    className="text-gray-400 dark:text-gray-500 hover:text-red-600 font-medium leading-none"
                     aria-label={`Delete ${t.name}`}
                   >
                     ×
@@ -1301,7 +1301,7 @@ export default function Exams() {
             value={newInstituteExamType}
             onChange={(e) => setNewInstituteExamType(e.target.value)}
             placeholder="New exam type name"
-            className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+            className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-gray-700"
           />
           <button
             type="button"
@@ -1320,27 +1320,27 @@ export default function Exams() {
           onClick={closeAssignTeachersModal}
         >
           <div
-            className="bg-white rounded-xl shadow-lg max-w-md w-full p-5 max-h-[80vh] flex flex-col"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md w-full p-5 max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">Assign Teachers</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{assignTeachersExam.name}</p>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Assign Teachers</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{assignTeachersExam.name}</p>
               </div>
               <button
                 type="button"
                 onClick={closeAssignTeachersModal}
-                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 text-lg leading-none"
                 aria-label="Close"
               >
                 ×
               </button>
             </div>
             {instituteTeachers.length === 0 ? (
-              <p className="text-sm text-gray-500">No teachers found.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">No teachers found.</p>
             ) : (
-              <ul className="overflow-y-auto flex-1 divide-y divide-gray-100 -mx-1">
+              <ul className="overflow-y-auto flex-1 divide-y divide-gray-100 dark:divide-gray-700 -mx-1">
                 {instituteTeachers.map((teacher) => {
                   const isAssigned = (assignTeachersExam.exam_teachers ?? []).some(
                     (et) => et.teacher_id === teacher.id
@@ -1353,8 +1353,8 @@ export default function Exams() {
                         onClick={() =>
                           handleToggleExamTeacher(assignTeachersExam, teacher.id, teacher.name)
                         }
-                        className={`w-full flex items-center justify-between px-3 py-3 text-sm text-left hover:bg-gray-50 transition-colors disabled:opacity-50 ${
-                          isAssigned ? 'text-gray-900 font-medium' : 'text-gray-700'
+                        className={`w-full flex items-center justify-between px-3 py-3 text-sm text-left hover:bg-gray-50 dark:bg-gray-900 transition-colors disabled:opacity-50 ${
+                          isAssigned ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-700 dark:text-gray-300'
                         }`}
                       >
                         <span>{teacher.name}</span>
@@ -1377,27 +1377,27 @@ export default function Exams() {
           onClick={closeAssignClassesModal}
         >
           <div
-            className="bg-white rounded-xl shadow-lg max-w-md w-full p-5 max-h-[80vh] flex flex-col"
+            className="bg-white dark:bg-gray-800 rounded-xl shadow-lg max-w-md w-full p-5 max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-3 mb-4">
               <div>
-                <h3 className="text-sm font-semibold text-gray-900">Assign to Class</h3>
-                <p className="text-xs text-gray-500 mt-0.5">{assignClassesExam.name}</p>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Assign to Class</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{assignClassesExam.name}</p>
               </div>
               <button
                 type="button"
                 onClick={closeAssignClassesModal}
-                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 text-lg leading-none"
                 aria-label="Close"
               >
                 ×
               </button>
             </div>
             {classes.length === 0 ? (
-              <p className="text-sm text-gray-500">No classes found.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">No classes found.</p>
             ) : (
-              <ul className="overflow-y-auto flex-1 divide-y divide-gray-100 -mx-1">
+              <ul className="overflow-y-auto flex-1 divide-y divide-gray-100 dark:divide-gray-700 -mx-1">
                 {classes.map((cls) => {
                   const isAssigned = (assignClassesExam.exam_classes ?? []).some(
                     (ec) => ec.class_id === cls.id
@@ -1408,8 +1408,8 @@ export default function Exams() {
                         type="button"
                         disabled={assigningClass}
                         onClick={() => handleToggleExamClass(assignClassesExam, cls.id, cls.name)}
-                        className={`w-full flex items-center justify-between px-3 py-3 text-sm text-left hover:bg-gray-50 transition-colors disabled:opacity-50 ${
-                          isAssigned ? 'text-gray-900 font-medium' : 'text-gray-700'
+                        className={`w-full flex items-center justify-between px-3 py-3 text-sm text-left hover:bg-gray-50 dark:bg-gray-900 transition-colors disabled:opacity-50 ${
+                          isAssigned ? 'text-gray-900 dark:text-gray-100 font-medium' : 'text-gray-700 dark:text-gray-300'
                         }`}
                       >
                         <span>{cls.name}</span>
@@ -1427,7 +1427,7 @@ export default function Exams() {
       )}
 
       <section className="mb-6">
-        <h2 className="text-sm font-semibold text-gray-900 mb-3">All Exams</h2>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3">All Exams</h2>
         <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide -mx-1 px-1">
           <button
             type="button"
@@ -1435,7 +1435,7 @@ export default function Exams() {
             className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
               examListTypeFilter === ''
                 ? 'bg-indigo-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
             }`}
           >
             All Types
@@ -1448,7 +1448,7 @@ export default function Exams() {
               className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 examListTypeFilter === t.id
                   ? 'bg-indigo-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200'
               }`}
             >
               {t.name}
@@ -1459,7 +1459,7 @@ export default function Exams() {
           <select
             value={examListClassFilter}
             onChange={(e) => setExamListClassFilter(e.target.value)}
-            className="w-full md:w-64 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full md:w-64 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
           >
             <option value="">All Classes</option>
             {classes.map((cls) => (
@@ -1470,9 +1470,9 @@ export default function Exams() {
           </select>
         </div>
         {loading ? (
-          <p className="text-gray-500 text-sm">Loading exams…</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm">Loading exams…</p>
         ) : filteredExams.length === 0 ? (
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 dark:text-gray-400 text-sm">
             {exams.length === 0
               ? 'No exams yet. Create one above.'
               : 'No exams match the selected filters.'}
@@ -1481,7 +1481,7 @@ export default function Exams() {
           <ul className="space-y-3">
             {filteredExams.map((exam) => (
               <li key={exam.id}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm relative">
+                <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm relative">
                   {userRole === 'admin' && (
                     <span
                       className={`absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full font-medium border ${
@@ -1505,7 +1505,7 @@ export default function Exams() {
                       <button
                         type="button"
                         onClick={() => toggleExamProfile(exam)}
-                        className="font-semibold text-gray-900 hover:text-blue-600 text-left text-sm"
+                        className="font-semibold text-gray-900 dark:text-gray-100 hover:text-blue-600 text-left text-sm"
                       >
                         {exam.name}
                       </button>
@@ -1526,7 +1526,7 @@ export default function Exams() {
                           ec.classes?.name ? (
                             <span
                               key={ec.class_id}
-                              className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium"
+                              className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 font-medium"
                             >
                               {ec.classes.name}
                             </span>
@@ -1570,7 +1570,7 @@ export default function Exams() {
                           <button
                             type="button"
                             onClick={() => openAssignClassesModal(exam.id)}
-                            className="text-xs font-medium text-gray-600 border border-gray-300 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                            className="text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 px-2.5 py-1 rounded-lg hover:bg-gray-50 dark:bg-gray-900 transition-colors dark:bg-gray-700"
                           >
                             Assign to Class
                           </button>
@@ -1578,7 +1578,7 @@ export default function Exams() {
                             <button
                               type="button"
                               onClick={() => openAssignTeachersModal(exam.id)}
-                              className="text-xs font-medium text-gray-600 border border-gray-300 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                              className="text-xs font-medium text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 px-2.5 py-1 rounded-lg hover:bg-gray-50 dark:bg-gray-900 transition-colors dark:bg-gray-700"
                             >
                               Assign Teachers
                             </button>
@@ -1595,7 +1595,7 @@ export default function Exams() {
                         </button>
                       )}
                     </div>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {exam.exam_subjects?.map((es) => {
                         const name = es.subjects?.name
                         const range = es.question_from && es.question_to
@@ -1612,9 +1612,9 @@ export default function Exams() {
                 </div>
 
                 {activeProfileExamId === exam.id && (
-                  <div className="mt-1 bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+                  <div className="mt-1 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-sm font-semibold text-gray-900">
+                      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                         Exam Profile — {exam.name}
                       </h2>
                       <button
@@ -1623,47 +1623,47 @@ export default function Exams() {
                           setActiveProfileExamId(null)
                           setExamProfile(null)
                         }}
-                        className="text-sm text-gray-500 hover:text-gray-700"
+                        className="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300"
                       >
                         Close
                       </button>
                     </div>
 
                     {exam.exam_type === 'written' && exam.total_marks != null && (
-                      <p className="text-sm text-gray-700 mb-4">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 mb-4">
                         Total Marks: <span className="font-semibold">{exam.total_marks}</span>
                       </p>
                     )}
 
                     {loadingProfile ? (
-                      <p className="text-sm text-gray-500">Loading questions…</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Loading questions…</p>
                     ) : !examProfile?.length ? (
-                      <p className="text-sm text-gray-400">No questions added yet.</p>
+                      <p className="text-sm text-gray-400 dark:text-gray-500">No questions added yet.</p>
                     ) : (
                       <>
-                        <p className="text-xs text-gray-500 mb-4">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                           {examProfile.length} question{examProfile.length !== 1 ? 's' : ''} saved
                         </p>
                         <div className="space-y-3 max-h-96 overflow-y-auto">
                           {examProfile.map((q) => (
                             <div
                               key={q.id}
-                              className="border border-gray-100 rounded-xl p-4"
+                              className="border border-gray-100 dark:border-gray-700 rounded-xl p-4"
                             >
                               <div className="flex flex-wrap items-center gap-2 mb-2">
                                 <div className="flex flex-col gap-0.5">
-                                  <span className="text-xs font-bold text-gray-700">
+                                  <span className="text-xs font-bold text-gray-700 dark:text-gray-300">
                                     Q{q.question_number}
                                   </span>
                                   {exam.exam_type === 'written' && q.question_text && (
-                                    <p className="text-xs text-gray-500">{q.question_text}</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">{q.question_text}</p>
                                   )}
                                 </div>
                                 <span className="text-xs text-blue-600">
                                   {q.topics?.subjects?.name ?? 'Subject'} — {q.topics?.name ?? 'Topic'}
                                 </span>
                                 {q.difficulty && (
-                                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 capitalize">
+                                  <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 capitalize">
                                     {q.difficulty}
                                   </span>
                                 )}
@@ -1676,9 +1676,9 @@ export default function Exams() {
                               {exam.exam_type !== 'written' && (
                                 <>
                                   {q.question_text ? (
-                                    <p className="text-sm text-gray-900 mb-2">{q.question_text}</p>
+                                    <p className="text-sm text-gray-900 dark:text-gray-100 mb-2">{q.question_text}</p>
                                   ) : (
-                                    <p className="text-sm text-gray-400 italic mb-2">No question text</p>
+                                    <p className="text-sm text-gray-400 dark:text-gray-500 italic mb-2">No question text</p>
                                   )}
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-1">
                                     {['a', 'b', 'c', 'd'].map((opt) => {
@@ -1691,7 +1691,7 @@ export default function Exams() {
                                           className={`text-xs px-2 py-1 rounded ${
                                             q.correct_answer === letter
                                               ? 'bg-green-50 text-green-800 font-medium'
-                                              : 'text-gray-600'
+                                              : 'text-gray-600 dark:text-gray-400'
                                           }`}
                                         >
                                           {letter}. {value}
@@ -1712,34 +1712,34 @@ export default function Exams() {
                 {activeExam?.id === exam.id && canManageExamQuestions(exam) && (
                   <div
                     ref={questionsPanelRef}
-                    className="mt-2 bg-white rounded-xl border border-blue-200 p-6 shadow-sm"
+                    className="mt-2 bg-white dark:bg-gray-800 rounded-xl border border-blue-200 p-6 shadow-sm"
                   >
-                    <h2 className="text-sm font-semibold text-gray-900 mb-1">
+                    <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">
                       Add Questions — {activeExam.name}
                     </h2>
                     {primaryClassName && (
-                      <p className="text-xs text-gray-500 mb-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                         Topics for {primaryClassName}
                         {examClassCount > 1 && ' (first linked class)'}
                       </p>
                     )}
                     {!primaryClassName && activeExam.scope !== 'institute' && (
-                      <p className="text-xs text-gray-500 mb-4">No class linked — showing all topics.</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">No class linked — showing all topics.</p>
                     )}
 
                     {examSubjects.length === 0 && (
-                      <p className="text-sm text-gray-500">No subjects linked to this exam.</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">No subjects linked to this exam.</p>
                     )}
 
                     {examSubjects.length > 0 && (
                       <>
                         <div className="flex flex-wrap gap-3 mb-4">
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">Subject</label>
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Subject</label>
                             <select
                               value={activeSubjectId}
                               onChange={(e) => { setActiveSubjectId(e.target.value); setActiveTopicId(''); setSelectedQNums([]) }}
-                              className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                              className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
                             >
                               <option value="">Select subject</option>
                               {examSubjects.map((es) => (
@@ -1752,11 +1752,11 @@ export default function Exams() {
 
                           {activeSubjectId && (
                             <div>
-                              <label className="block text-xs font-medium text-gray-600 mb-1">Topic</label>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Topic</label>
                               <select
                                 value={activeTopicId}
                                 onChange={(e) => { setActiveTopicId(e.target.value); setSelectedQNums([]) }}
-                                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
                               >
                                 <option value="">Select topic</option>
                                 {activeSubjectTopics.map((t) => (
@@ -1769,7 +1769,7 @@ export default function Exams() {
 
                         {activeSubjectId && (
                           <>
-                            <p className="text-xs text-gray-500 mb-2">
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                               Tap question numbers to select, then click Assign.
                               {selectedQNums.length > 0 && (
                                 <span className="ml-2 text-blue-600 font-medium">{selectedQNums.length} selected</span>
@@ -1789,7 +1789,7 @@ export default function Exams() {
                                         ? 'border-blue-600 bg-blue-600 text-white scale-110'
                                         : assigned?.topic_id
                                         ? `${assigned.color} border-current`
-                                        : 'border-gray-300 bg-gray-50 text-gray-600 hover:border-gray-400'
+                                        : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:border-gray-400'
                                     }`}
                                     title={assigned?.topic_name ?? 'Unassigned'}
                                   >
@@ -1827,9 +1827,9 @@ export default function Exams() {
                         )}
 
                         {allNums.length > 0 && !isWrittenExam && (
-                          <div className="border-t border-gray-100 pt-4 mb-4">
+                          <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mb-4">
                             <div className="flex items-center justify-between mb-3">
-                              <p className="text-sm font-medium text-gray-700">Correct Answers</p>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Correct Answers</p>
                               <div className="flex gap-3 text-xs">
                                 {unassignedCount > 0 && (
                                   <span className="text-orange-600">{unassignedCount} unassigned</span>
@@ -1849,14 +1849,14 @@ export default function Exams() {
                                   <div
                                     key={num}
                                     className={`flex items-center gap-2 p-2 rounded-lg border text-sm ${
-                                      !q?.topic_id ? 'border-orange-200 bg-orange-50' : 'border-gray-200 bg-white'
+                                      !q?.topic_id ? 'border-orange-200 bg-orange-50' : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
                                     }`}
                                   >
-                                    <span className="text-xs font-medium text-gray-500 w-6 shrink-0">Q{num}</span>
+                                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 w-6 shrink-0">Q{num}</span>
                                     <select
                                       value={q?.correct_answer ?? ''}
                                       onChange={(e) => updateAnswer(num, e.target.value)}
-                                      className="flex-1 rounded border border-gray-300 px-1 py-1 text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-blue-600"
+                                      className="flex-1 rounded border border-gray-300 dark:border-gray-600 px-1 py-1 text-xs text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-1 focus:ring-blue-600 dark:bg-gray-700"
                                     >
                                       <option value="">—</option>
                                       {ANSWER_OPTIONS.map((opt) => (
@@ -1871,9 +1871,9 @@ export default function Exams() {
                         )}
 
                         {allNums.length > 0 && isWrittenExam && (
-                          <div className="border-t border-gray-100 pt-4 mb-4">
+                          <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mb-4">
                             <div className="flex items-center justify-between mb-3">
-                              <p className="text-sm font-medium text-gray-700">Written Questions</p>
+                              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Written Questions</p>
                               <div className="flex gap-3 text-xs">
                                 {unassignedCount > 0 && (
                                   <span className="text-orange-600">{unassignedCount} unassigned</span>
@@ -1892,11 +1892,11 @@ export default function Exams() {
                                     className={`p-3 rounded-lg border ${
                                       !q?.topic_id
                                         ? 'border-orange-200 bg-orange-50'
-                                        : 'border-gray-200 bg-white'
+                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
                                     }`}
                                   >
                                     <div className="flex items-center gap-2 mb-2">
-                                      <span className="text-xs font-medium text-gray-700">Q{num}</span>
+                                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Q{num}</span>
                                       {q?.topic_name && (
                                         <span className="text-xs text-blue-600">{q.topic_name}</span>
                                       )}
@@ -1906,7 +1906,7 @@ export default function Exams() {
                                       value={q?.question_text ?? ''}
                                       onChange={(e) => updateQuestionText(num, e.target.value)}
                                       placeholder="Question text (optional)"
-                                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600"
+                                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-gray-700"
                                     />
                                   </div>
                                 )
@@ -1945,9 +1945,9 @@ export default function Exams() {
                 )}
 
                 {showAIGenerator && aiExamId === exam.id && (
-                  <div className="mt-2 bg-white rounded-xl border border-purple-200 p-5 shadow-sm">
+                  <div className="mt-2 bg-white dark:bg-gray-800 rounded-xl border border-purple-200 p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-sm font-semibold text-gray-900">
+                      <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                         🤖 Generate Questions with AI
                       </h2>
                       <button
@@ -1958,7 +1958,7 @@ export default function Exams() {
                           setGeneratedQuestions([])
                           setAiStep(2)
                         }}
-                        className="text-sm text-gray-400 hover:text-gray-600"
+                        className="text-sm text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400"
                       >
                         ✕
                       </button>
@@ -1975,14 +1975,14 @@ export default function Exams() {
                                 ? 'bg-green-500 text-white'
                                 : aiStep === stepNum
                                   ? 'bg-purple-600 text-white'
-                                  : 'bg-gray-200 text-gray-500'
+                                  : 'bg-gray-200 text-gray-500 dark:text-gray-400'
                             }`}
                           >
                             {aiStep > stepNum ? '✓' : i + 1}
                           </span>
                           <span
                             className={`text-xs ${
-                              aiStep === stepNum ? 'text-purple-600 font-medium' : 'text-gray-400'
+                              aiStep === stepNum ? 'text-purple-600 font-medium' : 'text-gray-400 dark:text-gray-500'
                             }`}
                           >
                             {s}
@@ -2005,25 +2005,25 @@ export default function Exams() {
                           return (
                             <div
                               key={subject.subject_id}
-                              className="border border-gray-100 rounded-xl p-4"
+                              className="border border-gray-100 dark:border-gray-700 rounded-xl p-4"
                             >
                               <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-semibold text-gray-900">
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                                   {subject.subject_name}
                                 </h3>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs text-gray-500 dark:text-gray-400">
                                   Q{subject.range_from}–Q{subject.range_to} ({subjectTotal} questions)
                                 </span>
                               </div>
 
                               <div className="mb-3">
-                                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
                                   <span>Allocated: {subjectAllocated}</span>
                                   <span className={subjectRemaining < 0 ? 'text-red-500' : 'text-green-600'}>
                                     Remaining: {subjectRemaining}
                                   </span>
                                 </div>
-                                <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                   <div
                                     className={`h-full rounded-full transition-all ${
                                       subjectAllocated > subjectTotal ? 'bg-red-500' : 'bg-purple-500'
@@ -2053,9 +2053,9 @@ export default function Exams() {
                                           }))
                                         }
                                       }}
-                                      className="rounded border-gray-300 text-purple-600 shrink-0"
+                                      className="rounded border-gray-300 dark:border-gray-600 text-purple-600 shrink-0"
                                     />
-                                    <span className="flex-1 min-w-[120px] text-sm text-gray-900">{topic.name}</span>
+                                    <span className="flex-1 min-w-[120px] text-sm text-gray-900 dark:text-gray-100">{topic.name}</span>
                                     {aiSelectedTopics[topic.id] && (
                                       <input
                                         type="number"
@@ -2069,7 +2069,7 @@ export default function Exams() {
                                           }))
                                         }
                                         placeholder="Q count"
-                                        className="w-20 shrink-0 rounded-lg border border-gray-300 px-2 py-1 text-sm text-center"
+                                        className="w-20 shrink-0 rounded-lg border border-gray-300 dark:border-gray-600 px-2 py-1 text-sm text-center dark:bg-gray-700"
                                       />
                                     )}
                                   </div>
@@ -2122,13 +2122,13 @@ export default function Exams() {
                       <div className="space-y-4">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                               Exam Board
                             </label>
                             <select
                               value={aiBoard}
                               onChange={(e) => setAiBoard(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                             >
                               {['CBSE', 'ICSE', 'State Board', 'JEE', 'NEET', 'Internal Test'].map((b) => (
                                 <option key={b} value={b}>{b}</option>
@@ -2136,21 +2136,21 @@ export default function Exams() {
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                            <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                               Class Level
                             </label>
                             <input
                               type="text"
                               value={aiClassLevel}
                               onChange={(e) => setAiClassLevel(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                              className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                               placeholder="e.g. Class 10"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-2">
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
                             Difficulty Distribution
                           </label>
                           <div className="flex gap-2 mb-3">
@@ -2170,7 +2170,7 @@ export default function Exams() {
                                 className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
                                   aiEasy === p.e && aiMedium === p.m && aiHard === p.h
                                     ? 'border-purple-600 bg-purple-50 text-purple-700'
-                                    : 'border-gray-300 text-gray-600'
+                                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                                 }`}
                               >
                                 {p.label}
@@ -2214,7 +2214,7 @@ export default function Exams() {
                                 .join(', ')
                               return (
                                 <div key={subject.subject_id}>
-                                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                                     {subject.subject_name} — Chapter/Topic context (optional)
                                   </label>
                                   <input
@@ -2227,9 +2227,9 @@ export default function Exams() {
                                       }))
                                     }
                                     placeholder={selectedTopicNames}
-                                    className="w-full rounded-lg border border-gray-300 px-3 py-1.5 text-sm"
+                                    className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-1.5 text-sm dark:bg-gray-700"
                                   />
-                                  <p className="text-xs text-gray-400 mt-0.5">
+                                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
                                     Leave empty to use topic names: {selectedTopicNames}
                                   </p>
                                 </div>
@@ -2241,7 +2241,7 @@ export default function Exams() {
                           <button
                             type="button"
                             onClick={() => setAiStep(2)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600"
+                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-400 dark:bg-gray-700"
                           >
                             ← Back
                           </button>
@@ -2261,13 +2261,13 @@ export default function Exams() {
 
                     {aiStep === 4 && generatedQuestions.length > 0 && (
                       <div className="space-y-4">
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                           {generatedQuestions.length} questions generated — review and edit:
                         </p>
 
                         <div className="space-y-3 max-h-96 overflow-y-auto">
                           {generatedQuestions.map((q, index) => (
-                            <div key={index} className="border border-gray-200 rounded-xl p-4">
+                            <div key={index} className="border border-gray-200 dark:border-gray-700 rounded-xl p-4">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-xs text-purple-600 font-medium">
                                   {q.topic_name}
@@ -2309,7 +2309,7 @@ export default function Exams() {
                                     )
                                   )
                                 }
-                                className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 mb-2 resize-none"
+                                className="w-full text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 mb-2 resize-none"
                                 rows={2}
                               />
 
@@ -2330,7 +2330,7 @@ export default function Exams() {
                                       className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
                                         q.correct_answer === opt.toUpperCase()
                                           ? 'bg-green-500 text-white'
-                                          : 'bg-gray-100 text-gray-400'
+                                          : 'bg-gray-100 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
                                       }`}
                                     >
                                       {opt.toUpperCase()}
@@ -2347,7 +2347,7 @@ export default function Exams() {
                                           )
                                         )
                                       }
-                                      className="flex-1 text-xs border border-gray-200 rounded px-2 py-1"
+                                      className="flex-1 text-xs border border-gray-200 dark:border-gray-700 rounded px-2 py-1"
                                     />
                                   </div>
                                 ))}
@@ -2360,7 +2360,7 @@ export default function Exams() {
                           <button
                             type="button"
                             onClick={() => setAiStep(3)}
-                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-600"
+                            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-400 dark:bg-gray-700"
                           >
                             ← Back
                           </button>

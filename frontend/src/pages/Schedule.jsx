@@ -271,7 +271,7 @@ export default function Schedule() {
 
   return (
     <>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Schedule</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Schedule</h1>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-6">
@@ -280,9 +280,9 @@ export default function Schedule() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading schedule…</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading schedule…</p>
       ) : isStudentView && !studentClassId ? (
-        <p className="text-sm text-gray-500">No class assigned to your account.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No class assigned to your account.</p>
       ) : (
         <>
           {!isStudentView && classes.length > 0 && (
@@ -298,7 +298,7 @@ export default function Schedule() {
                   className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedClassId === c.id
                       ? 'bg-blue-600 text-white'
-                      : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-400'
+                      : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-gray-400'
                   }`}
                 >
                   {c.name}
@@ -308,11 +308,11 @@ export default function Schedule() {
           )}
 
           {isStudentView && selectedClassName && (
-            <p className="text-sm text-gray-500 mb-6">{selectedClassName}</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">{selectedClassName}</p>
           )}
 
           {!isStudentView && !selectedClassId && (
-            <p className="text-sm text-gray-500">Select a class to view the timetable.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Select a class to view the timetable.</p>
           )}
 
           {selectedClassId && (
@@ -325,7 +325,7 @@ export default function Schedule() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     showMyPeriodsOnly
                       ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 text-gray-600'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                   }`}
                 >
                   My Periods Only
@@ -336,26 +336,26 @@ export default function Schedule() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     !showMyPeriodsOnly
                       ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 text-gray-600'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                   }`}
                 >
                   Full Class Schedule
                 </button>
               </div>
             )}
-            <div className="bg-white rounded-xl border border-gray-200 shadow-sm">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm">
               <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
                 <div className="min-w-[640px]">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="sticky left-0 bg-white z-10 border-r border-gray-200 min-w-[80px] text-left text-xs font-semibold text-gray-500 px-3 py-3">
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="sticky left-0 bg-white dark:bg-gray-800 z-10 border-r border-gray-200 dark:border-gray-700 min-w-[80px] text-left text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 py-3">
                       Period
                     </th>
                     {DAY_LABELS.map((label) => (
                       <th
                         key={label}
-                        className="text-center text-xs font-semibold text-gray-500 px-2 py-3"
+                        className="text-center text-xs font-semibold text-gray-500 dark:text-gray-400 px-2 py-3"
                       >
                         {label}
                       </th>
@@ -366,19 +366,19 @@ export default function Schedule() {
                   {PERIODS.map((period) => (
                     <tr
                       key={period.number}
-                      className={`border-b border-gray-100 ${
-                        period.number === LUNCH_PERIOD ? 'bg-gray-50' : ''
+                      className={`border-b border-gray-100 dark:border-gray-700 ${
+                        period.number === LUNCH_PERIOD ? 'bg-gray-50 dark:bg-gray-900' : ''
                       }`}
                     >
-                      <td className={`sticky left-0 z-10 border-r border-gray-200 min-w-[80px] text-xs font-medium text-gray-600 px-3 py-3 align-top whitespace-nowrap ${
-                        period.number === LUNCH_PERIOD ? 'bg-gray-50' : 'bg-white'
+                      <td className={`sticky left-0 z-10 border-r border-gray-200 dark:border-gray-700 min-w-[80px] text-xs font-medium text-gray-600 dark:text-gray-400 px-3 py-3 align-top whitespace-nowrap ${
+                        period.number === LUNCH_PERIOD ? 'bg-gray-50 dark:bg-gray-900' : 'bg-white dark:bg-gray-800'
                       }`}>
                         {period.label}
                       </td>
                       {period.number === LUNCH_PERIOD ? (
                         <td
                           colSpan={DAYS.length}
-                          className="text-center text-sm text-gray-400 py-3"
+                          className="text-center text-sm text-gray-400 dark:text-gray-500 py-3"
                         >
                           🍽️ Lunch Break
                         </td>
@@ -404,7 +404,7 @@ export default function Schedule() {
                                     <button
                                       type="button"
                                       onClick={() => openEdit(day, period.number, slot)}
-                                      className="text-gray-400 hover:text-red-500 text-xs mt-1"
+                                      className="text-gray-400 dark:text-gray-500 hover:text-red-500 text-xs mt-1"
                                     >
                                       Edit
                                     </button>
@@ -414,7 +414,7 @@ export default function Schedule() {
                                 <button
                                   type="button"
                                   onClick={() => openEdit(day, period.number, null)}
-                                  className="w-full min-h-12 text-gray-300 hover:bg-gray-50 hover:text-gray-500 text-xs rounded-lg border border-dashed border-gray-200 transition-colors"
+                                  className="w-full min-h-12 text-gray-300 hover:bg-gray-50 dark:bg-gray-900 hover:text-gray-500 dark:text-gray-400 text-xs rounded-lg border border-dashed border-gray-200 dark:border-gray-700 transition-colors"
                                 >
                                   + Add
                                 </button>
@@ -444,23 +444,23 @@ export default function Schedule() {
                 if (e.target === e.currentTarget) closeEdit()
               }}
             >
-              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 md:mx-0">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 md:mx-0">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-semibold text-gray-900">
+                  <h3 className="font-semibold text-gray-900 dark:text-gray-100">
                     {DAY_LABELS[DAYS.indexOf(editingSlot.day)]} ·{' '}
                     {PERIODS.find((p) => p.number === editingSlot.period)?.label}
                   </h3>
                   <button
                     type="button"
                     onClick={closeEdit}
-                    className="text-gray-400 hover:text-gray-600 text-lg"
+                    className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:text-gray-400 text-lg"
                   >
                     ✕
                   </button>
                 </div>
 
                 <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-600 mb-2">
+                  <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
                     Apply to Days:
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -470,7 +470,7 @@ export default function Schedule() {
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
                           editDays.includes(d)
                             ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 text-gray-600'
+                            : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400'
                         }`}
                       >
                         <input
@@ -491,7 +491,7 @@ export default function Schedule() {
 
                 <div className="flex flex-col gap-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Subject
                     </label>
                     <select
@@ -500,7 +500,7 @@ export default function Schedule() {
                         setEditSubjectId(e.target.value)
                         setEditTeacherId('')
                       }}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     >
                       <option value="">Select subject...</option>
                       {editableSubjects.map((s) => (
@@ -512,13 +512,13 @@ export default function Schedule() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                    <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                       Teacher
                     </label>
                     <select
                       value={editTeacherId}
                       onChange={(e) => setEditTeacherId(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     >
                       <option value="">Select teacher...</option>
                       {editableTeachers.map((t) => (

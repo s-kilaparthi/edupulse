@@ -348,7 +348,7 @@ export default function Classes() {
   if (loadingRole) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading…</p>
       </div>
     )
   }
@@ -356,7 +356,7 @@ export default function Classes() {
   if (role !== 'admin') {
     return (
       <div className="text-center py-20">
-        <p className="text-gray-500">Access denied. Admin only.</p>
+        <p className="text-gray-500 dark:text-gray-400">Access denied. Admin only.</p>
       </div>
     )
   }
@@ -365,21 +365,21 @@ export default function Classes() {
     <div className="max-w-4xl flex flex-col gap-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse</p>
-        <h1 className="text-2xl font-bold text-gray-900">Class Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Class Management</h1>
       </div>
 
       <form
         onSubmit={handleCreateClass}
-        className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm flex flex-col gap-4"
+        className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm flex flex-col gap-4"
       >
-        <h2 className="text-sm font-semibold text-gray-900">Create Class</h2>
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Create Class</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <input
             type="text"
             value={className}
             onChange={(e) => setClassName(e.target.value)}
             placeholder="Class 11A or JEE Batch 2026"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600"
             required
           />
           <input
@@ -387,13 +387,13 @@ export default function Classes() {
             value={academicYear}
             onChange={(e) => setAcademicYear(e.target.value)}
             placeholder="2025-26"
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+            className="w-full rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600"
           />
         </div>
 
         {allSubjects.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Assign Subjects
             </label>
             <div className="flex flex-wrap gap-2">
@@ -403,7 +403,7 @@ export default function Classes() {
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
                     selectedSubjectIdsForClass.includes(s.id)
                       ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-300 text-gray-700 hover:border-gray-400'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-gray-400'
                   }`}
                 >
                   <input
@@ -441,9 +441,9 @@ export default function Classes() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500">Loading classes…</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Loading classes…</p>
       ) : classes.length === 0 ? (
-        <p className="text-sm text-gray-500">No classes yet. Create one above.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">No classes yet. Create one above.</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {classes.map((cls) => {
@@ -451,14 +451,14 @@ export default function Classes() {
             return (
               <li
                 key={cls.id}
-                className="bg-white rounded-2xl border border-gray-200 p-5 shadow-sm"
+                className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-5 shadow-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
                     {editingClassId !== cls.id && (
                       <>
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-gray-900">{cls.name}</p>
+                          <p className="font-semibold text-gray-900 dark:text-gray-100">{cls.name}</p>
                           {isAdmin && (
                             <>
                               <button
@@ -482,7 +482,7 @@ export default function Classes() {
                             </>
                           )}
                         </div>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
                           {cls.academic_year || '—'} · {studentCounts[cls.id] ?? 0} students
                         </p>
                         {cls.subject_classes?.length > 0 && (
@@ -512,20 +512,20 @@ export default function Classes() {
                 </div>
 
                 {editingClassId === cls.id && (
-                  <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+                  <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 dark:border-gray-700 pt-3">
                     <input
                       type="text"
                       value={editClassName}
                       onChange={(e) => setEditClassName(e.target.value)}
                       placeholder="Class name"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <input
                       type="text"
                       value={editAcademicYear}
                       onChange={(e) => setEditAcademicYear(e.target.value)}
                       placeholder="Academic year e.g. 2025-26"
-                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm dark:bg-gray-700"
                     />
                     <div className="flex gap-2">
                       <button
@@ -550,7 +550,7 @@ export default function Classes() {
                       <button
                         type="button"
                         onClick={() => setEditingClassId(null)}
-                        className="text-gray-500 text-sm px-3 py-1.5"
+                        className="text-gray-500 dark:text-gray-400 text-sm px-3 py-1.5"
                       >
                         Cancel
                       </button>
@@ -559,13 +559,13 @@ export default function Classes() {
                 )}
 
                 {isExpanded && editingClassId !== cls.id && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 mb-4">
+                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-gray-700 mb-4">
                       <button
                         type="button"
                         onClick={() => setActiveTab('students')}
                         className={`shrink-0 px-4 py-2 text-sm font-medium relative ${
-                          activeTab === 'students' ? 'text-gray-900' : 'text-gray-500'
+                          activeTab === 'students' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
                         }`}
                       >
                         Students
@@ -577,7 +577,7 @@ export default function Classes() {
                         type="button"
                         onClick={() => setActiveTab('teachers')}
                         className={`shrink-0 px-4 py-2 text-sm font-medium relative ${
-                          activeTab === 'teachers' ? 'text-gray-900' : 'text-gray-500'
+                          activeTab === 'teachers' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
                         }`}
                       >
                         Teachers
@@ -589,7 +589,7 @@ export default function Classes() {
                         type="button"
                         onClick={() => setActiveTab('subjects')}
                         className={`shrink-0 px-4 py-2 text-sm font-medium relative ${
-                          activeTab === 'subjects' ? 'text-gray-900' : 'text-gray-500'
+                          activeTab === 'subjects' ? 'text-gray-900 dark:text-gray-100' : 'text-gray-500 dark:text-gray-400'
                         }`}
                       >
                         Subjects
@@ -602,17 +602,17 @@ export default function Classes() {
                     {activeTab === 'students' && (
                       <div className="flex flex-col gap-4">
                         {classStudents.length === 0 ? (
-                          <p className="text-sm text-gray-500">No students in this class.</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No students in this class.</p>
                         ) : (
-                          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                          <ul className="divide-y divide-gray-100 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
                             {classStudents.map((student) => (
                               <li
                                 key={student.id}
                                 className="flex items-center justify-between px-4 py-3"
                               >
                                 <div>
-                                  <p className="text-sm font-medium text-gray-900">{student.name}</p>
-                                  <p className="text-xs text-gray-500">Roll #{student.roll_number}</p>
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">{student.name}</p>
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">Roll #{student.roll_number}</p>
                                 </div>
                                 <button
                                   type="button"
@@ -626,8 +626,8 @@ export default function Classes() {
                           </ul>
                         )}
 
-                        <div className="mt-3 border-t border-gray-100 pt-3">
-                          <p className="text-xs font-medium text-gray-600 mb-2">
+                        <div className="mt-3 border-t border-gray-100 dark:border-gray-700 pt-3">
+                          <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">
                             Add Students to Class
                           </p>
 
@@ -639,22 +639,22 @@ export default function Classes() {
                               searchUnassignedStudents(e.target.value, cls.id)
                             }}
                             placeholder="Search by name or roll number..."
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm mb-2"
+                            className="w-full rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm mb-2 dark:bg-gray-700"
                           />
 
                           {searchingStudents && (
-                            <p className="text-xs text-gray-400 mb-2">Searching...</p>
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">Searching...</p>
                           )}
 
                           {searchResults.length > 0 && (
-                            <div className="max-h-48 overflow-y-auto space-y-1 mb-2 border border-gray-100 rounded-lg p-2">
+                            <div className="max-h-48 overflow-y-auto space-y-1 mb-2 border border-gray-100 dark:border-gray-700 rounded-lg p-2">
                               {searchResults.map((s) => (
                                 <label
                                   key={s.id}
                                   className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer text-sm transition-colors ${
                                     selectedStudentIds.includes(s.id)
                                       ? 'bg-blue-50 text-blue-700'
-                                      : 'hover:bg-gray-50 text-gray-700'
+                                      : 'hover:bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300'
                                   }`}
                                 >
                                   <input
@@ -669,10 +669,10 @@ export default function Classes() {
                                         setSelectedStudents((prev) => [...prev, s])
                                       }
                                     }}
-                                    className="rounded border-gray-300 text-blue-600"
+                                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600"
                                   />
                                   <span className="font-medium flex-1">{s.name}</span>
-                                  <span className="text-gray-400 text-xs shrink-0">
+                                  <span className="text-gray-400 dark:text-gray-500 text-xs shrink-0">
                                     Roll #{s.roll_number}
                                   </span>
                                 </label>
@@ -683,14 +683,14 @@ export default function Classes() {
                           {studentSearch.length >= 2
                             && searchResults.length === 0
                             && !searchingStudents && (
-                            <p className="text-xs text-gray-400 mb-2">
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
                               No unassigned students found.
                             </p>
                           )}
 
                           {selectedStudents.length > 0 && (
                             <div className="mt-2 mb-2">
-                              <p className="text-xs font-medium text-gray-600 mb-1">
+                              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">
                                 Selected ({selectedStudents.length}):
                               </p>
                               <div className="flex flex-wrap gap-1">
@@ -740,19 +740,19 @@ export default function Classes() {
                     {activeTab === 'teachers' && (
                       <div className="flex flex-col gap-4">
                         {classTeachers.length === 0 ? (
-                          <p className="text-sm text-gray-500">No teachers assigned yet.</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No teachers assigned yet.</p>
                         ) : (
-                          <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                          <ul className="divide-y divide-gray-100 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
                             {classTeachers.map((ct) => (
                               <li
                                 key={ct.id}
                                 className="flex items-center justify-between px-4 py-3"
                               >
                                 <div>
-                                  <p className="text-sm font-medium text-gray-900">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {ct.users?.name ?? '—'}
                                   </p>
-                                  <p className="text-xs text-gray-500">
+                                  <p className="text-xs text-gray-500 dark:text-gray-400">
                                     {ct.subjects?.name ?? '—'}
                                   </p>
                                 </div>
@@ -772,7 +772,7 @@ export default function Classes() {
                           <select
                             value={addTeacherId}
                             onChange={(e) => setAddTeacherId(e.target.value)}
-                            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+                            className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600"
                           >
                             <option value="">Select teacher…</option>
                             {allTeachers.map((t) => (
@@ -782,7 +782,7 @@ export default function Classes() {
                           <select
                             value={addSubjectId}
                             onChange={(e) => setAddSubjectId(e.target.value)}
-                            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+                            className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600"
                           >
                             <option value="">Select subject…</option>
                             {allSubjects.map((s) => (
@@ -809,15 +809,15 @@ export default function Classes() {
                       return (
                         <div className="flex flex-col gap-4">
                           {cls.subject_classes?.length === 0 ? (
-                            <p className="text-sm text-gray-500">No subjects assigned yet.</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">No subjects assigned yet.</p>
                           ) : (
-                            <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+                            <ul className="divide-y divide-gray-100 dark:divide-gray-700 rounded-lg border border-gray-200 dark:border-gray-700">
                               {cls.subject_classes.map((sc) => (
                                 <li
                                   key={sc.subject_id}
                                   className="flex items-center justify-between px-4 py-3"
                                 >
-                                  <p className="text-sm font-medium text-gray-900">
+                                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                     {sc.subjects?.name ?? '—'}
                                   </p>
                                   <button
@@ -836,7 +836,7 @@ export default function Classes() {
                             <select
                               value={addClassSubjectId}
                               onChange={(e) => setAddClassSubjectId(e.target.value)}
-                              className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 outline-none focus:ring-2 focus:ring-blue-600"
+                              className="flex-1 rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 text-sm text-gray-900 dark:text-gray-100 outline-none focus:ring-2 focus:ring-blue-600"
                             >
                               <option value="">Add subject…</option>
                               {unassignedSubjects.map((s) => (

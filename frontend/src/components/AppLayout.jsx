@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import { useTheme } from '../context/ThemeContext'
 
 const studentNav = [
   { label: 'Dashboard', to: '/dashboard' },
@@ -44,6 +45,7 @@ const adminNav = [
 export default function AppLayout({ session }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useTheme()
   const notifRef = useRef(null)
   const [displayName, setDisplayName] = useState('')
   const [userRole, setUserRole] = useState('student')
@@ -143,13 +145,13 @@ export default function AppLayout({ session }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 md:px-6 shrink-0">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
+      <header className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 h-14 flex items-center justify-between px-4 md:px-6 shrink-0">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+            className="md:hidden p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             {mobileMenuOpen ? (
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,14 +167,14 @@ export default function AppLayout({ session }) {
             <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">E</span>
             </div>
-            <span className="font-semibold text-gray-900">EduPulse</span>
+            <span className="font-semibold text-gray-900 dark:text-gray-100">EduPulse</span>
           </Link>
         </div>
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/profile')}
-            className="text-sm text-gray-600 hover:text-gray-900 font-medium cursor-pointer"
+            className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 font-medium cursor-pointer"
           >
             {displayName}
           </button>
@@ -181,7 +183,7 @@ export default function AppLayout({ session }) {
             <button
               type="button"
               onClick={() => setShowNotifDropdown(!showNotifDropdown)}
-              className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+              className="relative p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
@@ -199,9 +201,9 @@ export default function AppLayout({ session }) {
             </button>
 
             {showNotifDropdown && (
-              <div className="fixed right-2 top-14 w-[calc(100vw-16px)] md:absolute md:right-0 md:top-full md:mt-1 md:w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-gray-900">Notifications</p>
+              <div className="fixed right-2 top-14 w-[calc(100vw-16px)] md:absolute md:right-0 md:top-full md:mt-1 md:w-80 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-lg z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">Notifications</p>
                   {unreadCount > 0 && (
                     <button
                       type="button"
@@ -214,28 +216,28 @@ export default function AppLayout({ session }) {
                 </div>
 
                 {notifications.length === 0 && (
-                  <p className="text-sm text-gray-400 text-center py-6">No notifications yet</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-6">No notifications yet</p>
                 )}
 
-                <ul className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                <ul className="max-h-80 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-700">
                   {notifications.map((n) => (
                     <li key={n.id}>
                       <button
                         type="button"
                         onClick={() => handleNotifClick(n)}
-                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
-                          !n.is_read ? 'bg-blue-50' : ''
+                        className={`w-full text-left px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
+                          !n.is_read ? 'bg-blue-50 dark:bg-blue-900/30' : ''
                         }`}
                       >
                         <p
                           className={`text-sm font-medium ${
-                            !n.is_read ? 'text-gray-900' : 'text-gray-600'
+                            !n.is_read ? 'text-gray-900 dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'
                           }`}
                         >
                           {n.title}
                         </p>
-                        <p className="text-xs text-gray-500 mt-0.5">{n.body}</p>
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{n.body}</p>
+                        <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                           {new Date(n.created_at).toLocaleDateString()}
                         </p>
                       </button>
@@ -249,7 +251,7 @@ export default function AppLayout({ session }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="text-sm font-medium text-gray-700 hover:text-gray-900 border border-gray-300 rounded-lg px-3 py-1.5 hover:bg-gray-50 transition-colors"
+            className="text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors dark:bg-gray-700"
           >
             Logout
           </button>
@@ -265,21 +267,44 @@ export default function AppLayout({ session }) {
         )}
 
         <aside
-          className={`fixed top-0 left-0 h-full w-64 bg-white border-r border-gray-200 z-50 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-52 md:flex md:flex-col shrink-0 ${
+          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 z-50 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-52 md:flex md:flex-col shrink-0 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <div className="flex items-center justify-between p-4 md:hidden border-b border-gray-100">
-            <span className="font-semibold text-gray-900">Menu</span>
+          <div className="flex items-center justify-between p-4 md:hidden border-b border-gray-100 dark:border-gray-700">
+            <span className="font-semibold text-gray-900 dark:text-gray-100">Menu</span>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(false)}
-              className="p-1 text-gray-400 hover:text-gray-600"
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          </div>
+
+          <div className="px-3 py-3 border-b border-gray-100 dark:border-gray-700">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={theme === 'dark'}
+                onClick={toggleTheme}
+                className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${
+                  theme === 'dark' ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${
+                    theme === 'dark' ? 'translate-x-5' : ''
+                  }`}
+                />
+              </button>
+            </div>
           </div>
 
           <nav className="flex flex-col gap-0.5 px-3 py-4">
@@ -290,8 +315,8 @@ export default function AppLayout({ session }) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`text-left text-sm px-3 py-2.5 rounded-lg transition-colors ${
                   pathname === to
-                    ? 'bg-blue-50 text-blue-700 font-medium'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium'
+                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 hover:text-gray-900 dark:hover:text-gray-100'
                 }`}
               >
                 {label}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { supabase } from './supabase'
+import { ThemeProvider } from './context/ThemeContext'
 import AppLayout from './components/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
@@ -36,13 +37,14 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500 text-sm">Loading…</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Loading…</p>
       </div>
     )
   }
 
   return (
+    <ThemeProvider session={session}>
     <BrowserRouter>
       <Routes>
         <Route
@@ -76,5 +78,6 @@ export default function App() {
         />
       </Routes>
     </BrowserRouter>
+    </ThemeProvider>
   )
 }

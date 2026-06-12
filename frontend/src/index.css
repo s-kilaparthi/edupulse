@@ -1,4 +1,13 @@
 @import "tailwindcss";
+@config "../tailwind.config.js";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  html.dark {
+    color-scheme: dark;
+  }
+}
 
 @utility scrollbar-hide {
   -ms-overflow-style: none;
