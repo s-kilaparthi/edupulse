@@ -823,7 +823,7 @@ export default function Subjects() {
                             <p className="text-xs font-medium text-gray-600">
                               📎 Notes & Files
                             </p>
-                            {isTeacher && (
+                            {(isTeacher || isAdmin) && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -909,7 +909,7 @@ export default function Subjects() {
                                     <span>📄</span>
                                     <span className="truncate font-medium">{note.title}</span>
                                   </a>
-                                  {isTeacher && (
+                                  {(isTeacher || isAdmin) && (
                                     <button
                                       type="button"
                                       onClick={async () => {
