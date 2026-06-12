@@ -287,7 +287,7 @@ export default function Students() {
       {isAdmin && (
         <form
           onSubmit={handleCreateStudent}
-          className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-6 shadow-sm mb-6"
+          className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6"
         >
           <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Add Student</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -301,7 +301,7 @@ export default function Students() {
                 value={studentName}
                 onChange={(e) => setStudentName(e.target.value)}
                 placeholder="Rahul Sharma"
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
               />
             </div>
 
@@ -315,7 +315,7 @@ export default function Students() {
                 value={rollNumber}
                 onChange={(e) => setRollNumber(e.target.value)}
                 placeholder="101"
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
               />
             </div>
 
@@ -323,7 +323,7 @@ export default function Students() {
               <select
                 value={newStudentClassId}
                 onChange={(e) => setNewStudentClassId(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
                 <option value="">Assign to class (optional)</option>
                 {allClasses.map((c) => (
@@ -342,7 +342,7 @@ export default function Students() {
                 value={parentName}
                 onChange={(e) => setParentName(e.target.value)}
                 placeholder="Parent/Guardian name"
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
               />
             </div>
 
@@ -357,7 +357,7 @@ export default function Students() {
                 onChange={(e) => setParentPhone(e.target.value)}
                 placeholder="10-digit mobile number"
                 maxLength={10}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
               />
             </div>
 
@@ -365,7 +365,7 @@ export default function Students() {
               <button
                 type="submit"
                 disabled={saving}
-                className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
@@ -375,13 +375,13 @@ export default function Students() {
       )}
 
       {isAdmin && (
-        <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-4 shadow-sm mb-4">
+        <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm mb-4">
           <input
             type="text"
             value={adminSearch}
             onChange={(e) => setAdminSearch(e.target.value)}
             placeholder="Search by roll number or name..."
-            className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+            className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
           />
 
           {allClasses.length > 0 && (
@@ -466,7 +466,7 @@ export default function Students() {
               value={teacherSearch}
               onChange={(e) => setTeacherSearch(e.target.value)}
               placeholder="Search by roll number or name..."
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
           </div>
         )}
@@ -487,7 +487,7 @@ export default function Students() {
             {listStudents.map((student) => (
               <li
                 key={student.id}
-                className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-4 shadow-sm"
+                className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm"
               >
                 {editingId === student.id ? (
                   <div className="flex flex-col gap-2">
@@ -496,28 +496,28 @@ export default function Students() {
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
                       placeholder="Name"
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     />
                     <input
                       type="text"
                       value={editRoll}
                       onChange={(e) => setEditRoll(e.target.value)}
                       placeholder="Roll number"
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     />
                     <input
                       type="email"
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
                       placeholder="Email"
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     />
                     <input
                       type="text"
                       value={editParentName}
                       onChange={(e) => setEditParentName(e.target.value)}
                       placeholder="Parent/Guardian name"
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     />
                     <input
                       type="text"
@@ -525,7 +525,7 @@ export default function Students() {
                       onChange={(e) => setEditParentPhone(e.target.value)}
                       placeholder="10-digit mobile number"
                       maxLength={10}
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     />
                     <div className="flex gap-2">
                       <button

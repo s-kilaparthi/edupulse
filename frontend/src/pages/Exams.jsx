@@ -1016,7 +1016,7 @@ export default function Exams() {
 
       <form
         onSubmit={handleCreateExam}
-        className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-6 shadow-sm mb-6"
+        className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6"
       >
         <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Create Exam</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1030,7 +1030,7 @@ export default function Exams() {
               required
               value={selectedExamTypeId}
               onChange={(e) => setSelectedExamTypeId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             >
               <option value="">Select exam type</option>
               {instituteExamTypes.map((t) => (
@@ -1049,7 +1049,7 @@ export default function Exams() {
               value={examName}
               onChange={(e) => setExamName(e.target.value)}
               placeholder="JEE Mains Mock Test 1"
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
           </div>
 
@@ -1065,7 +1065,7 @@ export default function Exams() {
                   className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                     examType === opt.value
                       ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8]'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
                   }`}
                 >
                   <input
@@ -1094,7 +1094,7 @@ export default function Exams() {
                     className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                       scope === s
                         ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                        : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8]'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
                     }`}
                   >
                     <input
@@ -1126,7 +1126,7 @@ export default function Exams() {
                     className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
                       selectedClassIds.includes(c.id)
                         ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                        : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8]'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
                     }`}
                   >
                     <input
@@ -1170,13 +1170,13 @@ export default function Exams() {
                       <label className={`flex flex-1 min-w-[100px] text-sm items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                         selected
                           ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                          : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
                       }`}>
                         <input
                           type="checkbox"
                           checked={!!selected}
                           onChange={() => toggleSubject(s)}
-                          className="rounded border-gray-300 dark:border-[#363636] text-blue-600 focus:ring-blue-600 shrink-0"
+                          className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-600 shrink-0"
                         />
                         {s.name}
                       </label>
@@ -1189,7 +1189,7 @@ export default function Exams() {
                             value={selected.question_from}
                             onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
                             placeholder="1"
-                            className="w-16 rounded-lg border border-gray-300 dark:border-[#363636] px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+                            className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                           />
                           <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">to</span>
                           <input
@@ -1198,7 +1198,7 @@ export default function Exams() {
                             value={selected.question_to}
                             onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
                             placeholder="30"
-                            className="w-16 rounded-lg border border-gray-300 dark:border-[#363636] px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+                            className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                           />
                         </>
                       )}
@@ -1215,7 +1215,7 @@ export default function Exams() {
               type="date"
               value={examDate}
               onChange={(e) => setExamDate(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
           </div>
 
@@ -1227,7 +1227,7 @@ export default function Exams() {
               value={totalQuestions}
               onChange={(e) => setTotalQuestions(e.target.value)}
               placeholder="90"
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
           </div>
 
@@ -1241,7 +1241,7 @@ export default function Exams() {
                 value={totalMarks}
                 onChange={(e) => setTotalMarks(e.target.value)}
                 placeholder="Total marks (e.g. 100)"
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
               />
             </div>
           )}
@@ -1250,7 +1250,7 @@ export default function Exams() {
             <button
               type="submit"
               disabled={savingExam}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               {savingExam ? 'Saving…' : 'Save Exam'}
             </button>
@@ -1269,7 +1269,7 @@ export default function Exams() {
         </div>
       )}
 
-      <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-6 shadow-sm mb-6">
+      <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Exam Types</h2>
         <div className="flex flex-wrap gap-2 mb-4">
           {instituteExamTypes.length === 0 ? (
@@ -1301,13 +1301,13 @@ export default function Exams() {
             value={newInstituteExamType}
             onChange={(e) => setNewInstituteExamType(e.target.value)}
             placeholder="New exam type name"
-            className="flex-1 rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+            className="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
           />
           <button
             type="button"
             onClick={handleAddExamType}
             disabled={savingExamType || !newInstituteExamType.trim()}
-            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm shrink-0"
+            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors text-sm shrink-0"
           >
             {savingExamType ? 'Adding…' : 'Add'}
           </button>
@@ -1340,7 +1340,7 @@ export default function Exams() {
             {instituteTeachers.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No teachers found.</p>
             ) : (
-              <ul className="overflow-y-auto flex-1 divide-y divide-gray-100 dark:divide-[#363636] -mx-1">
+              <ul className="overflow-y-auto flex-1 divide-y divide-gray-200 dark:divide-gray-700 -mx-1">
                 {instituteTeachers.map((teacher) => {
                   const isAssigned = (assignTeachersExam.exam_teachers ?? []).some(
                     (et) => et.teacher_id === teacher.id
@@ -1397,7 +1397,7 @@ export default function Exams() {
             {classes.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No classes found.</p>
             ) : (
-              <ul className="overflow-y-auto flex-1 divide-y divide-gray-100 dark:divide-[#363636] -mx-1">
+              <ul className="overflow-y-auto flex-1 divide-y divide-gray-200 dark:divide-gray-700 -mx-1">
                 {classes.map((cls) => {
                   const isAssigned = (assignClassesExam.exam_classes ?? []).some(
                     (ec) => ec.class_id === cls.id
@@ -1459,7 +1459,7 @@ export default function Exams() {
           <select
             value={examListClassFilter}
             onChange={(e) => setExamListClassFilter(e.target.value)}
-            className="w-full md:w-64 rounded-lg border border-gray-300 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+            className="w-full md:w-64 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
           >
             <option value="">All Classes</option>
             {classes.map((cls) => (
@@ -1481,7 +1481,7 @@ export default function Exams() {
           <ul className="space-y-3">
             {filteredExams.map((exam) => (
               <li key={exam.id}>
-                <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-4 shadow-sm relative">
+                <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm relative">
                   {userRole === 'admin' && (
                     <span
                       className={`absolute top-3 right-3 text-xs px-2 py-0.5 rounded-full font-medium border ${
@@ -1510,7 +1510,7 @@ export default function Exams() {
                         {exam.name}
                       </button>
                       {exam.exam_types?.name && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium border border-current border border-current">
                           {exam.exam_types.name}
                         </span>
                       )}
@@ -1518,7 +1518,7 @@ export default function Exams() {
                     {(exam.scope === 'institute' || (exam.exam_classes?.length ?? 0) > 0) && (
                       <div className="flex flex-wrap gap-1.5">
                         {exam.scope === 'institute' && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium border border-current">
                             Whole Institute
                           </span>
                         )}
@@ -1526,7 +1526,7 @@ export default function Exams() {
                           ec.classes?.name ? (
                             <span
                               key={ec.class_id}
-                              className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#262626] text-gray-700 dark:text-[#A8A8A8] font-medium"
+                              className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#262626] text-gray-700 dark:text-[#A8A8A8] font-medium border border-current"
                             >
                               {ec.classes.name}
                             </span>
@@ -1540,7 +1540,7 @@ export default function Exams() {
                           et.users?.name ? (
                             <span
                               key={et.teacher_id}
-                              className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"
+                              className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium border border-current"
                             >
                               {et.users.name}
                             </span>
@@ -1570,7 +1570,7 @@ export default function Exams() {
                           <button
                             type="button"
                             onClick={() => openAssignClassesModal(exam.id)}
-                            className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] border border-gray-300 dark:border-[#363636] px-2.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
+                            className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-2.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
                           >
                             Assign to Class
                           </button>
@@ -1578,7 +1578,7 @@ export default function Exams() {
                             <button
                               type="button"
                               onClick={() => openAssignTeachersModal(exam.id)}
-                              className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] border border-gray-300 dark:border-[#363636] px-2.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
+                              className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-2.5 py-1 rounded-lg hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
                             >
                               Assign Teachers
                             </button>
@@ -1612,7 +1612,7 @@ export default function Exams() {
                 </div>
 
                 {activeProfileExamId === exam.id && (
-                  <div className="mt-1 bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm">
+                  <div className="mt-1 bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5 shadow-sm">
                     <div className="flex items-center justify-between mb-4">
                       <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
                         Exam Profile — {exam.name}
@@ -1648,7 +1648,7 @@ export default function Exams() {
                           {examProfile.map((q) => (
                             <div
                               key={q.id}
-                              className="border border-gray-100 dark:border-[#363636] rounded-xl p-4"
+                              className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4"
                             >
                               <div className="flex flex-wrap items-center gap-2 mb-2">
                                 <div className="flex flex-col gap-0.5">
@@ -1739,7 +1739,7 @@ export default function Exams() {
                             <select
                               value={activeSubjectId}
                               onChange={(e) => { setActiveSubjectId(e.target.value); setActiveTopicId(''); setSelectedQNums([]) }}
-                              className="rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+                              className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                             >
                               <option value="">Select subject</option>
                               {examSubjects.map((es) => (
@@ -1756,7 +1756,7 @@ export default function Exams() {
                               <select
                                 value={activeTopicId}
                                 onChange={(e) => { setActiveTopicId(e.target.value); setSelectedQNums([]) }}
-                                className="rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+                                className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                               >
                                 <option value="">Select topic</option>
                                 {activeSubjectTopics.map((t) => (
@@ -1789,7 +1789,7 @@ export default function Exams() {
                                         ? 'border-blue-600 bg-blue-600 text-white scale-110'
                                         : assigned?.topic_id
                                         ? `${assigned.color} border-current`
-                                        : 'border-gray-300 dark:border-[#363636] bg-gray-50 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] hover:border-gray-400'
+                                        : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] hover:border-gray-400'
                                     }`}
                                     title={assigned?.topic_name ?? 'Unassigned'}
                                   >
@@ -1819,7 +1819,7 @@ export default function Exams() {
                               type="button"
                               onClick={assignTopicToSelected}
                               disabled={!activeTopicId || selectedQNums.length === 0}
-                              className="mb-4 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                              className="mb-4 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
                               Assign {selectedQNums.length > 0 ? `${selectedQNums.length} questions` : 'selected'} to topic
                             </button>
@@ -1827,7 +1827,7 @@ export default function Exams() {
                         )}
 
                         {allNums.length > 0 && !isWrittenExam && (
-                          <div className="border-t border-gray-100 dark:border-[#363636] pt-4 mb-4">
+                          <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4 mb-4">
                             <div className="flex items-center justify-between mb-3">
                               <p className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Correct Answers</p>
                               <div className="flex gap-3 text-xs">
@@ -1849,14 +1849,14 @@ export default function Exams() {
                                   <div
                                     key={num}
                                     className={`flex items-center gap-2 p-2 rounded-lg border text-sm ${
-                                      !q?.topic_id ? 'border-orange-200 bg-orange-50' : 'border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C]'
+                                      !q?.topic_id ? 'border-orange-200 bg-orange-50' : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C]'
                                     }`}
                                   >
                                     <span className="text-xs font-medium text-gray-500 dark:text-[#A8A8A8] w-6 shrink-0">Q{num}</span>
                                     <select
                                       value={q?.correct_answer ?? ''}
                                       onChange={(e) => updateAnswer(num, e.target.value)}
-                                      className="flex-1 rounded border border-gray-300 dark:border-[#363636] px-1 py-1 text-xs text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-1 focus:ring-blue-600 dark:bg-[#262626]"
+                                      className="flex-1 rounded-lg border border-gray-200 dark:border-gray-600 px-1 py-1 text-xs text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-1 focus:ring-blue-600 dark:bg-[#262626]"
                                     >
                                       <option value="">—</option>
                                       {ANSWER_OPTIONS.map((opt) => (
@@ -1871,7 +1871,7 @@ export default function Exams() {
                         )}
 
                         {allNums.length > 0 && isWrittenExam && (
-                          <div className="border-t border-gray-100 dark:border-[#363636] pt-4 mb-4">
+                          <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4 mb-4">
                             <div className="flex items-center justify-between mb-3">
                               <p className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Written Questions</p>
                               <div className="flex gap-3 text-xs">
@@ -1892,7 +1892,7 @@ export default function Exams() {
                                     className={`p-3 rounded-lg border ${
                                       !q?.topic_id
                                         ? 'border-orange-200 bg-orange-50'
-                                        : 'border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C]'
+                                        : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C]'
                                     }`}
                                   >
                                     <div className="flex items-center gap-2 mb-2">
@@ -1906,7 +1906,7 @@ export default function Exams() {
                                       value={q?.question_text ?? ''}
                                       onChange={(e) => updateQuestionText(num, e.target.value)}
                                       placeholder="Question text (optional)"
-                                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+                                      className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                                     />
                                   </div>
                                 )
@@ -2005,7 +2005,7 @@ export default function Exams() {
                           return (
                             <div
                               key={subject.subject_id}
-                              className="border border-gray-100 dark:border-[#363636] rounded-xl p-4"
+                              className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4"
                             >
                               <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
@@ -2053,7 +2053,7 @@ export default function Exams() {
                                           }))
                                         }
                                       }}
-                                      className="rounded border-gray-300 dark:border-[#363636] text-purple-600 shrink-0"
+                                      className="rounded border-gray-300 dark:border-gray-600 text-purple-600 shrink-0"
                                     />
                                     <span className="flex-1 min-w-[120px] text-sm text-gray-900 dark:text-[#FFFFFF]">{topic.name}</span>
                                     {aiSelectedTopics[topic.id] && (
@@ -2069,7 +2069,7 @@ export default function Exams() {
                                           }))
                                         }
                                         placeholder="Q count"
-                                        className="w-20 shrink-0 rounded-lg border border-gray-300 dark:border-[#363636] px-2 py-1 text-sm text-center dark:bg-[#262626]"
+                                        className="w-20 shrink-0 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-center dark:bg-[#262626]"
                                       />
                                     )}
                                   </div>
@@ -2128,7 +2128,7 @@ export default function Exams() {
                             <select
                               value={aiBoard}
                               onChange={(e) => setAiBoard(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                             >
                               {['CBSE', 'ICSE', 'State Board', 'JEE', 'NEET', 'Internal Test'].map((b) => (
                                 <option key={b} value={b}>{b}</option>
@@ -2143,7 +2143,7 @@ export default function Exams() {
                               type="text"
                               value={aiClassLevel}
                               onChange={(e) => setAiClassLevel(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                               placeholder="e.g. Class 10"
                             />
                           </div>
@@ -2170,7 +2170,7 @@ export default function Exams() {
                                 className={`px-3 py-1.5 rounded-lg text-xs border transition-colors ${
                                   aiEasy === p.e && aiMedium === p.m && aiHard === p.h
                                     ? 'border-purple-600 bg-purple-50 text-purple-700'
-                                    : 'border-gray-300 dark:border-[#363636] text-gray-600 dark:text-[#A8A8A8]'
+                                    : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
                                 }`}
                               >
                                 {p.label}
@@ -2227,7 +2227,7 @@ export default function Exams() {
                                       }))
                                     }
                                     placeholder={selectedTopicNames}
-                                    className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-1.5 text-sm dark:bg-[#262626]"
+                                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-sm dark:bg-[#262626]"
                                   />
                                   <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-0.5">
                                     Leave empty to use topic names: {selectedTopicNames}
@@ -2241,7 +2241,7 @@ export default function Exams() {
                           <button
                             type="button"
                             onClick={() => setAiStep(2)}
-                            className="px-4 py-2 border border-gray-300 dark:border-[#363636] rounded-lg text-sm text-gray-600 dark:text-[#A8A8A8] dark:bg-[#262626]"
+                            className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-[#A8A8A8] dark:bg-[#262626]"
                           >
                             ← Back
                           </button>
@@ -2267,7 +2267,7 @@ export default function Exams() {
 
                         <div className="space-y-3 max-h-96 overflow-y-auto">
                           {generatedQuestions.map((q, index) => (
-                            <div key={index} className="border border-gray-200 dark:border-[#363636] rounded-xl p-4">
+                            <div key={index} className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-xs text-purple-600 font-medium">
                                   {q.topic_name}
@@ -2309,7 +2309,7 @@ export default function Exams() {
                                     )
                                   )
                                 }
-                                className="w-full text-sm border border-gray-200 dark:border-[#363636] rounded-lg px-3 py-2 mb-2 resize-none"
+                                className="w-full text-sm border-2 border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 mb-2 resize-none"
                                 rows={2}
                               />
 
@@ -2347,7 +2347,7 @@ export default function Exams() {
                                           )
                                         )
                                       }
-                                      className="flex-1 text-xs border border-gray-200 dark:border-[#363636] rounded px-2 py-1"
+                                      className="flex-1 text-xs border-2 border-gray-200 dark:border-gray-700 rounded px-2 py-1"
                                     />
                                   </div>
                                 ))}
@@ -2360,7 +2360,7 @@ export default function Exams() {
                           <button
                             type="button"
                             onClick={() => setAiStep(3)}
-                            className="px-4 py-2 border border-gray-300 dark:border-[#363636] rounded-lg text-sm text-gray-600 dark:text-[#A8A8A8] dark:bg-[#262626]"
+                            className="px-4 py-2 border-2 border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-[#A8A8A8] dark:bg-[#262626]"
                           >
                             ← Back
                           </button>

@@ -10,19 +10,19 @@ const GROUP_ACCENT_COLORS = [
 ]
 
 const INPUT_CLASS =
-  'rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] bg-white dark:bg-[#262626] outline-none focus:border-blue-500 dark:focus:border-blue-400'
+  'rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] bg-white dark:bg-[#262626] outline-none focus:border-blue-500 dark:focus:border-blue-400'
 
 const SELECT_CLASS =
-  'rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:border-blue-500 dark:focus:border-blue-400'
+  'rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] outline-none focus:border-blue-500 dark:focus:border-blue-400'
 
 const CARD_CLASS =
-  'bg-white dark:bg-[#1C1C1C] rounded-2xl border-2 border-gray-300 dark:border-gray-600 p-5 shadow-sm'
+  'bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5 shadow-sm'
 
 const PRIMARY_BTN_CLASS =
-  'bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shadow-sm'
+  'bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shadow-sm hover:shadow-md transition-shadow'
 
 const DELETE_BTN_CLASS =
-  'text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 rounded px-1.5 py-0.5 font-medium transition-colors'
+  'text-red-600 dark:text-red-400 border-2 border-red-300 dark:border-red-800 rounded-lg px-2 py-1 font-medium hover:shadow-md transition-shadow'
 
 const GROUP_CHECKBOX_CLASS = (checked) =>
   `flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 cursor-pointer text-sm transition-colors ${
@@ -32,7 +32,7 @@ const GROUP_CHECKBOX_CLASS = (checked) =>
   }`
 
 const ROW_CLASS =
-  'flex items-center justify-between gap-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] px-3 py-2'
+  'flex items-center justify-between gap-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] p-3'
 
 export default function Classes() {
   const { session } = useOutletContext()
@@ -664,7 +664,7 @@ export default function Classes() {
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
-          <div className="w-1 h-5 bg-blue-500 rounded-full" />
+          <div className="w-1 h-5 bg-blue-500 rounded-full border border-current" />
           <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">Class Groups</h2>
         </div>
 
@@ -706,7 +706,7 @@ export default function Classes() {
               return (
                 <li
                   key={group.id}
-                  className={`bg-white dark:bg-[#1C1C1C] rounded-2xl border-2 border-gray-200 dark:border-gray-600 p-5 shadow-sm border-l-4 ${accentColor}`}
+                  className={`bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5 shadow-sm border-l-4 ${accentColor}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -729,7 +729,7 @@ export default function Classes() {
                   </div>
 
                   {isExpanded && (
-                    <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#363636] flex flex-col gap-5">
+                    <div className="mt-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700 flex flex-col gap-5">
                       <div>
                         <p className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-2">Assigned Classes</p>
                         {group.class_group_members?.length > 0 ? (
@@ -895,7 +895,7 @@ export default function Classes() {
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
                     selectedSubjectIdsForClass.includes(s.id)
                       ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
                   }`}
                 >
                   <input
@@ -983,7 +983,7 @@ export default function Classes() {
                             {cls.subject_classes.map((sc) => (
                               <span
                                 key={sc.subject_id}
-                                className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-green-200"
+                                className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full border border-current"
                               >
                                 {sc.subjects?.name}
                               </span>
@@ -1005,7 +1005,7 @@ export default function Classes() {
                 </div>
 
                 {editingClassId === cls.id && (
-                  <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 dark:border-[#363636] pt-3">
+                  <div className="mt-3 flex flex-col gap-2 border-t-2 border-gray-200 dark:border-gray-700 pt-3">
                     <input
                       type="text"
                       value={editClassName}
@@ -1095,8 +1095,8 @@ export default function Classes() {
                 )}
 
                 {isExpanded && editingClassId !== cls.id && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#363636]">
-                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-[#363636] mb-4">
+                  <div className="mt-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-gray-700 mb-4">
                       <button
                         type="button"
                         onClick={() => setActiveTab('students')}
@@ -1140,7 +1140,7 @@ export default function Classes() {
                         {classStudents.length === 0 ? (
                           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No students in this class.</p>
                         ) : (
-                          <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border-2 border-gray-300 dark:border-gray-600">
+                          <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border border-gray-200 dark:border-gray-600">
                             {classStudents.map((student) => (
                               <li
                                 key={student.id}
@@ -1162,7 +1162,7 @@ export default function Classes() {
                           </ul>
                         )}
 
-                        <div className="mt-3 border-t border-gray-100 dark:border-[#363636] pt-3">
+                        <div className="mt-3 border-t-2 border-gray-200 dark:border-gray-700 pt-3">
                           <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">
                             Add Students to Class
                           </p>
@@ -1183,7 +1183,7 @@ export default function Classes() {
                           )}
 
                           {searchResults.length > 0 && (
-                            <div className="max-h-48 overflow-y-auto space-y-1 mb-2 border border-gray-100 dark:border-[#363636] rounded-lg p-2">
+                            <div className="max-h-48 overflow-y-auto space-y-1 mb-2 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-2">
                               {searchResults.map((s) => (
                                 <label
                                   key={s.id}
@@ -1205,7 +1205,7 @@ export default function Classes() {
                                         setSelectedStudents((prev) => [...prev, s])
                                       }
                                     }}
-                                    className="rounded border-gray-300 dark:border-[#363636] text-blue-600"
+                                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600"
                                   />
                                   <span className="font-medium flex-1">{s.name}</span>
                                   <span className="text-gray-400 dark:text-[#A8A8A8] text-xs shrink-0">
@@ -1233,7 +1233,7 @@ export default function Classes() {
                                 {selectedStudents.map((s) => (
                                   <span
                                     key={s.id}
-                                    className="flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full"
+                                    className="flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full border border-current"
                                   >
                                     {s.name} #{s.roll_number}
                                     <button
@@ -1278,7 +1278,7 @@ export default function Classes() {
                         {classTeachers.length === 0 ? (
                           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No teachers assigned yet.</p>
                         ) : (
-                          <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border-2 border-gray-300 dark:border-gray-600">
+                          <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border border-gray-200 dark:border-gray-600">
                             {classTeachers.map((ct) => (
                               <li
                                 key={ct.id}
@@ -1347,7 +1347,7 @@ export default function Classes() {
                           {cls.subject_classes?.length === 0 ? (
                             <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No subjects assigned yet.</p>
                           ) : (
-                            <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border-2 border-gray-300 dark:border-gray-600">
+                            <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border border-gray-200 dark:border-gray-600">
                               {cls.subject_classes.map((sc) => (
                                 <li
                                   key={sc.subject_id}

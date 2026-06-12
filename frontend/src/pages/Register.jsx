@@ -63,7 +63,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#000000] flex items-center justify-center px-4 py-8">
-      <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-8 w-full max-w-md">
+      <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-12 h-12 bg-blue-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
             <span className="text-white font-bold text-xl">E</span>
@@ -98,7 +98,7 @@ export default function Register() {
                 required
                 value={instituteName}
                 onChange={(e) => setInstituteName(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                 placeholder="ABC Coaching Centre"
               />
             </div>
@@ -114,7 +114,7 @@ export default function Register() {
                   required
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                  className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                   placeholder="Hyderabad"
                 />
               </div>
@@ -128,7 +128,7 @@ export default function Register() {
                   required
                   value={state}
                   onChange={(e) => setState(e.target.value)}
-                  className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                  className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                   placeholder="Telangana"
                 />
               </div>
@@ -144,7 +144,7 @@ export default function Register() {
                 required
                 value={adminName}
                 onChange={(e) => setAdminName(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                 placeholder="Your full name"
               />
             </div>
@@ -160,7 +160,7 @@ export default function Register() {
                 required
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                 placeholder="admin@example.com"
               />
             </div>
@@ -176,7 +176,7 @@ export default function Register() {
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                 placeholder="••••••••"
               />
             </div>
@@ -192,7 +192,7 @@ export default function Register() {
                 required
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                 placeholder="••••••••"
               />
             </div>
@@ -206,7 +206,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white font-medium py-2.5 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-blue-600 text-white font-medium py-2.5 rounded-lg hover:bg-blue-700 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? 'Registering…' : 'Register'}
             </button>

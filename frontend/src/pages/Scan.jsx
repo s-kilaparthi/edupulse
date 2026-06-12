@@ -1109,12 +1109,12 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === null && (
-        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               type="button"
               onClick={() => setGradingMode('written')}
-              className="flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626] px-6 py-12 text-lg font-semibold text-gray-700 dark:text-[#A8A8A8] hover:border-gray-300 dark:border-[#363636] hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors"
+              className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#262626] px-6 py-12 text-lg font-semibold text-gray-700 dark:text-[#A8A8A8] hover:border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors"
             >
               <span className="text-3xl">📝</span>
               Written Exam
@@ -1132,7 +1132,7 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'written' && (
-        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
           <button
             type="button"
             onClick={() => {
@@ -1157,7 +1157,7 @@ export default function Scan() {
               <div>
                 <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Select Class</label>
                 <select
-                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
+                  className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={writtenClassId}
                   onChange={(e) => {
                     setWrittenClassId(e.target.value)
@@ -1175,7 +1175,7 @@ export default function Scan() {
                 <div>
                   <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Select Exam</label>
                   <select
-                    className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
+                    className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-[#262626]"
                     value={writtenExamId}
                     onChange={(e) => setWrittenExamId(e.target.value)}
                   >
@@ -1220,7 +1220,7 @@ export default function Scan() {
                 value={writtenSearch}
                 onChange={(e) => setWrittenSearch(e.target.value)}
                 placeholder="Search by name or roll number…"
-                className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 text-sm dark:bg-[#262626]"
+                className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-[#262626]"
               />
 
               <div className="space-y-2">
@@ -1235,8 +1235,8 @@ export default function Scan() {
                   const studentMarks = writtenMarks[student.id]
 
                   return (
-                    <div key={student.id} className="border border-gray-200 dark:border-[#363636] rounded-xl overflow-hidden">
-                      <div className="flex items-center justify-between px-4 py-3">
+                    <div key={student.id} className="border-2 border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626]">
                         <button
                           type="button"
                           onClick={() => {
@@ -1285,7 +1285,7 @@ export default function Scan() {
                       </div>
 
                       {isExpanded && !reviewStudentId && (
-                        <div className="px-4 pb-4 border-t border-gray-100 dark:border-[#363636] space-y-4">
+                        <div className="px-4 pb-4 border-t-2 border-gray-200 dark:border-gray-700 space-y-4">
                           <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2 mt-3">
                             <p className="text-sm text-yellow-800 font-medium">
                               Select questions with poor or wrong answers
@@ -1308,7 +1308,7 @@ export default function Scan() {
                                 }))
                               }
                               placeholder={writtenTotalMarks ? `0 – ${writtenTotalMarks}` : 'Set total marks on exam'}
-                              className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 text-sm dark:bg-[#262626]"
+                              className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-[#262626]"
                             />
                           </div>
 
@@ -1375,7 +1375,7 @@ export default function Scan() {
 
             return (
               <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto relative">
+                <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-6 max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto relative">
                   <button
                     type="button"
                     onClick={() => setReviewStudentId(null)}
@@ -1454,7 +1454,7 @@ export default function Scan() {
                     <button
                       type="button"
                       onClick={() => handleEditFromReview(reviewStudentId)}
-                      className="flex-1 border border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] py-2.5 rounded-xl text-sm font-medium dark:bg-[#262626]"
+                      className="flex-1 border-2 border-gray-300 dark:border-gray-600 bg-white text-gray-700 hover:shadow-md transition-shadow dark:text-[#A8A8A8] py-2.5 rounded-xl text-sm font-medium dark:bg-[#262626]"
                     >
                       Edit
                     </button>
@@ -1485,11 +1485,11 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 1 && (
-        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Step 1 — Select Exam</h2>
           <label className="block text-sm text-gray-600 dark:text-[#A8A8A8]">Exam</label>
           <select
-            className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
+            className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-[#262626]"
             value={examId}
             onChange={(e) => setExamId(e.target.value)}
           >
@@ -1501,7 +1501,7 @@ export default function Scan() {
             ))}
           </select>
           {selectedExam && (
-            <div className="bg-blue-50 border border-blue-100 dark:border-[#363636] rounded-lg p-4 text-sm">
+            <div className="bg-blue-50 border border-blue-100 dark:border-gray-600 rounded-lg p-4 text-sm">
               <p className="font-medium text-gray-900 dark:text-[#FFFFFF] truncate max-w-[200px] md:max-w-none">{selectedExam.name}</p>
               <p className="text-gray-600 dark:text-[#A8A8A8]">
                 Total questions: {selectedExam.total_questions ?? DEFAULT_QUESTION_COUNT}
@@ -1520,7 +1520,7 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 2 && !showReview && (
-        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Step 2 — Select Student + Scan</h2>
             {sessionRecords.length > 0 && (
@@ -1566,7 +1566,7 @@ export default function Scan() {
               <div>
                 <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Select Class</label>
                 <select
-                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
+                  className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={selectedClassId}
                   onChange={(e) => {
                     setSelectedClassId(e.target.value)
@@ -1585,7 +1585,7 @@ export default function Scan() {
               <div>
                 <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Enter Roll Number</label>
                 <input
-                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
+                  className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={rollNumber}
                   onChange={(e) => setRollNumber(e.target.value)}
                   placeholder="e.g. 101"
@@ -1598,7 +1598,7 @@ export default function Scan() {
               <div>
                 <label className="block text-sm text-gray-600 dark:text-[#A8A8A8] mb-1">Or select student</label>
                 <select
-                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
+                  className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={studentId}
                   onChange={(e) => handleStudentSelect(e.target.value)}
                 >
@@ -1673,7 +1673,7 @@ export default function Scan() {
                   Enter Roll Number
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
+                  className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={rollScanRoll}
                   onChange={(e) => setRollScanRoll(e.target.value)}
                   placeholder="e.g. 007"
@@ -1710,7 +1710,7 @@ export default function Scan() {
               {scanError && <p className="text-sm text-red-600">{scanError}</p>}
 
               {rollScanRecords.length > 0 && (
-                <div className="border-t border-gray-100 dark:border-[#363636] pt-3 mt-3">
+                <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-3 mt-3">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold text-gray-700 dark:text-[#A8A8A8]">
                       Scanned: {rollScanRecords.length} students
@@ -1758,7 +1758,7 @@ export default function Scan() {
                   Enter Roll Number
                 </label>
                 <input
-                  className="w-full border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-2 dark:bg-[#262626]"
+                  className="w-full border-2 border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 dark:bg-[#262626]"
                   value={absentRoll}
                   onChange={(e) => setAbsentRoll(e.target.value)}
                   placeholder="e.g. 007"
@@ -1799,7 +1799,7 @@ export default function Scan() {
               </button>
 
               {absentList.length > 0 && (
-                <div className="border-t border-gray-100 dark:border-[#363636] pt-3">
+                <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-3">
                   <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">
                     Marked Absent: {absentList.length}
                   </p>
@@ -1840,7 +1840,7 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 2 && showReview && (
-        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">
               Review & Post Results
@@ -1893,7 +1893,7 @@ export default function Scan() {
                       className={`shrink-0 px-3 py-2 rounded-lg border text-xs font-medium min-w-[44px] transition-colors ${
                         isAbsent
                           ? 'bg-red-100 text-red-700 border-red-300'
-                          : 'bg-gray-100 dark:bg-[#262626] text-gray-500 dark:text-[#A8A8A8] border-gray-300 dark:border-[#363636]'
+                          : 'bg-gray-100 dark:bg-[#262626] text-gray-500 dark:text-[#A8A8A8] border-gray-300 dark:border-gray-600'
                       }`}
                     >
                       {isAbsent ? '❌ Absent' : 'Mark Absent'}
@@ -1916,7 +1916,7 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 3 && (
-        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Step 3 — Review Detected Answers</h2>
           <p className="text-sm text-gray-600 dark:text-[#A8A8A8]">
             Student: {selectedStudent?.name ?? studentName} · Confidence:{' '}
@@ -1941,7 +1941,7 @@ export default function Scan() {
                   className={`text-left px-2 py-2 rounded-lg border text-sm ${
                     ambiguous
                       ? 'border-red-400 bg-red-50 text-red-800'
-                      : 'border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626]'
+                      : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626]'
                   }`}
                 >
                   Q{n} → {val || '—'}
@@ -1966,7 +1966,7 @@ export default function Scan() {
                 resetStudentFields()
                 setStep(2)
               }}
-              className="flex-1 border border-gray-300 dark:border-[#363636] py-2.5 rounded-lg font-medium dark:bg-[#262626]"
+              className="flex-1 border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] py-2.5 rounded-lg font-medium hover:shadow-md transition-shadow"
             >
               Rescan
             </button>
@@ -1976,7 +1976,7 @@ export default function Scan() {
       )}
 
       {showScanUI && gradingMode === 'omr' && step === 4 && sessionSummary && (
-        <section className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-6 space-y-4">
+        <section className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-6 space-y-4">
           <h2 className="text-lg font-semibold text-gray-800 dark:text-[#FFFFFF]">Session Summary</h2>
           <p className="text-gray-700 dark:text-[#A8A8A8]">
             Students scanned: <strong>{sessionSummary.count}</strong>
@@ -2003,7 +2003,7 @@ export default function Scan() {
           <button
             type="button"
             onClick={() => setStep(2)}
-            className="w-full border border-gray-300 dark:border-[#363636] py-2.5 rounded-lg text-sm dark:bg-[#262626]"
+            className="w-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] py-2.5 rounded-lg text-sm hover:shadow-md transition-shadow"
           >
             Continue scanning
           </button>

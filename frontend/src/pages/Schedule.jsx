@@ -298,7 +298,7 @@ export default function Schedule() {
                   className={`shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                     selectedClassId === c.id
                       ? 'bg-blue-600 text-white'
-                      : 'bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-[#363636] text-gray-600 dark:text-[#A8A8A8] hover:border-gray-400'
+                      : 'bg-white dark:bg-[#1C1C1C] border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-[#A8A8A8] hover:border-gray-400'
                   }`}
                 >
                   {c.name}
@@ -325,7 +325,7 @@ export default function Schedule() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     showMyPeriodsOnly
                       ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 dark:border-[#363636] text-gray-600 dark:text-[#A8A8A8]'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
                   }`}
                 >
                   My Periods Only
@@ -336,20 +336,20 @@ export default function Schedule() {
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     !showMyPeriodsOnly
                       ? 'bg-blue-600 text-white border-blue-600'
-                      : 'border-gray-300 dark:border-[#363636] text-gray-600 dark:text-[#A8A8A8]'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
                   }`}
                 >
                   Full Class Schedule
                 </button>
               </div>
             )}
-            <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] shadow-sm">
+            <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm">
               <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
                 <div className="min-w-[640px]">
               <table className="w-full border-collapse">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-[#363636]">
-                    <th className="sticky left-0 bg-white dark:bg-[#1C1C1C] z-10 border-r border-gray-200 dark:border-[#363636] min-w-[80px] text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] px-3 py-3">
+                  <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="sticky left-0 bg-white dark:bg-[#1C1C1C] z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] px-3 py-3">
                       Period
                     </th>
                     {DAY_LABELS.map((label) => (
@@ -366,11 +366,11 @@ export default function Schedule() {
                   {PERIODS.map((period) => (
                     <tr
                       key={period.number}
-                      className={`border-b border-gray-100 dark:border-[#363636] ${
+                      className={`border-b border-gray-200 dark:border-gray-700 ${
                         period.number === LUNCH_PERIOD ? 'bg-gray-50 dark:bg-[#262626]' : ''
                       }`}
                     >
-                      <td className={`sticky left-0 z-10 border-r border-gray-200 dark:border-[#363636] min-w-[80px] text-xs font-medium text-gray-600 dark:text-[#A8A8A8] px-3 py-3 align-top whitespace-nowrap ${
+                      <td className={`sticky left-0 z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-xs font-medium text-gray-600 dark:text-[#A8A8A8] px-3 py-3 align-top whitespace-nowrap ${
                         period.number === LUNCH_PERIOD ? 'bg-gray-50 dark:bg-[#262626]' : 'bg-white dark:bg-[#1C1C1C]'
                       }`}>
                         {period.label}
@@ -414,7 +414,7 @@ export default function Schedule() {
                                 <button
                                   type="button"
                                   onClick={() => openEdit(day, period.number, null)}
-                                  className="w-full min-h-12 text-gray-300 hover:bg-gray-50 dark:hover:bg-[#262626] hover:text-gray-500 dark:text-[#A8A8A8] text-xs rounded-lg border border-dashed border-gray-200 dark:border-[#363636] transition-colors"
+                                  className="w-full min-h-12 text-gray-300 hover:bg-gray-50 dark:hover:bg-[#262626] hover:text-gray-500 dark:text-[#A8A8A8] text-xs rounded-lg border border-dashed border-gray-200 dark:border-gray-600 transition-colors"
                                 >
                                   + Add
                                 </button>
@@ -444,7 +444,7 @@ export default function Schedule() {
                 if (e.target === e.currentTarget) closeEdit()
               }}
             >
-              <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow-xl p-6 w-full max-w-sm mx-4 md:mx-0">
+              <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-sm mx-4 md:mx-0">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900 dark:text-[#FFFFFF]">
                     {DAY_LABELS[DAYS.indexOf(editingSlot.day)]} ·{' '}
@@ -470,7 +470,7 @@ export default function Schedule() {
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
                           editDays.includes(d)
                             ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-gray-300 dark:border-[#363636] text-gray-600 dark:text-[#A8A8A8]'
+                            : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
                         }`}
                       >
                         <input
@@ -500,7 +500,7 @@ export default function Schedule() {
                         setEditSubjectId(e.target.value)
                         setEditTeacherId('')
                       }}
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     >
                       <option value="">Select subject...</option>
                       {editableSubjects.map((s) => (
@@ -518,7 +518,7 @@ export default function Schedule() {
                     <select
                       value={editTeacherId}
                       onChange={(e) => setEditTeacherId(e.target.value)}
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     >
                       <option value="">Select teacher...</option>
                       {editableTeachers.map((t) => (

@@ -142,7 +142,7 @@ export default function Profile() {
 
   return (
     <div className="max-w-2xl mx-auto flex flex-col gap-5">
-      <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-6 shadow-sm">
+      <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm">
         <div className="flex items-center gap-4 mb-4">
           <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center">
             <span className="text-white text-xl font-bold">
@@ -156,19 +156,19 @@ export default function Profile() {
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-gray-50 dark:bg-[#262626] rounded-xl p-3">
+          <div className="bg-gray-50 dark:bg-[#262626] rounded-lg border border-gray-200 dark:border-gray-600 p-3">
             <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Roll Number</p>
             <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{profile?.roll_number ?? '—'}</p>
           </div>
-          <div className="bg-gray-50 dark:bg-[#262626] rounded-xl p-3">
+          <div className="bg-gray-50 dark:bg-[#262626] rounded-lg border border-gray-200 dark:border-gray-600 p-3">
             <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Class</p>
             <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{profile?.classes?.name ?? '—'}</p>
           </div>
-          <div className="bg-gray-50 dark:bg-[#262626] rounded-xl p-3">
+          <div className="bg-gray-50 dark:bg-[#262626] rounded-lg border border-gray-200 dark:border-gray-600 p-3">
             <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Institute</p>
             <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{profile?.institutes?.name ?? '—'}</p>
           </div>
-          <div className="bg-gray-50 dark:bg-[#262626] rounded-xl p-3">
+          <div className="bg-gray-50 dark:bg-[#262626] rounded-lg border border-gray-200 dark:border-gray-600 p-3">
             <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">City</p>
             <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{profile?.institutes?.city ?? '—'}</p>
           </div>
@@ -176,7 +176,7 @@ export default function Profile() {
       </div>
 
       {userRole !== 'parent' && (
-        <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-6 shadow-sm">
+        <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Change Password</h2>
             <button
@@ -195,14 +195,14 @@ export default function Profile() {
                 placeholder="New password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               />
               <input
                 type="password"
                 placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               />
               {passwordError && <p className="text-xs text-red-600">{passwordError}</p>}
               {passwordSuccess && <p className="text-xs text-green-600">{passwordSuccess}</p>}
@@ -210,7 +210,7 @@ export default function Profile() {
                 type="button"
                 onClick={handleChangePassword}
                 disabled={savingPassword}
-                className="bg-blue-600 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                className="bg-blue-600 text-white py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md transition-shadow disabled:opacity-40"
               >
                 {savingPassword ? 'Saving...' : 'Save Password'}
               </button>
@@ -226,7 +226,7 @@ export default function Profile() {
       )}
 
       {(userRole === 'student' || userRole === 'parent') && attendanceSummary.length > 0 && (
-        <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-6 shadow-sm">
+        <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">My Attendance</h2>
           <div className="space-y-3">
             {attendanceSummary.map((s) => (
@@ -251,7 +251,7 @@ export default function Profile() {
       )}
 
       {(userRole === 'student' || userRole === 'parent') && recentExams.length > 0 && (
-        <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-6 shadow-sm">
+        <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm">
           <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Recent Exams</h2>
           <div className="space-y-2">
             {recentExams.map((exam, i) => (

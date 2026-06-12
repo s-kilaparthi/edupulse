@@ -25,7 +25,7 @@ function ExamTypeBadge({ examType }) {
   const isWritten = examType === 'written'
   return (
     <span
-      className={`text-xs px-2 py-0.5 rounded-full font-medium text-white ${
+      className={`text-xs px-2 py-0.5 rounded-full font-medium text-white border border-current ${
         isWritten ? 'bg-blue-600' : 'bg-purple-600'
       }`}
     >
@@ -37,7 +37,7 @@ function ExamTypeBadge({ examType }) {
 function InstituteExamTypeBadge({ name }) {
   if (!name) return null
   return (
-    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+    <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium border border-current border border-current">
       {name}
     </span>
   )
@@ -57,7 +57,7 @@ function OverallScoreCard({ result }) {
 
   if (notGraded) {
     return (
-      <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
+      <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-5 shadow-sm">
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Overall Score</p>
         <p className="mt-1 text-lg font-medium text-gray-500 dark:text-[#A8A8A8]">Not graded</p>
       </div>
@@ -67,7 +67,7 @@ function OverallScoreCard({ result }) {
   const youPct = totalMax > 0 ? (totalScore / totalMax) * 100 : 0
   const topPct = totalMax > 0 ? (classTop / totalMax) * 100 : 0
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
+    <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-5 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Overall Score</p>
@@ -102,7 +102,7 @@ function OverallScoreCard({ result }) {
 
 function SubjectTabs({ subjects, active, onChange }) {
   return (
-    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 border-b border-gray-200 dark:border-[#363636]">
+    <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 border-b border-gray-200 dark:border-gray-700">
         {subjects.map((s) => {
           const isActive = s.subject_id === active
           return (
@@ -119,7 +119,7 @@ function SubjectTabs({ subjects, active, onChange }) {
 
 function TopicPerformance({ subject }) {
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
+    <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-5 shadow-sm">
       <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Topic Performance</h2>
       <div className="mt-4 flex flex-col gap-4">
         {subject.topics.map((t) => {
@@ -149,7 +149,7 @@ function TopicSummary({ subject }) {
   const weak = subject.topics.filter((t) => t.percentage < 60)
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="rounded-2xl border border-green-200 bg-green-50 dark:bg-green-900/20 p-5 shadow-sm">
+      <div className="rounded-xl border-2 border-green-200 bg-green-50 dark:bg-green-900/20 p-5 shadow-sm">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-green-800 dark:text-green-300">
           <ArrowUp className="h-4 w-4" />Strong Topics
         </h3>
@@ -163,7 +163,7 @@ function TopicSummary({ subject }) {
           ))}
         </ul>
       </div>
-      <div className="rounded-2xl border border-red-200 bg-red-50 dark:bg-red-900/20 p-5 shadow-sm">
+      <div className="rounded-xl border-2 border-red-200 bg-red-50 dark:bg-red-900/20 p-5 shadow-sm">
         <h3 className="flex items-center gap-2 text-sm font-semibold text-red-800 dark:text-red-300">
           <ArrowDown className="h-4 w-4" />Needs Improvement
         </h3>
@@ -195,7 +195,7 @@ function PerformanceTrend({ trendData, totalExams }) {
   }
   if (!trendData || trendData.length === 0) return null
   return (
-    <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
+    <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-5 shadow-sm">
       <div className="mb-4">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Performance Trend</h2>
         <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-0.5">Across all {totalExams} exams — click a subject to see topic breakdown</p>
@@ -205,7 +205,7 @@ function PerformanceTrend({ trendData, totalExams }) {
           const isExpanded = expandedSubjects[subject.subject_id]
           const status = topicStatus(subject.avgPct)
           return (
-            <div key={subject.subject_id} className="rounded-xl border border-gray-100 dark:border-[#363636] overflow-hidden">
+            <div key={subject.subject_id} className="rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden">
               <button type="button" onClick={() => toggleSubject(subject.subject_id)}
                 className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-gray-50 dark:bg-[#262626] hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors">
                 <div className="flex items-center gap-2">
@@ -219,7 +219,7 @@ function PerformanceTrend({ trendData, totalExams }) {
                 </div>
               </button>
               {isExpanded && (
-                <div className="divide-y divide-gray-50 dark:divide-[#363636]">
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-white dark:bg-[#1C1C1C]">
                     <div className="col-span-4 text-xs font-medium text-gray-400 dark:text-[#A8A8A8]">Topic</div>
                     <div className="col-span-4 text-xs font-medium text-gray-400 dark:text-[#A8A8A8]">Coverage</div>
@@ -536,7 +536,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
           <select
             value={classId}
             onChange={(e) => setClassId(e.target.value)}
-            className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+            className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
           >
             <option value="">All Classes</option>
             {classes.map((c) => (
@@ -547,7 +547,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Subject</label>
           <select value={subjectId} onChange={(e) => setSubjectId(e.target.value)}
-            className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600">
+            className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none">
             {examSubjects.map((es) => (
               <option key={es.subject_id} value={es.subject_id}>{es.subjects?.name}</option>
             ))}
@@ -561,7 +561,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
             {allClassesSummary.classes.map((c) => (
               <div
                 key={c.classId}
-                className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-3 text-center shadow-sm"
+                className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-3 text-center shadow-sm"
               >
                 <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">
                   {c.className} ·{' '}
@@ -570,7 +570,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
               </div>
             ))}
           </div>
-          <div className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 text-center shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-4 text-center shadow-sm">
             <p className="text-base font-semibold text-gray-900 dark:text-[#FFFFFF]">
               Institute Average:{' '}
               <span className={heatmapPctClass(allClassesSummary.institutePercentage)}>
@@ -582,7 +582,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
       )}
 
       {classId && classAverage && selectedExam && (
-        <div className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 text-center shadow-sm">
+        <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-4 text-center shadow-sm">
           <p className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
             {selectedClass?.name ?? 'Class'} · {selectedExam.name} · {selectedSubject?.subjects?.name ?? 'Subject'}
           </p>
@@ -602,7 +602,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
       )}
 
       {!loading && heatmapData.topics && heatmapData.students?.length > 0 && (
-        <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm">
+        <div className="overflow-x-auto rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm">
           <table className="w-full border-collapse text-sm">
             <thead>
               <tr className="bg-gray-50 dark:bg-[#262626]">
@@ -621,7 +621,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
                   ? Math.round(validScores.reduce((a, b) => a + b, 0) / validScores.length)
                   : 0
                 return (
-                  <tr key={i} className="border-t border-gray-100 dark:border-[#363636]">
+                  <tr key={i} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#262626]">
                     <td className="px-4 py-2.5 sticky left-0 bg-white dark:bg-[#1C1C1C]">
                       <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-xs">{student.name}</p>
                       <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">#{student.roll}</p>
@@ -643,7 +643,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
               })}
             </tbody>
             <tfoot>
-              <tr className="border-t-2 border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626]">
+              <tr className="border-t-2 border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626]">
                 <td className="px-4 py-2.5 text-xs font-semibold text-gray-600 dark:text-[#A8A8A8] sticky left-0 bg-gray-50 dark:bg-[#262626]">Class Avg</td>
                 {heatmapData.topics.map((t) => {
                   const vals = heatmapData.students.map((s) => s.topics[t]).filter((v) => v !== undefined)
@@ -1659,7 +1659,7 @@ export default function Results() {
           <select
             value={flowExamTypeId}
             onChange={(e) => flowSetExamTypeId(e.target.value)}
-            className="w-full md:w-64 rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full md:w-64 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
           >
             <option value="">All Exam Types</option>
             {instituteExamTypes.map((t) => (
@@ -1679,7 +1679,7 @@ export default function Results() {
         </div>
 
         {showExamTypeSummaryBanner && flowExamTypeId && !flowExamId && !blocked && !loadingSummaries && examTypeSummary && (
-          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
               {examTypeSummary.typeName} Summary
             </h2>
@@ -1699,7 +1699,7 @@ export default function Results() {
         )}
 
         {blocked && blockedMessage && (
-          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
             <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">{blockedMessage}</p>
           </div>
         )}
@@ -1714,7 +1714,7 @@ export default function Results() {
             )}
 
             {!loadingSummaries && flowExams.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
                 <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No exams found.</p>
               </div>
             )}
@@ -1726,7 +1726,7 @@ export default function Results() {
                     key={exam.id}
                     type="button"
                     onClick={() => flowSetExamId(exam.id)}
-                    className="w-full rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 shadow-sm text-left hover:border-green-300 hover:shadow-md transition-all"
+                    className="w-full rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-4 shadow-sm text-left hover:border-green-300 hover:shadow-md transition-all"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
@@ -1769,7 +1769,7 @@ export default function Results() {
         )}
 
         {flowExamId && !blocked && !loading && !result && (
-          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
             <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No results found for this exam yet.</p>
             <p className="text-gray-400 dark:text-[#A8A8A8] text-xs mt-1">Scan some OMR sheets first.</p>
           </div>
@@ -1826,7 +1826,7 @@ export default function Results() {
               <select
                 value={selectedExamTypeId}
                 onChange={(e) => setSelectedExamTypeId(e.target.value)}
-                className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
                 <option value="">All Exam Types</option>
                 {instituteExamTypes.map((t) => (
@@ -1836,7 +1836,7 @@ export default function Results() {
               <select
                 value={examId}
                 onChange={(e) => setExamId(e.target.value)}
-                className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-green-500"
+                className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
                 <option value="">All Exams</option>
                 {exams.map((exam) => (
@@ -1852,7 +1852,7 @@ export default function Results() {
                     setSelectedStudentId('')
                     setStudentSearch('')
                   }}
-                  className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                  className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                 >
                   <option value="">All Classes</option>
                   {classes.map((c) => (
@@ -1865,7 +1865,7 @@ export default function Results() {
         </header>
 
         {isTeacherMainView && (
-          <div className="flex gap-1 border-b border-gray-200 dark:border-[#363636] mb-5">
+          <div className="flex gap-1 border-b border-gray-200 dark:border-gray-700 mb-5">
             <button
               onClick={() => {
                 setActiveTab('student')
@@ -1903,7 +1903,7 @@ export default function Results() {
         )}
 
         {isTeacherMainView && activeTab === 'heatmap' && !examId && (
-          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
             <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">Select an exam to view the class heatmap.</p>
           </div>
         )}
@@ -1923,7 +1923,7 @@ export default function Results() {
                     setReportExamTypeId(e.target.value)
                     setReportExamId('')
                   }}
-                  className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                  className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                 >
                   <option value="">All Types</option>
                   {instituteExamTypes.map((t) => (
@@ -1936,7 +1936,7 @@ export default function Results() {
                 <select
                   value={reportExamId}
                   onChange={(e) => setReportExamId(e.target.value)}
-                  className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                  className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                 >
                   <option value="">All Exams</option>
                   {reportExams.map((exam) => (
@@ -1949,7 +1949,7 @@ export default function Results() {
                 <select
                   value={reportClassId}
                   onChange={(e) => setReportClassId(e.target.value)}
-                  className="rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                  className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                 >
                   <option value="">All Classes</option>
                   {classes.map((c) => (
@@ -1967,14 +1967,14 @@ export default function Results() {
             )}
 
             {!loadingReportRankings && reportRankings.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
                 <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No graded exams found for selected filters</p>
               </div>
             )}
 
             {!loadingReportRankings && reportRankings.length > 0 && (
               <>
-                <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm">
+                <div className="hidden md:block overflow-x-auto rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm">
                   <table className="w-full border-collapse text-sm">
                     <thead>
                       <tr className="bg-gray-50 dark:bg-[#262626]">
@@ -1991,7 +1991,7 @@ export default function Results() {
                       {reportRankings.map((s, index) => {
                         const rank = index + 1
                         return (
-                          <tr key={s.id} className="border-t border-gray-100 dark:border-[#363636]">
+                          <tr key={s.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#262626]">
                             <td className="px-4 py-3">
                               <span className={`inline-flex w-8 h-8 items-center justify-center rounded-full text-xs font-bold ${reportsRankBadgeClass(rank)}`}>
                                 {reportsRankLabel(rank)}
@@ -2032,7 +2032,7 @@ export default function Results() {
                     return (
                       <div
                         key={s.id}
-                        className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 shadow-sm"
+                        className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-4 shadow-sm"
                       >
                         <div className="flex items-start gap-3">
                           <span className={`inline-flex w-9 h-9 items-center justify-center rounded-full text-sm font-bold shrink-0 ${reportsRankBadgeClass(rank)}`}>
@@ -2099,7 +2099,7 @@ export default function Results() {
                 placeholder="Search by name, roll number, or exam..."
                 value={studentSearch}
                 onChange={(e) => setStudentSearch(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm outline-none focus:ring-2 focus:ring-blue-600"
+                className="w-full rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               />
             </div>
 
@@ -2111,19 +2111,19 @@ export default function Results() {
             )}
 
             {!examId && !loadingTeacherOverview && searchedOverviewRows.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
                 <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No results found.</p>
               </div>
             )}
 
             {!examId && !loadingTeacherOverview && searchedOverviewRows.length > 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm">
-                <div className="p-4 border-b border-gray-100 dark:border-[#363636]">
+              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
                     All Results — {searchedOverviewRows.length} entries
                   </h2>
                 </div>
-                <div className="divide-y divide-gray-50 dark:divide-[#363636]">
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {searchedOverviewRows.map((row) => (
                     <div
                       key={`${row.studentId}-${row.examId}`}
@@ -2161,20 +2161,20 @@ export default function Results() {
             )}
 
             {examId && displayedRankings.length === 0 && studentRankings.length > 0 && selectedClassId && (
-              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
                 <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No students in this class</p>
               </div>
             )}
 
             {examId && studentRankings.length === 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-8 text-center shadow-sm">
+              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
                 <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No students found for this exam</p>
               </div>
             )}
 
             {examId && displayedRankings.length > 0 && (
-              <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm">
-                <div className="p-4 border-b border-gray-100 dark:border-[#363636]">
+              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
                     Class Results — {displayedRankings.length} students
                     {selectedExam && (
@@ -2182,7 +2182,7 @@ export default function Results() {
                     )}
                   </h2>
                 </div>
-                <div className="divide-y divide-gray-50 dark:divide-[#363636]">
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {searchedRankings.map((s) => {
                     const index = displayedRankings.indexOf(s)
                     return (
@@ -2248,15 +2248,15 @@ export default function Results() {
                         )}
 
                         {expandedStudentId === s.id && !loading && !result && examId && (
-                          <div className="mx-4 mb-4 rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-6 text-center">
+                          <div className="mx-4 mb-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-6 text-center">
                             <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No results found for this exam yet.</p>
                             <p className="text-gray-400 dark:text-[#A8A8A8] text-xs mt-1">Scan some OMR sheets first.</p>
                           </div>
                         )}
 
                         {expandedStudentId === s.id && !loading && result && (
-                          <div className="mx-4 mb-4 border border-blue-100 dark:border-[#363636] rounded-xl overflow-hidden bg-white dark:bg-[#1C1C1C]">
-                            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-100 dark:border-[#363636]">
+                          <div className="mx-4 mb-4 border border-blue-100 dark:border-gray-600 rounded-xl overflow-hidden bg-white dark:bg-[#1C1C1C]">
+                            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-100 dark:border-gray-600">
                               <p className="text-xs font-medium text-blue-700">
                                 {s.name}&apos;s Performance
                               </p>

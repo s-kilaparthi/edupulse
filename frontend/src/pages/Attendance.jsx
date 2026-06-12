@@ -110,7 +110,7 @@ function StudentList({
   saving,
 }) {
   return (
-    <div className="border-t border-gray-100 dark:border-[#363636] p-4">
+    <div className="border-t-2 border-gray-200 dark:border-gray-700 p-4">
       <div className="space-y-2 max-h-80 overflow-y-auto mb-4">
         {students.map((student) => (
           <div
@@ -132,7 +132,7 @@ function StudentList({
                   className={`px-3 py-2 rounded-lg border text-sm font-medium transition-colors min-w-[44px] flex items-center justify-center ${
                     attendanceMap[student.id] === status
                       ? STATUS_COLORS[status]
-                      : 'bg-gray-50 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8] border-gray-200 dark:border-[#363636]'
+                      : 'bg-gray-50 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8] border-gray-200 dark:border-gray-600'
                   }`}
                 >
                   {STATUS_ICONS[status]}
@@ -174,7 +174,7 @@ function SlotCard({
   saving,
 }) {
   return (
-    <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] shadow-sm overflow-hidden">
+    <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between p-4">
         <div>
           <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">
@@ -189,7 +189,7 @@ function SlotCard({
           <button
             type="button"
             onClick={onToggle}
-            className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-medium hover:bg-green-200"
+            className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full border border-current font-medium hover:bg-green-200"
           >
             {isActive ? 'Cancel' : '✓ Marked · Edit'}
           </button>
@@ -214,7 +214,7 @@ function SlotCard({
         />
       )}
       {isActive && students.length === 0 && (
-        <div className="border-t border-gray-100 dark:border-[#363636] p-4">
+        <div className="border-t-2 border-gray-200 dark:border-gray-700 p-4">
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No students in this class.</p>
         </div>
       )}
@@ -633,7 +633,7 @@ export default function Attendance() {
               setReportClassId(e.target.value)
               setReportStudentId('')
             }}
-            className="rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+            className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
           >
             <option value="">Select class...</option>
             {classList.map((c) => (
@@ -647,7 +647,7 @@ export default function Attendance() {
             <select
               value={reportStudentId}
               onChange={(e) => setReportStudentId(e.target.value)}
-              className="rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+              className="rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
             >
               <option value="">Select student...</option>
               {reportStudents.map((s) => (
@@ -688,7 +688,7 @@ export default function Attendance() {
             {studentAttendance.length === 0 ? (
               <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No attendance records for this student.</p>
             ) : (
-              <div className="overflow-x-auto bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636]">
+              <div className="overflow-x-auto bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-[#262626] text-left">
@@ -700,7 +700,7 @@ export default function Attendance() {
                   </thead>
                   <tbody>
                     {studentAttendance.map((a, i) => (
-                      <tr key={i} className="border-t border-gray-100 dark:border-[#363636]">
+                      <tr key={i} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#262626]">
                         <td className="px-3 py-2">{a.date}</td>
                         <td className="px-3 py-2">{a.subjects?.name}</td>
                         <td className="px-3 py-2 text-xs text-gray-500 dark:text-[#A8A8A8]">
@@ -741,7 +741,7 @@ export default function Attendance() {
             <select
               value={selectedClassId}
               onChange={(e) => setSelectedClassId(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+              className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
             >
               <option value="">Select class…</option>
               {classList.map((c) => (
@@ -757,7 +757,7 @@ export default function Attendance() {
               type="date"
               value={reportFromDate}
               onChange={(e) => setReportFromDate(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+              className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
             />
           </div>
           <div>
@@ -767,7 +767,7 @@ export default function Attendance() {
               value={reportToDate}
               max={todayStr()}
               onChange={(e) => setReportToDate(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+              className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
             />
           </div>
           <div className="flex items-end">
@@ -775,7 +775,7 @@ export default function Attendance() {
               type="button"
               onClick={fetchReports}
               disabled={!selectedClassId || reportLoading}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg text-sm hover:bg-blue-700 disabled:opacity-40"
+              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow text-sm hover:bg-blue-700 disabled:opacity-40"
             >
               {reportLoading ? 'Loading…' : 'Generate Report'}
             </button>
@@ -783,11 +783,11 @@ export default function Attendance() {
         </div>
 
         {reportRows.length > 0 && (
-          <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636]">
+          <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700">
             <div className="overflow-x-auto">
             <table className="min-w-[500px] w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626]">
+                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#262626]">
                   <th className="text-left px-4 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">Student</th>
                   <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">Present</th>
                   <th className="text-center px-3 py-3 font-medium text-gray-600 dark:text-[#A8A8A8]">Absent</th>
@@ -798,7 +798,7 @@ export default function Attendance() {
               </thead>
               <tbody>
                 {reportRows.map((row) => (
-                  <tr key={row.name + row.roll_number} className="border-b border-gray-100 dark:border-[#363636]">
+                  <tr key={row.name + row.roll_number} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#262626]">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900 dark:text-[#FFFFFF]">{row.name}</p>
                       <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">Roll #{row.roll_number}</p>
@@ -844,7 +844,7 @@ export default function Attendance() {
                   setSelectedClassId(e.target.value)
                   setActiveSlotId(null)
                 }}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
                 <option value="">Select class…</option>
                 {classes.map((c) => (
@@ -865,7 +865,7 @@ export default function Attendance() {
                 setSelectedDate(e.target.value)
                 setActiveSlotId(null)
               }}
-              className="w-full md:w-auto rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+              className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
             />
           </div>
         </div>
@@ -881,7 +881,7 @@ export default function Attendance() {
         ) : showClassSelector && !selectedClassId ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Select a class to view schedule slots.</p>
         ) : isTeacher && !selectedAttendanceClassId ? null : displayedSlots.length === 0 ? (
-          <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-8 text-center">
+          <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
             <p className="text-gray-500 dark:text-[#A8A8A8]">No scheduled classes for this day.</p>
           </div>
         ) : (
@@ -918,7 +918,7 @@ export default function Attendance() {
 
       {isTeacher && (
         <>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-[#363636] mb-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-gray-700 mb-6">
             {TEACHER_TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -955,7 +955,7 @@ export default function Attendance() {
                         className={`px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
                           selectedAttendanceClassId === c.id
                             ? 'bg-blue-600 text-white border-blue-600'
-                            : 'border-gray-300 dark:border-[#363636] text-gray-600 dark:text-[#A8A8A8]'
+                            : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
                         }`}
                       >
                         {c.name}
@@ -976,7 +976,7 @@ export default function Attendance() {
         loading ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading attendance…</p>
         ) : Object.keys(studentSummary).length === 0 ? (
-          <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-8 text-center">
+          <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
             <p className="text-gray-500 dark:text-[#A8A8A8]">No attendance records yet.</p>
           </div>
         ) : (
@@ -989,7 +989,7 @@ export default function Attendance() {
               return (
                 <div
                   key={subject}
-                  className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] overflow-hidden"
+                  className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 overflow-hidden"
                 >
                   <button
                     type="button"
@@ -1017,7 +1017,7 @@ export default function Attendance() {
                   </button>
 
                   {isExpanded && (
-                    <div className="border-t border-gray-100 dark:border-[#363636] px-4 py-3 bg-gray-50 dark:bg-[#262626]">
+                    <div className="border-t-2 border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-[#262626]">
                       {records.length === 0 ? (
                         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No attendance records yet</p>
                       ) : (
@@ -1056,7 +1056,7 @@ export default function Attendance() {
 
       {isAdmin && (
         <>
-          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-[#363636] mb-6">
+          <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 border-b border-gray-200 dark:border-gray-700 mb-6">
             {ADMIN_TABS.map((tab) => (
               <button
                 key={tab.id}

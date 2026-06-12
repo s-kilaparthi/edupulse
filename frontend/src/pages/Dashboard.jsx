@@ -62,7 +62,7 @@ function getRoleTimeGreeting(name) {
 
 function AdminStatCard({ icon, label, value, borderColor, onClick }) {
   const className = `rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border-t-4 ${borderColor} ${
-    onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200 dark:border-[#363636] transition-all text-left w-full' : ''
+    onClick ? 'cursor-pointer hover:shadow-md hover:border-gray-200 dark:border-gray-600 transition-all text-left w-full' : ''
   }`
 
   const content = (
@@ -142,7 +142,7 @@ function studentCanSeeAnnouncement(announcement, studentClassId, studentId) {
 }
 
 function StatCard({ label, value, sub, onClick, hint }) {
-  const className = `rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm ${
+  const className = `rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-5 shadow-sm ${
     onClick ? 'cursor-pointer hover:border-blue-300 hover:shadow-md transition-all' : ''
   }`
 
@@ -270,7 +270,7 @@ function TodoListSection({ userId }) {
   }
 
   return (
-    <div className="rounded-xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] shadow-sm overflow-hidden">
+    <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm overflow-hidden">
       <button
         type="button"
         onClick={() => setExpanded((prev) => !prev)}
@@ -283,7 +283,7 @@ function TodoListSection({ userId }) {
       </button>
 
       {expanded && (
-        <div className="px-4 pb-4 border-t border-gray-100 dark:border-[#363636]">
+        <div className="px-4 pb-4 border-t-2 border-gray-200 dark:border-gray-700">
           <div className="flex flex-col sm:flex-row gap-2 mt-3 mb-4">
             <input
               type="text"
@@ -296,7 +296,7 @@ function TodoListSection({ userId }) {
                 }
               }}
               placeholder="Enter task..."
-              className="flex-1 rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="flex-1 rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
             <div className="flex flex-col shrink-0">
               <label className="text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">Deadline</label>
@@ -304,14 +304,14 @@ function TodoListSection({ userId }) {
                 type="date"
                 value={taskDeadline}
                 onChange={(e) => setTaskDeadline(e.target.value)}
-                className="rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
               />
             </div>
             <button
               type="button"
               onClick={handleAddTask}
               disabled={saving || !taskTitle.trim()}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium shadow-sm hover:shadow-md hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-shadow shrink-0"
             >
               {saving ? 'Adding…' : 'Add'}
             </button>
@@ -326,7 +326,7 @@ function TodoListSection({ userId }) {
                 return (
                   <li
                     key={task.id}
-                    className={`flex items-center gap-2 p-2 rounded-lg border border-gray-100 dark:border-[#363636] ${
+                    className={`flex items-center gap-2 p-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] ${
                       task.is_completed ? 'opacity-50' : ''
                     }`}
                   >
@@ -337,7 +337,7 @@ function TodoListSection({ userId }) {
                       type="checkbox"
                       checked={task.is_completed}
                       onChange={() => handleToggleComplete(task)}
-                      className="rounded border-gray-300 dark:border-[#363636] shrink-0"
+                      className="rounded border-gray-300 dark:border-gray-600 shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <p
@@ -401,7 +401,7 @@ function AnnouncementsSection({ announcements, navigate }) {
         >
           <div
             className={`rounded-xl border p-4 mb-3 shadow-sm overflow-hidden ${
-              a.is_pinned ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800' : 'bg-white dark:bg-[#1C1C1C] border-gray-200 dark:border-[#363636]'
+              a.is_pinned ? 'bg-yellow-50 dark:bg-yellow-900/30 border-yellow-200 dark:border-yellow-800' : 'bg-white dark:bg-[#1C1C1C] border-gray-200 dark:border-gray-600'
             }`}
           >
             <div className="flex items-center gap-2">
@@ -897,7 +897,7 @@ export default function Dashboard() {
     <div className="max-w-4xl flex flex-col gap-5">
       {(userRole === 'student' || userRole === 'parent') && (
         <>
-          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] border border-blue-100 dark:border-[#363636] p-5 shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] p-5 shadow-sm">
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">
               {getRoleTimeGreeting(userRole === 'parent' ? parentName : userName)}
             </h1>
@@ -905,23 +905,23 @@ export default function Dashboard() {
               <p className="text-sm text-indigo-700 font-medium mt-1">{instituteName}</p>
             )}
             {userRole === 'parent' ? (
-              <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+              <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-current font-medium">
                 👨‍👩‍👧 Parent · Viewing: {studentInfo.studentName ?? 'Student'}
               </span>
             ) : (
-              <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+              <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-current font-medium">
                 🎓 Student
               </span>
             )}
             {userRole === 'student' && (
               <div className="flex flex-wrap gap-3 mt-2">
                 {studentInfo.className && (
-                  <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
+                  <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full border border-current font-medium">
                     📚 {studentInfo.className}
                   </span>
                 )}
                 {studentInfo.rollNo && (
-                  <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full font-medium">
+                  <span className="text-sm text-green-700 bg-green-100 px-3 py-1 rounded-full border border-current font-medium">
                     🎓 Roll #{studentInfo.rollNo}
                   </span>
                 )}
@@ -929,7 +929,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Today&apos;s Schedule</h2>
               <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">{formatTodayDate()}</span>
@@ -944,7 +944,7 @@ export default function Dashboard() {
                 {todaySchedule.map((slot, index) => (
                   <div
                     key={slot.period_number}
-                    className="flex rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 min-w-[160px] shrink-0 border border-gray-100 dark:border-[#363636] overflow-hidden"
+                    className="flex rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 min-w-[160px] shrink-0 border-2 border-gray-200 dark:border-gray-700 overflow-hidden"
                   >
                     <div
                       className={`w-1 shrink-0 rounded-full ${BAR_COLORS[index % BAR_COLORS.length]}`}
@@ -970,7 +970,7 @@ export default function Dashboard() {
 
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-1 h-5 bg-green-500 rounded-full" />
+              <div className="w-1 h-5 bg-green-500 rounded-full border border-current" />
               <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">Today&apos;s Attendance</h2>
             </div>
             <div
@@ -979,7 +979,7 @@ export default function Dashboard() {
                   ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
                   : todayAttendance.status === 'absent'
                     ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-                    : 'bg-gray-50 dark:bg-[#262626] border-gray-200 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8]'
+                    : 'bg-gray-50 dark:bg-[#262626] border-gray-200 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
               }`}
             >
               <p className="text-lg font-semibold">
@@ -1007,22 +1007,22 @@ export default function Dashboard() {
 
       {userRole === 'teacher' && (
         <>
-          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] border border-blue-100 dark:border-[#363636] p-5 shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] p-5 shadow-sm">
             <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">
               {getRoleTimeGreeting(userName)}
             </h1>
             {instituteName && (
               <p className="text-sm text-indigo-700 font-medium mt-1">{instituteName}</p>
             )}
-            <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+            <span className="inline-block mt-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full border border-current font-medium">
               👨‍🏫 Teacher
             </span>
           </div>
 
-          <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-5 shadow-sm">
+          <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-1 h-5 bg-blue-500 rounded-full" />
+                <div className="w-1 h-5 bg-blue-500 rounded-full border border-current" />
                 <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">Today&apos;s Schedule</h2>
               </div>
               <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">{formatTodayDate()}</span>
@@ -1037,7 +1037,7 @@ export default function Dashboard() {
                 {todaySchedule.map((slot, index) => (
                   <div
                     key={`${slot.period_number}-${index}`}
-                    className="flex rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 min-w-[160px] shrink-0 border border-gray-100 dark:border-[#363636] overflow-hidden"
+                    className="flex rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 min-w-[160px] shrink-0 border-2 border-gray-200 dark:border-gray-700 overflow-hidden"
                   >
                     <div
                       className={`w-1 shrink-0 rounded-full ${BAR_COLORS[index % BAR_COLORS.length]}`}
@@ -1069,26 +1069,26 @@ export default function Dashboard() {
           {teacherClassCards.length > 0 && (
             <>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-1 h-5 bg-purple-500 rounded-full" />
+                <div className="w-1 h-5 bg-purple-500 rounded-full border border-current" />
                 <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">My Classes</h2>
               </div>
               <div className="grid grid-cols-2 gap-3">
               {teacherClassCards.map((cls, index) => (
                 <div
                   key={cls.classId}
-                  className={`rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border border-gray-100 dark:border-[#363636] border-t-4 ${CLASS_CARD_TOP_BORDERS[index % CLASS_CARD_TOP_BORDERS.length]} hover:shadow-md transition-shadow`}
+                  className={`rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border-2 border-gray-200 dark:border-gray-700 border-t-4 ${CLASS_CARD_TOP_BORDERS[index % CLASS_CARD_TOP_BORDERS.length]} hover:shadow-md transition-shadow`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{cls.className}</p>
                     {cls.attendanceMarked ? (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium shrink-0">
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0">
                         ✅ Marked
                       </span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => navigate('/attendance')}
-                        className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0 hover:bg-orange-200 transition-colors"
+                        className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-orange-200 transition-colors"
                       >
                         ⚠️ Pending
                       </button>
@@ -1148,7 +1148,7 @@ export default function Dashboard() {
           <div className="flex flex-col gap-5">
             <AdminZoneHeader label="Today" barColor="bg-blue-500" />
 
-            <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] border border-blue-100 dark:border-[#363636] p-5 shadow-sm">
+            <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] p-5 shadow-sm">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h1 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">
@@ -1161,7 +1161,7 @@ export default function Dashboard() {
                     {adminStats.students} Students · {adminStats.teachers} Teachers · {adminStats.classes} Classes
                   </p>
                 </div>
-                <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 font-medium shrink-0">
+                <span className="text-xs bg-blue-100 text-blue-700 rounded-full border border-current px-2 py-0.5 font-medium shrink-0">
                   Admin
                 </span>
               </div>
@@ -1175,19 +1175,19 @@ export default function Dashboard() {
                 {adminAttendanceClasses.map((cls) => (
                   <div
                     key={cls.id}
-                    className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border border-gray-100 dark:border-[#363636]"
+                    className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border-2 border-gray-200 dark:border-gray-700"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{cls.name}</p>
                       {cls.marked ? (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium shrink-0">
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0">
                           ✅ Marked
                         </span>
                       ) : (
                         <button
                           type="button"
                           onClick={() => navigate('/attendance')}
-                          className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0 hover:bg-orange-200 transition-colors"
+                          className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-orange-200 transition-colors"
                         >
                           ⚠️ Pending
                         </button>
@@ -1208,7 +1208,7 @@ export default function Dashboard() {
                 {adminTodayExams.map((exam) => (
                   <div
                     key={exam.id}
-                    className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border border-gray-100 dark:border-[#363636]"
+                    className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border-2 border-gray-200 dark:border-gray-700"
                   >
                     <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">{exam.name}</p>
                     <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-1">{formatExamClassLabel(exam)}</p>
@@ -1258,7 +1258,7 @@ export default function Dashboard() {
 
             <AdminSectionTitle title="This Week's Activity" barColor="bg-pink-500" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border border-gray-100 dark:border-[#363636]">
+              <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border-2 border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Announcements posted this week</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">
                   {adminWeekActivity.announcementCount}
@@ -1271,7 +1271,7 @@ export default function Dashboard() {
                   <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-2">No announcements this week</p>
                 )}
               </div>
-              <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border border-gray-100 dark:border-[#363636]">
+              <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border-2 border-gray-200 dark:border-gray-700">
                 <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Exams graded this week</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">
                   {adminWeekActivity.gradedExamsCount}

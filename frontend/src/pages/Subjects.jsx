@@ -645,7 +645,7 @@ export default function Subjects() {
       {isAdmin && (
         <form
           onSubmit={handleCreateSubject}
-          className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-6 shadow-sm mb-6"
+          className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 shadow-sm mb-6"
         >
           <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Create Subject</h2>
           <div className="flex flex-col gap-4">
@@ -655,12 +655,12 @@ export default function Subjects() {
                 value={subjectName}
                 onChange={(e) => setSubjectName(e.target.value)}
                 placeholder="Subject name"
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
               />
               <button
                 type="submit"
                 disabled={saving}
-                className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
+                className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
@@ -678,7 +678,7 @@ export default function Subjects() {
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
                         selectedClassIdsForSubject.includes(c.id)
                           ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                          : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
                       }`}
                     >
                       <input
@@ -717,7 +717,7 @@ export default function Subjects() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 selectedClassId === c.id
                   ? 'bg-blue-600 text-white'
-                  : 'bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-[#363636] text-gray-600 dark:text-[#A8A8A8] hover:border-gray-400'
+                  : 'bg-white dark:bg-[#1C1C1C] border-2 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-[#A8A8A8] hover:border-gray-400'
               }`}
             >
               {c.name}
@@ -756,7 +756,7 @@ export default function Subjects() {
               return (
                 <li
                   key={subject.id}
-                  className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-4 shadow-sm"
+                  className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm"
                 >
                   {isStudentView ? (
                     <>
@@ -780,7 +780,7 @@ export default function Subjects() {
                         </ul>
                       )}
 
-                      <div className="mt-3 border-t border-gray-100 dark:border-[#363636] pt-3">
+                      <div className="mt-3 border-t-2 border-gray-200 dark:border-gray-700 pt-3">
                         <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">
                           📎 Notes & Files
                         </p>
@@ -867,7 +867,7 @@ export default function Subjects() {
                       </div>
 
                       {isAdmin && manageClassesSubjectId === subject.id && (
-                        <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#363636]">
+                        <div className="mt-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
                           <p className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Assign to Classes</p>
                           {availableClasses.length === 0 ? (
                             <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No classes available.</p>
@@ -880,7 +880,7 @@ export default function Subjects() {
                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
                                       manageClassIds.includes(c.id)
                                         ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                                        : 'border-gray-300 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+                                        : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
                                     }`}
                                   >
                                     <input
@@ -926,7 +926,7 @@ export default function Subjects() {
                       )}
 
                       {!isStudentView && (
-                        <div className="mt-3 border-t border-gray-100 dark:border-[#363636] pt-3">
+                        <div className="mt-3 border-t-2 border-gray-200 dark:border-gray-700 pt-3">
                           <div className="flex items-center justify-between mb-2">
                             <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8]">
                               📎 Notes & Files
@@ -953,14 +953,14 @@ export default function Subjects() {
                                 value={noteTitle}
                                 onChange={(e) => setNoteTitle(e.target.value)}
                                 placeholder="Title (e.g. Chapter 4 Notes, Practice Questions)"
-                                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-xs dark:bg-[#262626]"
+                                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-xs dark:bg-[#262626]"
                               />
                               <input
                                 type="url"
                                 value={noteUrl}
                                 onChange={(e) => setNoteUrl(e.target.value)}
                                 placeholder="Paste link (Google Drive, YouTube, PDF URL...)"
-                                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-xs dark:bg-[#262626]"
+                                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-xs dark:bg-[#262626]"
                               />
                               <div className="flex gap-2">
                                 <button
@@ -1021,7 +1021,7 @@ export default function Subjects() {
                                     className={`text-xs px-2 py-0.5 rounded-full shrink-0 ml-2 ${
                                       note.class_id == null
                                         ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                                        : 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] border border-gray-200 dark:border-[#363636]'
+                                        : 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] border-2 border-gray-200 dark:border-gray-700'
                                     }`}
                                   >
                                     {note.class_id == null
@@ -1043,7 +1043,7 @@ export default function Subjects() {
                                         Share
                                       </button>
                                       {sharePopoverNoteId === note.id && (
-                                        <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-[#363636] rounded-lg shadow-lg p-2">
+                                        <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white dark:bg-[#1C1C1C] border-2 border-gray-200 dark:border-gray-700 rounded-lg shadow-lg p-2">
                                           <div className="flex items-center justify-between mb-2">
                                             <p className="text-xs font-medium text-gray-700 dark:text-[#A8A8A8]">
                                               Share to Class
@@ -1071,7 +1071,7 @@ export default function Subjects() {
                                                         checked={isShared}
                                                         disabled={sharingNoteId === note.id}
                                                         onChange={() => handleShareClassToggle(note, cls.id)}
-                                                        className="rounded border-gray-300 dark:border-[#363636]"
+                                                        className="rounded border-gray-300 dark:border-gray-600"
                                                       />
                                                       <span>{cls.name}</span>
                                                     </label>
@@ -1129,7 +1129,7 @@ export default function Subjects() {
                                 className={`text-xs px-3 py-1.5 rounded-full border font-medium transition-colors ${
                                   selectedTopics.includes(topic)
                                     ? 'bg-purple-600 text-white border-purple-600'
-                                    : 'bg-white dark:bg-[#1C1C1C] text-gray-600 dark:text-[#A8A8A8] border-gray-300 dark:border-[#363636]'
+                                    : 'bg-white dark:bg-[#1C1C1C] text-gray-600 dark:text-[#A8A8A8] border-gray-300 dark:border-gray-600'
                                 }`}
                               >
                                 {topic}
@@ -1163,7 +1163,7 @@ export default function Subjects() {
                       )}
 
                       {showAddTopic === subject.id && (
-                        <div className="mt-4 border border-gray-200 dark:border-[#363636] rounded-lg bg-gray-50 dark:bg-[#262626] p-4">
+                        <div className="mt-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-[#262626] p-4">
                           <div className="flex items-center justify-between mb-3">
                             <h3 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Topics</h3>
                             <button
@@ -1181,7 +1181,7 @@ export default function Subjects() {
                               {classTopics.map((topic) => (
                                 <li
                                   key={topic.id}
-                                  className="flex items-center justify-between gap-2 bg-white dark:bg-[#1C1C1C] border border-gray-200 dark:border-[#363636] rounded-lg px-3 py-2"
+                                  className="flex items-center justify-between gap-2 bg-white dark:bg-[#1C1C1C] border-2 border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2"
                                 >
                                   <span className="text-sm text-gray-800 dark:text-[#FFFFFF]">{topic.name}</span>
                                   <button
@@ -1212,13 +1212,13 @@ export default function Subjects() {
                                 }
                               }}
                               placeholder="Enter topic name..."
-                              className="flex-1 rounded-lg border border-gray-300 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                              className="flex-1 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                             />
                             <button
                               type="button"
                               onClick={() => handleAddTopic(subject.id)}
                               disabled={topicSaving || !topicInput.trim()}
-                              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                              className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                             >
                               {topicSaving ? 'Adding…' : 'Add'}
                             </button>

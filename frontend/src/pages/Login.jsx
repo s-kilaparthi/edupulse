@@ -143,7 +143,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#000000] flex items-center justify-center px-4">
-      <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl shadow p-8 w-full max-w-md">
+      <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-12 h-12 bg-blue-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
             <span className="text-white font-bold text-xl">E</span>
@@ -152,7 +152,7 @@ export default function Login() {
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm mt-1">Sign in to your account</p>
         </div>
 
-        <div className="flex rounded-lg border border-gray-200 dark:border-[#363636] p-1 mb-6">
+        <div className="flex rounded-lg border-2 border-gray-200 dark:border-gray-700 p-1 mb-6">
           <button
             type="button"
             onClick={() => setLoginMode('email')}
@@ -201,7 +201,7 @@ export default function Login() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                 placeholder="you@example.com"
               />
             </div>
@@ -216,7 +216,7 @@ export default function Login() {
                 required
                 value={rollNumber}
                 onChange={(e) => setRollNumber(e.target.value)}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                 placeholder="Your roll number e.g. 007"
               />
             </div>
@@ -232,7 +232,7 @@ export default function Login() {
                 value={parentPhone}
                 onChange={(e) => setParentPhone(e.target.value)}
                 maxLength={10}
-                className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                 placeholder="Registered phone number"
               />
             </div>
@@ -249,7 +249,7 @@ export default function Login() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
               placeholder={loginMode === 'parent' ? 'Student roll number' : '••••••••'}
             />
           </div>
@@ -263,7 +263,7 @@ export default function Login() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white font-medium py-2.5 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            className="w-full bg-blue-600 text-white font-medium py-2.5 rounded-lg hover:bg-blue-700 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? 'Signing in…' : 'Sign in'}
           </button>

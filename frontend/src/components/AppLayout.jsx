@@ -146,7 +146,7 @@ export default function AppLayout({ session }) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#000000] flex flex-col">
-      <header className="bg-white dark:bg-[#000000] border-b border-gray-200 dark:border-[#363636] h-14 flex items-center justify-between px-4 md:px-6 shrink-0">
+      <header className="bg-white dark:bg-[#000000] border-b border-gray-200 dark:border-gray-700 h-14 flex items-center justify-between px-4 md:px-6 shrink-0">
         <div className="flex items-center gap-3">
           <button
             type="button"
@@ -194,15 +194,15 @@ export default function AppLayout({ session }) {
                 />
               </svg>
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-xs rounded-full border border-current flex items-center justify-center">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
 
             {showNotifDropdown && (
-              <div className="fixed right-2 top-14 w-[calc(100vw-16px)] md:absolute md:right-0 md:top-full md:mt-1 md:w-80 bg-white dark:bg-[#262626] rounded-xl border border-gray-200 dark:border-[#363636] shadow-lg z-50 overflow-hidden">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-[#363636]">
+              <div className="fixed right-2 top-14 w-[calc(100vw-16px)] md:absolute md:right-0 md:top-full md:mt-1 md:w-80 bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-lg z-50 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <p className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Notifications</p>
                   {unreadCount > 0 && (
                     <button
@@ -219,7 +219,7 @@ export default function AppLayout({ session }) {
                   <p className="text-sm text-gray-400 dark:text-[#A8A8A8] text-center py-6">No notifications yet</p>
                 )}
 
-                <ul className="max-h-80 overflow-y-auto divide-y divide-gray-50 dark:divide-[#363636]">
+                <ul className="max-h-80 overflow-y-auto divide-y divide-gray-200 dark:divide-gray-700">
                   {notifications.map((n) => (
                     <li key={n.id}>
                       <button
@@ -251,7 +251,7 @@ export default function AppLayout({ session }) {
           <button
             type="button"
             onClick={handleLogout}
-            className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] hover:text-gray-900 dark:hover:text-[#FFFFFF] border border-gray-300 dark:border-[#363636] rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
+            className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] hover:text-gray-900 dark:hover:text-[#FFFFFF] border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#262626] hover:shadow-md transition-shadow"
           >
             Logout
           </button>
@@ -267,11 +267,11 @@ export default function AppLayout({ session }) {
         )}
 
         <aside
-          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#000000] border-r border-gray-200 dark:border-[#363636] z-50 transform transition-transform duration-300 ease-in-out flex flex-col md:relative md:translate-x-0 md:w-52 md:flex md:flex-col shrink-0 ${
+          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#000000] border-r-2 border-gray-200 dark:border-gray-700 z-50 transform transition-transform duration-300 ease-in-out flex flex-col md:relative md:translate-x-0 md:w-52 md:flex md:flex-col shrink-0 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
-          <div className="flex items-center justify-between p-4 md:hidden border-b border-gray-100 dark:border-[#363636]">
+          <div className="flex items-center justify-between p-4 md:hidden border-b-2 border-gray-200 dark:border-gray-700">
             <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">Menu</span>
             <button
               type="button"
@@ -292,8 +292,8 @@ export default function AppLayout({ session }) {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`text-left text-sm px-3 py-2.5 rounded-lg transition-colors ${
                   pathname === to
-                    ? 'bg-blue-50 dark:bg-[#262626] text-blue-700 dark:text-blue-300 font-medium'
-                    : 'text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-50 dark:hover:bg-[#262626] hover:text-gray-900 dark:hover:text-[#FFFFFF]'
+                    ? 'border-l-4 border-blue-500 bg-blue-50 dark:bg-[#262626] text-blue-700 dark:text-blue-300 font-medium'
+                    : 'text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-100 dark:hover:bg-[#262626] hover:text-gray-900 dark:hover:text-[#FFFFFF]'
                 }`}
               >
                 {label}
@@ -301,7 +301,7 @@ export default function AppLayout({ session }) {
             ))}
           </nav>
 
-          <div className="mt-auto border-t border-gray-200 dark:border-[#363636] px-3 py-3">
+          <div className="mt-auto border-t-2 border-gray-200 dark:border-gray-700 px-3 py-3">
             <div className="flex items-center gap-3 w-full">
               <span className="text-base shrink-0" aria-hidden="true">
                 {theme === 'dark' ? '☀️' : '🌙'}

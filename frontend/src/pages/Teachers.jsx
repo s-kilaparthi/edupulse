@@ -266,7 +266,7 @@ export default function Teachers() {
     <>
       <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mb-6">Teachers</h1>
 
-      <div className="bg-white dark:bg-[#1C1C1C] rounded-2xl border border-gray-200 dark:border-[#363636] p-5 shadow-sm mb-6">
+      <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5 shadow-sm mb-6">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Add Teacher</h2>
         <form onSubmit={handleCreateTeacher} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -279,7 +279,7 @@ export default function Teachers() {
               value={teacherName}
               onChange={(e) => setTeacherName(e.target.value)}
               placeholder="Priya Sharma"
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
           </div>
 
@@ -293,7 +293,7 @@ export default function Teachers() {
               value={teacherEmail}
               onChange={(e) => setTeacherEmail(e.target.value)}
               placeholder="priya@institute.com"
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
           </div>
 
@@ -307,7 +307,7 @@ export default function Teachers() {
               value={teacherPassword}
               onChange={(e) => setTeacherPassword(e.target.value)}
               placeholder="e.g. teacher123"
-              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent dark:bg-[#262626]"
+              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
           </div>
 
@@ -315,7 +315,7 @@ export default function Teachers() {
             <button
               type="submit"
               disabled={saving}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -347,7 +347,7 @@ export default function Teachers() {
             {teachers.map((teacher) => (
               <li
                 key={teacher.id}
-                className="bg-white dark:bg-[#1C1C1C] rounded-xl border border-gray-200 dark:border-[#363636] p-4 shadow-sm"
+                className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -391,20 +391,20 @@ export default function Teachers() {
                 </div>
 
                 {editingTeacherId === teacher.id && (
-                  <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 dark:border-[#363636] pt-3">
+                  <div className="mt-3 flex flex-col gap-2 border-t-2 border-gray-200 dark:border-gray-700 pt-3">
                     <input
                       type="text"
                       value={editTeacherName}
                       onChange={(e) => setEditTeacherName(e.target.value)}
                       placeholder="Name"
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     />
                     <input
                       type="email"
                       value={editTeacherEmail}
                       onChange={(e) => setEditTeacherEmail(e.target.value)}
                       placeholder="Email"
-                      className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm dark:bg-[#262626]"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     />
                     <div className="flex gap-2">
                       <button
@@ -427,7 +427,7 @@ export default function Teachers() {
                 )}
 
                 {expandedTeacherId === teacher.id && editingTeacherId !== teacher.id && (
-                  <div className="mt-4 pt-4 border-t border-gray-100 dark:border-[#363636]">
+                  <div className="mt-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
                     {loadingAssignments ? (
                       <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading assignments…</p>
                     ) : (
@@ -438,7 +438,7 @@ export default function Teachers() {
                           <div className="overflow-x-auto mb-4">
                             <table className="min-w-[400px] w-full text-sm">
                               <thead>
-                                <tr className="border-b border-gray-200 dark:border-[#363636] bg-gray-50 dark:bg-[#262626]">
+                                <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#262626]">
                                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Class</th>
                                   <th className="px-3 py-2 text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Subject</th>
                                   <th className="px-3 py-2 text-right text-xs font-semibold text-gray-500 dark:text-[#A8A8A8]">Action</th>
@@ -446,7 +446,7 @@ export default function Teachers() {
                               </thead>
                               <tbody>
                                 {assignments.map((row) => (
-                                  <tr key={row.id} className="border-b border-gray-100 dark:border-[#363636]">
+                                  <tr key={row.id} className="border-b border-gray-200 dark:border-gray-700">
                                     <td className="px-3 py-2 text-gray-900 dark:text-[#FFFFFF]">{row.classes?.name ?? '—'}</td>
                                     <td className="px-3 py-2 text-gray-600 dark:text-[#A8A8A8]">{row.subjects?.name ?? '—'}</td>
                                     <td className="px-3 py-2 text-right">
@@ -471,7 +471,7 @@ export default function Teachers() {
                             <select
                               value={selectedClassId}
                               onChange={(e) => setSelectedClassId(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+                              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                             >
                               <option value="">Select class…</option>
                               {classes.map((c) => (
@@ -484,7 +484,7 @@ export default function Teachers() {
                             <select
                               value={selectedSubjectId}
                               onChange={(e) => setSelectedSubjectId(e.target.value)}
-                              className="w-full rounded-lg border border-gray-300 dark:border-[#363636] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:outline-none focus:ring-2 focus:ring-blue-600 dark:bg-[#262626]"
+                              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                             >
                               <option value="">Select subject…</option>
                               {subjects.map((s) => (
@@ -496,7 +496,7 @@ export default function Teachers() {
                             type="button"
                             onClick={handleAddAssignment}
                             disabled={addingAssignment || !selectedClassId || !selectedSubjectId}
-                            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 text-sm shrink-0"
+                            className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-40 shadow-sm hover:shadow-md transition-shadow text-sm shrink-0"
                           >
                             {addingAssignment ? 'Adding…' : 'Add'}
                           </button>
