@@ -207,6 +207,10 @@ export default function Exams() {
     )
   }
 
+  function showAssignedByCreatorBadge(exam) {
+    return userRole === 'teacher' && exam.created_by !== currentUserId
+  }
+
   function canDeleteExam(exam) {
     if (!exam || !currentUserId) return false
     if (showAssignedByAdminBadge(exam)) return false
@@ -1491,9 +1495,9 @@ export default function Exams() {
                         : '📋 Created by Admin'}
                     </span>
                   )}
-                  {showAssignedByAdminBadge(exam) && (
-                    <span className="absolute top-3 right-3 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">
-                      📋 Assigned by Admin
+                  {showAssignedByCreatorBadge(exam) && (
+                    <span className="absolute top-3 right-3 text-xs bg-slate-50 text-slate-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">
+                      📋 Assigned by {exam.creator_name ?? (exam.creator_role === 'admin' ? 'Admin' : 'Teacher')}
                     </span>
                   )}
                   <div className="flex flex-col gap-2">
