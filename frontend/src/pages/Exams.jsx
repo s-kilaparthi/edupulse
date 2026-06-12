@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase'
 
 const ANSWER_OPTIONS = ['A', 'B', 'C', 'D']
@@ -46,7 +46,10 @@ export default function Exams() {
   const [instituteExamTypes, setInstituteExamTypes] = useState([])
   const [newInstituteExamType, setNewInstituteExamType] = useState('')
   const [selectedExamTypeId, setSelectedExamTypeId] = useState('')
+  const [examListTypeFilter, setExamListTypeFilter] = useState('')
   const [savingExamType, setSavingExamType] = useState(false)
+  const [assignClassesExamId, setAssignClassesExamId] = useState(null)
+  const [assigningClass, setAssigningClass] = useState(false)
 
   // Add questions panel
   const [activeExam, setActiveExam] = useState(null)
@@ -175,6 +178,47 @@ export default function Exams() {
     }
 
     setSavingExamType(false)
+  }
+
+  function openAssignClassesModal(examId) {
+    setAssignClassesExamId(examId)
+  }
+
+  function closeAssignClassesModal() {
+    setAssignClassesExamId(null)
+  }
+
+  async function handleToggleExamClass(exam, classId, className) {
+    const isAssigned = (exam.exam_classes ?? []).some((ec) => ec.class_id === classId)
+
+    if (isAssigned) {
+      if (!window.confirm(`Remove "${className}" from this exam?`)) return
+    }
+
+    setAssigningClass(true)
+    setError(null)
+
+    try {
+      if (isAssigned) {
+        const { error: deleteError } = await supabase
+          .from('exam_classes')
+          .delete()
+          .eq('exam_id', exam.id)
+          .eq('class_id', classId)
+        if (deleteError) throw new Error(deleteError.message)
+      } else {
+        const { error: insertError } = await supabase
+          .from('exam_classes')
+          .insert({ exam_id: exam.id, class_id: classId })
+        if (insertError) throw new Error(insertError.message)
+      }
+
+      await fetchExams()
+    } catch (err) {
+      setError(err.message)
+    }
+
+    setAssigningClass(false)
   }
 
   async function handleDeleteExamType(typeId, typeName) {
@@ -823,6 +867,15 @@ export default function Exams() {
 
   const displayClasses = userRole === 'admin' ? classes : availableClasses
 
+  const filteredExams = useMemo(() => {
+    if (!examListTypeFilter) return exams
+    return exams.filter((exam) => exam.exam_type_id === examListTypeFilter)
+  }, [exams, examListTypeFilter])
+
+  const assignClassesExam = assignClassesExamId
+    ? exams.find((e) => e.id === assignClassesExamId)
+    : null
+
   return (
     <>
       <h1 className="text-2xl font-bold text-gray-900 mb-6">Exams</h1>
@@ -1127,15 +1180,99 @@ export default function Exams() {
         </div>
       </section>
 
+      {assignClassesExam && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={closeAssignClassesModal}
+        >
+          <div
+            className="bg-white rounded-xl shadow-lg max-w-md w-full p-5 max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Assign to Class</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{assignClassesExam.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeAssignClassesModal}
+                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {classes.length === 0 ? (
+              <p className="text-sm text-gray-500">No classes found.</p>
+            ) : (
+              <ul className="overflow-y-auto flex-1 divide-y divide-gray-100 -mx-1">
+                {classes.map((cls) => {
+                  const isAssigned = (assignClassesExam.exam_classes ?? []).some(
+                    (ec) => ec.class_id === cls.id
+                  )
+                  return (
+                    <li key={cls.id}>
+                      <button
+                        type="button"
+                        disabled={assigningClass}
+                        onClick={() => handleToggleExamClass(assignClassesExam, cls.id, cls.name)}
+                        className={`w-full flex items-center justify-between px-3 py-3 text-sm text-left hover:bg-gray-50 transition-colors disabled:opacity-50 ${
+                          isAssigned ? 'text-gray-900 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>{cls.name}</span>
+                        {isAssigned && (
+                          <span className="text-green-600 text-xs font-semibold">✓ Assigned</span>
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
       <section className="mb-6">
         <h2 className="text-sm font-semibold text-gray-900 mb-3">All Exams</h2>
+        <div className="flex gap-2 overflow-x-auto pb-2 mb-4 scrollbar-hide -mx-1 px-1">
+          <button
+            type="button"
+            onClick={() => setExamListTypeFilter('')}
+            className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+              examListTypeFilter === ''
+                ? 'bg-indigo-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            All Types
+          </button>
+          {instituteExamTypes.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setExamListTypeFilter(t.id)}
+              className={`shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                examListTypeFilter === t.id
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {t.name}
+            </button>
+          ))}
+        </div>
         {loading ? (
           <p className="text-gray-500 text-sm">Loading exams…</p>
-        ) : exams.length === 0 ? (
-          <p className="text-gray-500 text-sm">No exams yet. Create one above.</p>
+        ) : filteredExams.length === 0 ? (
+          <p className="text-gray-500 text-sm">
+            {exams.length === 0 ? 'No exams yet. Create one above.' : 'No exams match this type.'}
+          </p>
         ) : (
           <ul className="space-y-3">
-            {exams.map((exam) => (
+            {filteredExams.map((exam) => (
               <li key={exam.id}>
                 <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
                   <div className="flex flex-col gap-2">
@@ -1153,7 +1290,26 @@ export default function Exams() {
                         </span>
                       )}
                     </div>
-                    <div className="flex gap-3 flex-wrap">
+                    {(exam.scope === 'institute' || (exam.exam_classes?.length ?? 0) > 0) && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {exam.scope === 'institute' && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                            Whole Institute
+                          </span>
+                        )}
+                        {exam.exam_classes?.map((ec) => (
+                          ec.classes?.name && (
+                            <span
+                              key={ec.class_id}
+                              className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium"
+                            >
+                              {ec.classes.name}
+                            </span>
+                          )
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-3 flex-wrap items-center">
                       <button
                         type="button"
                         onClick={() => activeExam?.id === exam.id ? closeQuestionsPanel() : openQuestionsPanel(exam)}
@@ -1167,6 +1323,13 @@ export default function Exams() {
                         className="text-sm font-medium text-purple-600 hover:text-purple-700"
                       >
                         🤖 Generate with AI
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openAssignClassesModal(exam.id)}
+                        className="text-xs font-medium text-gray-600 border border-gray-300 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        Assign to Class
                       </button>
                       <button
                         type="button"
@@ -1188,11 +1351,6 @@ export default function Exams() {
                       {exam.exam_type === 'written' && exam.total_marks != null
                         ? ` · Total Marks: ${exam.total_marks}`
                         : ''}
-                      {exam.scope === 'institute'
-                        ? ' · Whole Institute'
-                        : exam.exam_classes?.length
-                          ? ` · ${exam.exam_classes.map((ec) => ec.classes?.name).filter(Boolean).join(', ')}`
-                          : ' · No class'}
                     </p>
                   </div>
                 </div>
