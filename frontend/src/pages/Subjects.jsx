@@ -108,23 +108,27 @@ export default function Subjects() {
   }, [userRole, instituteId, session])
 
   async function fetchSubjectNotes(subjectIds, classId) {
-    if (!subjectIds.length) {
-      setSubjectNotes({})
-      return
-    }
+    if (!subjectIds?.length) return
 
-    let query = supabase
+    // Query 1: notes for specific class
+    const { data: classNotes } = await supabase
       .from('subject_notes')
       .select('id, subject_id, title, url, created_at, class_id')
       .in('subject_id', subjectIds)
-      .order('created_at', { ascending: false })
+      .eq('class_id', classId || '')
 
-    if (classId) query = query.or(`class_id.eq.${classId},class_id.is.null`)
+    // Query 2: notes with null class_id (admin/institute-wide)
+    const { data: globalNotes } = await supabase
+      .from('subject_notes')
+      .select('id, subject_id, title, url, created_at, class_id')
+      .in('subject_id', subjectIds)
+      .is('class_id', null)
 
-    const { data } = await query
+    const combined = [...(classNotes ?? []), ...(globalNotes ?? [])]
+    combined.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
 
     const map = {}
-    for (const note of data ?? []) {
+    for (const note of combined) {
       if (!map[note.subject_id]) map[note.subject_id] = []
       map[note.subject_id].push(note)
     }
