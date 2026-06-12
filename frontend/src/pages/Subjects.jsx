@@ -39,6 +39,7 @@ export default function Subjects() {
   const [noteTitle, setNoteTitle] = useState('')
   const [noteUrl, setNoteUrl] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const topicInputRef = useRef(null)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -257,6 +258,12 @@ export default function Subjects() {
     fetchSubjects()
   }, [userRole, instituteId, studentClassId, teacherAssignments, classesLoaded, selectedClassId])
 
+  useEffect(() => {
+    if (showAddTopic) {
+      topicInputRef.current?.focus()
+    }
+  }, [showAddTopic])
+
   function getClassTopics(subject) {
     const classId = isStudentView ? studentClassId : selectedClassId
     if (!classId) {
@@ -331,6 +338,11 @@ export default function Subjects() {
   function openAddTopic(subjectId) {
     setShowAddTopic(subjectId)
     setManageClassesSubjectId(null)
+    setTopicInput('')
+  }
+
+  function closeAddTopicPanel() {
+    setShowAddTopic(null)
     setTopicInput('')
   }
 
@@ -446,11 +458,15 @@ export default function Subjects() {
     setTopicSaving(true)
     setError(null)
 
-    const { error: insertError } = await supabase.from('topics').insert({
-      name,
-      subject_id: subjectId,
-      class_id: selectedClassId || null,
-    })
+    const { data: newTopic, error: insertError } = await supabase
+      .from('topics')
+      .insert({
+        name,
+        subject_id: subjectId,
+        class_id: selectedClassId || null,
+      })
+      .select('id, name, class_id')
+      .single()
 
     setTopicSaving(false)
 
@@ -459,10 +475,37 @@ export default function Subjects() {
       return
     }
 
+    setSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? { ...s, topics: [...(s.topics ?? []), newTopic] }
+          : s
+      )
+    )
     setTopicInput('')
-    setShowAddTopic(null)
-    setLoading(true)
-    await fetchSubjects()
+    topicInputRef.current?.focus()
+  }
+
+  async function handleDeleteTopic(subjectId, topicId) {
+    setError(null)
+
+    const { error: deleteError } = await supabase
+      .from('topics')
+      .delete()
+      .eq('id', topicId)
+
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+
+    setSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? { ...s, topics: (s.topics ?? []).filter((t) => t.id !== topicId) }
+          : s
+      )
+    )
   }
 
   async function handleDeleteSubject(subjectId, subjectName) {
@@ -942,40 +985,74 @@ export default function Subjects() {
                       )}
 
                       {showAddTopic === subject.id && (
-                        <div className="mt-3 flex flex-col gap-2">
-                          <input
-                            type="text"
-                            value={topicInput}
-                            onChange={(e) => setTopicInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault()
-                                handleAddTopic(subject.id)
-                              }
-                            }}
-                            placeholder="Topic name"
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          />
-                          <div className="flex gap-2">
+                        <div className="mt-4 border border-gray-200 rounded-lg bg-gray-50 p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-gray-900">Topics</h3>
+                            <button
+                              type="button"
+                              onClick={closeAddTopicPanel}
+                              className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                              aria-label="Close topics panel"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          {classTopics.length > 0 ? (
+                            <ul className="space-y-1.5 mb-4">
+                              {classTopics.map((topic) => (
+                                <li
+                                  key={topic.id}
+                                  className="flex items-center justify-between gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2"
+                                >
+                                  <span className="text-sm text-gray-800">{topic.name}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteTopic(subject.id, topic.id)}
+                                    className="text-gray-400 hover:text-red-600 text-sm shrink-0"
+                                    aria-label={`Remove ${topic.name}`}
+                                  >
+                                    ✕
+                                  </button>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-gray-400 mb-4">No topics yet.</p>
+                          )}
+
+                          <div className="flex gap-2 mb-3">
+                            <input
+                              ref={topicInputRef}
+                              type="text"
+                              value={topicInput}
+                              onChange={(e) => setTopicInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  handleAddTopic(subject.id)
+                                }
+                              }}
+                              placeholder="Enter topic name..."
+                              className="flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+                            />
                             <button
                               type="button"
                               onClick={() => handleAddTopic(subject.id)}
-                              disabled={topicSaving}
-                              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-40"
+                              disabled={topicSaving || !topicInput.trim()}
+                              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
                             >
-                              {topicSaving ? 'Saving…' : 'Save Topic'}
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShowAddTopic(null)
-                                setTopicInput('')
-                              }}
-                              className="text-gray-500 text-sm px-3 py-2"
-                            >
-                              Cancel
+                              {topicSaving ? 'Adding…' : 'Add'}
                             </button>
                           </div>
+
+                          <button
+                            type="button"
+                            onClick={closeAddTopicPanel}
+                            className="text-sm text-gray-500 hover:text-gray-700 font-medium"
+                          >
+                            Close
+                          </button>
                         </div>
                       )}
                     </>
