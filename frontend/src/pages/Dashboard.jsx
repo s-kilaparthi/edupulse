@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
@@ -166,6 +166,214 @@ function StatCard({ label, value, sub, onClick, hint }) {
   }
 
   return <div className={className}>{content}</div>
+}
+
+function daysUntilDeadline(deadlineStr, todayStr) {
+  const today = new Date(todayStr + 'T00:00:00')
+  const deadline = new Date(deadlineStr + 'T00:00:00')
+  return Math.round((deadline - today) / (1000 * 60 * 60 * 24))
+}
+
+function sortTasks(tasks) {
+  const today = todayDateStr()
+
+  const group = (task) => {
+    if (task.is_completed) return 5
+    if (!task.deadline) return 4
+    if (task.deadline < today) return 0
+    if (task.deadline === today) return 1
+    return 2
+  }
+
+  return [...tasks].sort((a, b) => {
+    const ga = group(a)
+    const gb = group(b)
+    if (ga !== gb) return ga - gb
+    if (!a.deadline && !b.deadline) return 0
+    if (!a.deadline) return 1
+    if (!b.deadline) return -1
+    return a.deadline.localeCompare(b.deadline)
+  })
+}
+
+function getTaskPriorityDot(deadline, isCompleted) {
+  if (isCompleted || !deadline) return '⚪'
+  const today = todayDateStr()
+  if (deadline < today || deadline === today) return '🔴'
+  const days = daysUntilDeadline(deadline, today)
+  if (days <= 3) return '🟡'
+  return '🟢'
+}
+
+function formatTaskDeadline(deadline, isCompleted) {
+  if (!deadline) return null
+  const today = todayDateStr()
+  if (!isCompleted && deadline < today) return { text: 'Overdue', overdue: true }
+  return {
+    text: new Date(deadline + 'T00:00:00').toLocaleDateString(),
+    overdue: false,
+  }
+}
+
+function TodoListSection({ userId }) {
+  const [tasks, setTasks] = useState([])
+  const [expanded, setExpanded] = useState(false)
+  const [taskTitle, setTaskTitle] = useState('')
+  const [taskDeadline, setTaskDeadline] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const fetchTasks = useCallback(async () => {
+    if (!userId) return
+    const { data } = await supabase
+      .from('tasks')
+      .select('id, title, deadline, is_completed')
+      .eq('user_id', userId)
+    setTasks(data ?? [])
+  }, [userId])
+
+  useEffect(() => {
+    fetchTasks()
+  }, [fetchTasks])
+
+  const pendingCount = tasks.filter((t) => !t.is_completed).length
+  const sortedTasks = sortTasks(tasks)
+
+  async function handleAddTask() {
+    const title = taskTitle.trim()
+    if (!title || !userId) return
+
+    setSaving(true)
+    await supabase.from('tasks').insert({
+      title,
+      deadline: taskDeadline || null,
+      user_id: userId,
+      is_completed: false,
+    })
+    setTaskTitle('')
+    setTaskDeadline('')
+    await fetchTasks()
+    setSaving(false)
+  }
+
+  async function handleToggleComplete(task) {
+    await supabase
+      .from('tasks')
+      .update({ is_completed: !task.is_completed })
+      .eq('id', task.id)
+    await fetchTasks()
+  }
+
+  async function handleDeleteTask(taskId) {
+    if (!window.confirm('Delete this task?')) return
+    await supabase.from('tasks').delete().eq('id', taskId)
+    await fetchTasks()
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setExpanded((prev) => !prev)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+      >
+        <span className="text-sm font-semibold text-gray-900">
+          📋 My Tasks ({pendingCount} pending)
+        </span>
+        <span className="text-xs text-gray-400 shrink-0">{expanded ? '▲' : '▼'}</span>
+      </button>
+
+      {expanded && (
+        <div className="px-4 pb-4 border-t border-gray-100">
+          <div className="flex flex-col sm:flex-row gap-2 mt-3 mb-4">
+            <input
+              type="text"
+              value={taskTitle}
+              onChange={(e) => setTaskTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  handleAddTask()
+                }
+              }}
+              placeholder="Enter task..."
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+            />
+            <div className="flex flex-col shrink-0">
+              <label className="text-xs text-gray-500 mb-1">Deadline</label>
+              <input
+                type="date"
+                value={taskDeadline}
+                onChange={(e) => setTaskDeadline(e.target.value)}
+                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={handleAddTask}
+              disabled={saving || !taskTitle.trim()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+            >
+              {saving ? 'Adding…' : 'Add'}
+            </button>
+          </div>
+
+          {sortedTasks.length === 0 ? (
+            <p className="text-sm text-gray-400 text-center py-4">No tasks yet. Add one above! ✨</p>
+          ) : (
+            <ul className="space-y-2">
+              {sortedTasks.map((task) => {
+                const deadlineInfo = formatTaskDeadline(task.deadline, task.is_completed)
+                return (
+                  <li
+                    key={task.id}
+                    className={`flex items-center gap-2 p-2 rounded-lg border border-gray-100 ${
+                      task.is_completed ? 'opacity-50' : ''
+                    }`}
+                  >
+                    <span className="text-sm shrink-0" aria-hidden="true">
+                      {getTaskPriorityDot(task.deadline, task.is_completed)}
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={task.is_completed}
+                      onChange={() => handleToggleComplete(task)}
+                      className="rounded border-gray-300 shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`text-sm text-gray-900 ${
+                          task.is_completed ? 'line-through text-gray-500' : ''
+                        }`}
+                      >
+                        {task.title}
+                      </p>
+                      {deadlineInfo && (
+                        <p
+                          className={`text-xs mt-0.5 ${
+                            deadlineInfo.overdue ? 'text-red-600 font-medium' : 'text-gray-500'
+                          }`}
+                        >
+                          {deadlineInfo.text}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTask(task.id)}
+                      className="text-gray-400 hover:text-red-600 text-sm shrink-0 p-1"
+                      aria-label="Delete task"
+                    >
+                      🗑️
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 function AnnouncementsSection({ announcements, navigate }) {
@@ -838,6 +1046,8 @@ export default function Dashboard() {
             </>
           )}
 
+          <TodoListSection userId={session?.user?.id} />
+
           <div className="grid grid-cols-3 gap-3">
             <button
               type="button"
@@ -1011,6 +1221,8 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
+
+          <TodoListSection userId={session?.user?.id} />
 
           {/* ZONE 3 — Institute Overview */}
           <div className="flex flex-col gap-5">
