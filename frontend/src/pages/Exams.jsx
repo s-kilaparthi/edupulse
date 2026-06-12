@@ -47,9 +47,13 @@ export default function Exams() {
   const [newInstituteExamType, setNewInstituteExamType] = useState('')
   const [selectedExamTypeId, setSelectedExamTypeId] = useState('')
   const [examListTypeFilter, setExamListTypeFilter] = useState('')
+  const [examListClassFilter, setExamListClassFilter] = useState('')
   const [savingExamType, setSavingExamType] = useState(false)
   const [assignClassesExamId, setAssignClassesExamId] = useState(null)
   const [assigningClass, setAssigningClass] = useState(false)
+  const [assignTeachersExamId, setAssignTeachersExamId] = useState(null)
+  const [assigningTeacher, setAssigningTeacher] = useState(false)
+  const [instituteTeachers, setInstituteTeachers] = useState([])
 
   // Add questions panel
   const [activeExam, setActiveExam] = useState(null)
@@ -147,13 +151,66 @@ export default function Exams() {
     setInstituteExamTypes(data ?? [])
   }
 
+  async function fetchInstituteTeachers(instId) {
+    if (!instId) {
+      setInstituteTeachers([])
+      return
+    }
+
+    const { data, error: fetchError } = await supabase
+      .from('users')
+      .select('id, name')
+      .eq('role', 'teacher')
+      .eq('institute_id', instId)
+      .order('name')
+
+    if (fetchError) throw new Error(fetchError.message)
+    setInstituteTeachers(data ?? [])
+  }
+
   async function fetchExams() {
     const { data, error: fetchError } = await supabase
       .from('exams')
-      .select('id, name, exam_date, total_questions, total_marks, scope, exam_type, exam_type_id, exam_types(name), exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name))')
+      .select('id, name, exam_date, total_questions, total_marks, scope, exam_type, exam_type_id, created_by, exam_types(name), exam_subjects(subject_id, question_from, question_to, subjects(name)), exam_classes(class_id, classes(name)), exam_teachers(teacher_id, users(name))')
       .order('created_at', { ascending: false })
     if (fetchError) throw new Error(fetchError.message)
-    setExams(data ?? [])
+
+    let examsData = data ?? []
+    const creatorIds = [...new Set(examsData.map((e) => e.created_by).filter(Boolean))]
+
+    if (creatorIds.length > 0) {
+      const { data: creators } = await supabase
+        .from('users')
+        .select('id, role')
+        .in('id', creatorIds)
+
+      const roleMap = Object.fromEntries((creators ?? []).map((u) => [u.id, u.role]))
+      examsData = examsData.map((e) => ({
+        ...e,
+        creator_role: roleMap[e.created_by] ?? null,
+      }))
+    }
+
+    setExams(examsData)
+  }
+
+  function canManageExamQuestions(exam) {
+    if (!exam || !currentUserId) return false
+    if (userRole === 'admin') return true
+    if (exam.created_by === currentUserId) return true
+    return (exam.exam_teachers ?? []).some((et) => et.teacher_id === currentUserId)
+  }
+
+  function isTeacherAssignedToExam(exam) {
+    return (exam.exam_teachers ?? []).some((et) => et.teacher_id === currentUserId)
+  }
+
+  function showAssignedByAdminBadge(exam) {
+    return (
+      userRole === 'teacher' &&
+      exam.creator_role === 'admin' &&
+      isTeacherAssignedToExam(exam)
+    )
   }
 
   async function handleAddExamType() {
@@ -219,6 +276,47 @@ export default function Exams() {
     }
 
     setAssigningClass(false)
+  }
+
+  function openAssignTeachersModal(examId) {
+    setAssignTeachersExamId(examId)
+  }
+
+  function closeAssignTeachersModal() {
+    setAssignTeachersExamId(null)
+  }
+
+  async function handleToggleExamTeacher(exam, teacherId, teacherName) {
+    const isAssigned = (exam.exam_teachers ?? []).some((et) => et.teacher_id === teacherId)
+
+    if (isAssigned) {
+      if (!window.confirm(`Remove "${teacherName}" from this exam?`)) return
+    }
+
+    setAssigningTeacher(true)
+    setError(null)
+
+    try {
+      if (isAssigned) {
+        const { error: deleteError } = await supabase
+          .from('exam_teachers')
+          .delete()
+          .eq('exam_id', exam.id)
+          .eq('teacher_id', teacherId)
+        if (deleteError) throw new Error(deleteError.message)
+      } else {
+        const { error: insertError } = await supabase
+          .from('exam_teachers')
+          .insert({ exam_id: exam.id, teacher_id: teacherId })
+        if (insertError) throw new Error(insertError.message)
+      }
+
+      await fetchExams()
+    } catch (err) {
+      setError(err.message)
+    }
+
+    setAssigningTeacher(false)
   }
 
   async function handleDeleteExamType(typeId, typeName) {
@@ -337,6 +435,12 @@ export default function Exams() {
 
       if (instId) {
         await fetchExamTypes(instId)
+      }
+
+      if (role === 'admin' && instId) {
+        await fetchInstituteTeachers(instId)
+      } else {
+        setInstituteTeachers([])
       }
 
       await fetchExams()
@@ -484,6 +588,11 @@ export default function Exams() {
   }
 
   async function openQuestionsPanel(exam) {
+    if (!canManageExamQuestions(exam)) {
+      setError('You do not have permission to manage questions for this exam.')
+      return
+    }
+
     setError(null)
     setSuccessMessage(null)
     setActiveExam(exam)
@@ -623,6 +732,10 @@ export default function Exams() {
 
   async function handleSaveAllQuestions() {
     if (!activeExam) return
+    if (!canManageExamQuestions(activeExam)) {
+      setError('You do not have permission to manage questions for this exam.')
+      return
+    }
 
     const allNums = getAllQuestionNums()
     const unassigned = allNums.filter((n) => !questionMap[n]?.topic_id)
@@ -868,12 +981,27 @@ export default function Exams() {
   const displayClasses = userRole === 'admin' ? classes : availableClasses
 
   const filteredExams = useMemo(() => {
-    if (!examListTypeFilter) return exams
-    return exams.filter((exam) => exam.exam_type_id === examListTypeFilter)
-  }, [exams, examListTypeFilter])
+    let list = exams
+
+    if (examListTypeFilter) {
+      list = list.filter((exam) => exam.exam_type_id === examListTypeFilter)
+    }
+
+    if (examListClassFilter) {
+      list = list.filter((exam) =>
+        (exam.exam_classes ?? []).some((ec) => ec.class_id === examListClassFilter)
+      )
+    }
+
+    return list
+  }, [exams, examListTypeFilter, examListClassFilter])
 
   const assignClassesExam = assignClassesExamId
     ? exams.find((e) => e.id === assignClassesExamId)
+    : null
+
+  const assignTeachersExam = assignTeachersExamId
+    ? exams.find((e) => e.id === assignTeachersExamId)
     : null
 
   return (
@@ -1180,6 +1308,63 @@ export default function Exams() {
         </div>
       </section>
 
+      {assignTeachersExam && (
+        <div
+          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+          onClick={closeAssignTeachersModal}
+        >
+          <div
+            className="bg-white rounded-xl shadow-lg max-w-md w-full p-5 max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900">Assign Teachers</h3>
+                <p className="text-xs text-gray-500 mt-0.5">{assignTeachersExam.name}</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeAssignTeachersModal}
+                className="text-gray-400 hover:text-gray-600 text-lg leading-none"
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            {instituteTeachers.length === 0 ? (
+              <p className="text-sm text-gray-500">No teachers found.</p>
+            ) : (
+              <ul className="overflow-y-auto flex-1 divide-y divide-gray-100 -mx-1">
+                {instituteTeachers.map((teacher) => {
+                  const isAssigned = (assignTeachersExam.exam_teachers ?? []).some(
+                    (et) => et.teacher_id === teacher.id
+                  )
+                  return (
+                    <li key={teacher.id}>
+                      <button
+                        type="button"
+                        disabled={assigningTeacher}
+                        onClick={() =>
+                          handleToggleExamTeacher(assignTeachersExam, teacher.id, teacher.name)
+                        }
+                        className={`w-full flex items-center justify-between px-3 py-3 text-sm text-left hover:bg-gray-50 transition-colors disabled:opacity-50 ${
+                          isAssigned ? 'text-gray-900 font-medium' : 'text-gray-700'
+                        }`}
+                      >
+                        <span>{teacher.name}</span>
+                        {isAssigned && (
+                          <span className="text-green-600 text-xs font-semibold">✓ Assigned</span>
+                        )}
+                      </button>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
       {assignClassesExam && (
         <div
           className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
@@ -1264,19 +1449,40 @@ export default function Exams() {
             </button>
           ))}
         </div>
+        <div className="mb-4">
+          <select
+            value={examListClassFilter}
+            onChange={(e) => setExamListClassFilter(e.target.value)}
+            className="w-full md:w-64 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
+          >
+            <option value="">All Classes</option>
+            {classes.map((cls) => (
+              <option key={cls.id} value={cls.id}>
+                {cls.name}
+              </option>
+            ))}
+          </select>
+        </div>
         {loading ? (
           <p className="text-gray-500 text-sm">Loading exams…</p>
         ) : filteredExams.length === 0 ? (
           <p className="text-gray-500 text-sm">
-            {exams.length === 0 ? 'No exams yet. Create one above.' : 'No exams match this type.'}
+            {exams.length === 0
+              ? 'No exams yet. Create one above.'
+              : 'No exams match the selected filters.'}
           </p>
         ) : (
           <ul className="space-y-3">
             {filteredExams.map((exam) => (
               <li key={exam.id}>
-                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm">
+                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm relative">
+                  {showAssignedByAdminBadge(exam) && (
+                    <span className="absolute top-3 right-3 text-xs bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">
+                      📋 Assigned by Admin
+                    </span>
+                  )}
                   <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2 pr-28">
                       <button
                         type="button"
                         onClick={() => toggleExamProfile(exam)}
@@ -1298,25 +1504,41 @@ export default function Exams() {
                           </span>
                         )}
                         {exam.exam_classes?.map((ec) => (
-                          ec.classes?.name && (
+                          ec.classes?.name ? (
                             <span
                               key={ec.class_id}
                               className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 font-medium"
                             >
                               {ec.classes.name}
                             </span>
-                          )
+                          ) : null
+                        ))}
+                      </div>
+                    )}
+                    {(exam.exam_teachers?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {exam.exam_teachers.map((et) => (
+                          et.users?.name ? (
+                            <span
+                              key={et.teacher_id}
+                              className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium"
+                            >
+                              {et.users.name}
+                            </span>
+                          ) : null
                         ))}
                       </div>
                     )}
                     <div className="flex gap-3 flex-wrap items-center">
-                      <button
-                        type="button"
-                        onClick={() => activeExam?.id === exam.id ? closeQuestionsPanel() : openQuestionsPanel(exam)}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-700"
-                      >
-                        {activeExam?.id === exam.id ? 'Close' : 'Add Questions'}
-                      </button>
+                      {canManageExamQuestions(exam) && (
+                        <button
+                          type="button"
+                          onClick={() => activeExam?.id === exam.id ? closeQuestionsPanel() : openQuestionsPanel(exam)}
+                          className="text-sm font-medium text-blue-600 hover:text-blue-700"
+                        >
+                          {activeExam?.id === exam.id ? 'Close' : 'Add Questions'}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => openAIGenerator(exam)}
@@ -1331,6 +1553,15 @@ export default function Exams() {
                       >
                         Assign to Class
                       </button>
+                      {userRole === 'admin' && (
+                        <button
+                          type="button"
+                          onClick={() => openAssignTeachersModal(exam.id)}
+                          className="text-xs font-medium text-gray-600 border border-gray-300 px-2.5 py-1 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                          Assign Teachers
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleDeleteExam(exam.id, exam.name, exam.exam_type)}
@@ -1453,7 +1684,7 @@ export default function Exams() {
                   </div>
                 )}
 
-                {activeExam?.id === exam.id && (
+                {activeExam?.id === exam.id && canManageExamQuestions(exam) && (
                   <div
                     ref={questionsPanelRef}
                     className="mt-2 bg-white rounded-xl border border-blue-200 p-6 shadow-sm"
