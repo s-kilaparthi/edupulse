@@ -945,24 +945,7 @@ export default function Results() {
         } else if (userRole === 'student') {
           studentId = session.user.id
         } else if (userRole === 'parent') {
-          const { data: parentData } = await supabase
-            .from('users')
-            .select('roll_number, institute_id')
-            .eq('id', session.user.id)
-            .single()
-
-          if (parentData?.roll_number != null && parentData?.institute_id) {
-            const { data: linkedStudent } = await supabase
-              .from('users')
-              .select('id')
-              .eq('roll_number', parentData.roll_number)
-              .eq('role', 'student')
-              .eq('institute_id', parentData.institute_id)
-              .limit(1)
-              .maybeSingle()
-
-            studentId = linkedStudent?.id ?? null
-          }
+          studentId = linkedStudentId
         }
 
         if (!studentId) {
