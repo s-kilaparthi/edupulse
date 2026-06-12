@@ -1008,6 +1008,8 @@ export default function Dashboard() {
             )}
           </div>
 
+          <TodoListSection userId={session?.user?.id} />
+
           {teacherClassCards.length > 0 && (
             <>
               <div className="flex items-center gap-2 mb-3">
@@ -1045,8 +1047,6 @@ export default function Dashboard() {
               </div>
             </>
           )}
-
-          <TodoListSection userId={session?.user?.id} />
 
           <div className="grid grid-cols-3 gap-3">
             <button
@@ -1142,6 +1142,8 @@ export default function Dashboard() {
               </div>
             )}
 
+            <TodoListSection userId={session?.user?.id} />
+
             <AdminSectionTitle title="Today's Exams" barColor="bg-orange-500" />
             {adminTodayExams.length === 0 ? (
               <p className="text-sm text-gray-400">No exams scheduled today</p>
@@ -1221,8 +1223,6 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-
-          <TodoListSection userId={session?.user?.id} />
 
           {/* ZONE 3 — Institute Overview */}
           <div className="flex flex-col gap-5">
