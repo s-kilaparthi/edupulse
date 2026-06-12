@@ -103,7 +103,7 @@ export default function Classes() {
 
     const { data, error: groupsError } = await supabase
       .from('class_groups')
-      .select('id, name, class_group_members(id, class_id, classes(id, name)), group_subjects(id, subject_id, subjects(id, name))')
+      .select('id, name, class_group_members(group_id, class_id, classes(id, name)), group_subjects(group_id, subject_id, subjects(id, name))')
       .eq('institute_id', instituteId)
       .order('name')
 
@@ -251,14 +251,15 @@ export default function Classes() {
     }
   }
 
-  async function handleRemoveClassFromGroup(memberId) {
+  async function handleRemoveClassFromGroup(groupId, classId) {
     setError(null)
 
     try {
       const { error: deleteError } = await supabase
         .from('class_group_members')
         .delete()
-        .eq('id', memberId)
+        .eq('group_id', groupId)
+        .eq('class_id', classId)
 
       if (deleteError) throw new Error(deleteError.message)
 
@@ -293,7 +294,7 @@ export default function Classes() {
     }
   }
 
-  async function handleRemoveSubjectFromGroup(groupId, subjectId, groupSubjectRowId) {
+  async function handleRemoveSubjectFromGroup(groupId, subjectId) {
     setError(null)
 
     try {
@@ -303,7 +304,8 @@ export default function Classes() {
       const { error: deleteGsError } = await supabase
         .from('group_subjects')
         .delete()
-        .eq('id', groupSubjectRowId)
+        .eq('group_id', groupId)
+        .eq('subject_id', subjectId)
 
       if (deleteGsError) throw new Error(deleteGsError.message)
 
@@ -656,7 +658,7 @@ export default function Classes() {
                           <ul className="flex flex-col gap-2 mb-3">
                             {group.class_group_members.map((member) => (
                               <li
-                                key={member.id}
+                                key={member.class_id}
                                 className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#363636] px-3 py-2"
                               >
                                 <span className="text-sm text-gray-800 dark:text-[#FFFFFF]">
@@ -664,7 +666,7 @@ export default function Classes() {
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveClassFromGroup(member.id)}
+                                  onClick={() => handleRemoveClassFromGroup(group.id, member.class_id)}
                                   className="text-gray-400 hover:text-red-500 text-sm font-bold"
                                   aria-label="Remove class"
                                 >
@@ -700,7 +702,7 @@ export default function Classes() {
                           <ul className="flex flex-col gap-2 mb-3">
                             {group.group_subjects.map((gs) => (
                               <li
-                                key={gs.id}
+                                key={gs.subject_id}
                                 className="flex items-center justify-between gap-2 rounded-lg border border-gray-100 dark:border-[#363636] px-3 py-2"
                               >
                                 <span className="text-sm text-gray-800 dark:text-[#FFFFFF]">
@@ -708,7 +710,7 @@ export default function Classes() {
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleRemoveSubjectFromGroup(group.id, gs.subject_id, gs.id)}
+                                  onClick={() => handleRemoveSubjectFromGroup(group.id, gs.subject_id)}
                                   className="text-gray-400 hover:text-red-500 text-sm font-bold"
                                   aria-label="Remove subject"
                                 >
