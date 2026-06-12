@@ -43,6 +43,7 @@ export default function Subjects() {
   const [sharedClassMap, setSharedClassMap] = useState({})
   const [sharingNoteId, setSharingNoteId] = useState(null)
   const topicInputRef = useRef(null)
+  const sharePopoverRef = useRef(null)
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -169,9 +170,13 @@ export default function Subjects() {
     return map
   }
 
+  function closeSharePopover() {
+    setSharePopoverNoteId(null)
+  }
+
   async function toggleSharePopover(note) {
     if (sharePopoverNoteId === note.id) {
-      setSharePopoverNoteId(null)
+      closeSharePopover()
       return
     }
 
@@ -353,6 +358,19 @@ export default function Subjects() {
       topicInputRef.current?.focus()
     }
   }, [showAddTopic])
+
+  useEffect(() => {
+    if (!sharePopoverNoteId) return
+
+    function handleClickOutside(e) {
+      if (sharePopoverRef.current && !sharePopoverRef.current.contains(e.target)) {
+        setSharePopoverNoteId(null)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [sharePopoverNoteId])
 
   function getClassTopics(subject) {
     const classId = isStudentView ? studentClassId : selectedClassId
@@ -1013,7 +1031,10 @@ export default function Subjects() {
                                   {isTeacher &&
                                     note.class_id != null &&
                                     note.uploaded_by === session?.user?.id && (
-                                    <div className="relative shrink-0 ml-2">
+                                    <div
+                                      ref={sharePopoverNoteId === note.id ? sharePopoverRef : null}
+                                      className="relative shrink-0 ml-2"
+                                    >
                                       <button
                                         type="button"
                                         onClick={() => toggleSharePopover(note)}
@@ -1023,9 +1044,19 @@ export default function Subjects() {
                                       </button>
                                       {sharePopoverNoteId === note.id && (
                                         <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white border border-gray-200 rounded-lg shadow-lg p-2">
-                                          <p className="text-xs font-medium text-gray-700 mb-2">
-                                            Share to Class
-                                          </p>
+                                          <div className="flex items-center justify-between mb-2">
+                                            <p className="text-xs font-medium text-gray-700">
+                                              Share to Class
+                                            </p>
+                                            <button
+                                              type="button"
+                                              onClick={closeSharePopover}
+                                              className="text-gray-400 hover:text-gray-600 text-sm leading-none"
+                                              aria-label="Close share dropdown"
+                                            >
+                                              ✕
+                                            </button>
+                                          </div>
                                           {getShareableClassesForNote(subject.id, note.class_id).length === 0 ? (
                                             <p className="text-xs text-gray-400">No other classes</p>
                                           ) : (
