@@ -267,7 +267,7 @@ export default function AppLayout({ session }) {
         )}
 
         <aside
-          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#000000] border-r border-gray-200 dark:border-[#363636] z-50 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 md:w-52 md:flex md:flex-col shrink-0 ${
+          className={`fixed top-0 left-0 h-full w-64 bg-white dark:bg-[#000000] border-r border-gray-200 dark:border-[#363636] z-50 transform transition-transform duration-300 ease-in-out flex flex-col md:relative md:translate-x-0 md:w-52 md:flex md:flex-col shrink-0 ${
             mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'
           }`}
         >
@@ -284,10 +284,30 @@ export default function AppLayout({ session }) {
             </button>
           </div>
 
-          <div className="px-3 py-3 border-b border-gray-100 dark:border-[#363636]">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm text-gray-700 dark:text-[#A8A8A8]">
-                {theme === 'dark' ? '☀️ Light Mode' : '🌙 Dark Mode'}
+          <nav className="flex flex-col gap-0.5 px-3 py-4 flex-1 overflow-y-auto">
+            {navItems.map(({ label, to }) => (
+              <Link
+                key={label}
+                to={to}
+                onClick={() => setMobileMenuOpen(false)}
+                className={`text-left text-sm px-3 py-2.5 rounded-lg transition-colors ${
+                  pathname === to
+                    ? 'bg-blue-50 dark:bg-[#262626] text-blue-700 dark:text-blue-300 font-medium'
+                    : 'text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-50 dark:hover:bg-[#262626] hover:text-gray-900 dark:hover:text-[#FFFFFF]'
+                }`}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+
+          <div className="mt-auto border-t border-gray-200 dark:border-[#363636] px-3 py-3">
+            <div className="flex items-center gap-3 w-full">
+              <span className="text-base shrink-0" aria-hidden="true">
+                {theme === 'dark' ? '☀️' : '🌙'}
+              </span>
+              <span className="flex-1 text-sm text-gray-700 dark:text-[#A8A8A8]">
+                {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
               </span>
               <button
                 type="button"
@@ -306,23 +326,6 @@ export default function AppLayout({ session }) {
               </button>
             </div>
           </div>
-
-          <nav className="flex flex-col gap-0.5 px-3 py-4">
-            {navItems.map(({ label, to }) => (
-              <Link
-                key={label}
-                to={to}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`text-left text-sm px-3 py-2.5 rounded-lg transition-colors ${
-                  pathname === to
-                    ? 'bg-blue-50 dark:bg-[#262626] text-blue-700 dark:text-blue-300 font-medium'
-                    : 'text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-50 dark:hover:bg-[#262626] hover:text-gray-900 dark:hover:text-[#FFFFFF]'
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
-          </nav>
         </aside>
 
         <main className="flex-1 p-4 md:p-8 overflow-auto min-w-0">
