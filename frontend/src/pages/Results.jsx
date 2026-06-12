@@ -462,6 +462,8 @@ export default function Results() {
   const isParentView = userRole === 'parent' && roleLoaded
   const isLearnerView = isStudentView || isParentView
   const isTeacherStudentView = fromStudentsNav && isTeacher && roleLoaded
+  const isAdminStudentView = fromStudentsNav && userRole === 'admin' && roleLoaded
+  const showExamTypeSummaryBanner = isLearnerView || isAdminStudentView
   const isTeacherMainView = isTeacher && !fromStudentsNav && roleLoaded
   const isCardExamView = isLearnerView || isTeacherStudentView
 
@@ -1125,7 +1127,7 @@ export default function Results() {
   })
 
   const examTypeSummary = useMemo(() => {
-    if (!selectedExamTypeId || !isLearnerView) return null
+    if (!selectedExamTypeId || !showExamTypeSummaryBanner) return null
 
     const typeName = instituteExamTypes.find((t) => t.id === selectedExamTypeId)?.name ?? 'Exam Type'
     const gradedExams = examSummaries.filter((s) => !s.notGraded && s.hasResult)
@@ -1139,7 +1141,7 @@ export default function Results() {
     const percentage = sumTotal > 0 ? Math.round((sumObtained / sumTotal) * 100) : 0
 
     return { typeName, sumObtained, sumTotal, percentage, noGraded: false }
-  }, [selectedExamTypeId, examSummaries, instituteExamTypes, isLearnerView])
+  }, [selectedExamTypeId, examSummaries, instituteExamTypes, showExamTypeSummaryBanner])
 
   function examTypeSummaryPctClass(pct) {
     if (pct >= 70) return 'text-green-600 dark:text-green-400'
@@ -1173,7 +1175,7 @@ export default function Results() {
           )}
         </div>
 
-        {isLearnerView && selectedExamTypeId && !examId && !blocked && !loadingSummaries && examTypeSummary && (
+        {showExamTypeSummaryBanner && selectedExamTypeId && !examId && !blocked && !loadingSummaries && examTypeSummary && (
           <div className="rounded-2xl border border-gray-200 dark:border-[#363636] bg-white dark:bg-[#1C1C1C] p-4 shadow-sm">
             <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
               {examTypeSummary.typeName} Summary
@@ -1181,9 +1183,11 @@ export default function Results() {
             {examTypeSummary.noGraded ? (
               <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mt-2">No graded exams yet</p>
             ) : (
-              <p className="text-sm text-gray-700 dark:text-[#A8A8A8] mt-2">
-                Total Score: {examTypeSummary.sumObtained} / {examTypeSummary.sumTotal}{' '}
-                <span className={`font-semibold ${examTypeSummaryPctClass(examTypeSummary.percentage)}`}>
+              <p className="mt-2 flex flex-wrap items-baseline gap-2">
+                <span className="text-2xl font-bold text-green-500">
+                  Total Score: {examTypeSummary.sumObtained} / {examTypeSummary.sumTotal}
+                </span>
+                <span className={`text-2xl font-bold ${examTypeSummaryPctClass(examTypeSummary.percentage)}`}>
                   ({examTypeSummary.percentage}%)
                 </span>
               </p>
