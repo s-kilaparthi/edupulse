@@ -71,6 +71,33 @@ function AdminSectionTitle({ title, barColor = 'bg-blue-500' }) {
   )
 }
 
+function AdminZoneHeader({ label, barColor = 'bg-blue-500' }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`w-1.5 h-6 ${barColor} rounded-full`} />
+      <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">{label}</h2>
+    </div>
+  )
+}
+
+function formatExamClassLabel(exam) {
+  if (exam.scope === 'institute') return 'Whole Institute'
+  const names = (exam.exam_classes ?? [])
+    .map((ec) => ec.classes?.name)
+    .filter(Boolean)
+  return names.length > 0 ? names.join(', ') : '—'
+}
+
+function formatExamDate(dateStr) {
+  if (!dateStr) return '—'
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString()
+}
+
+function isInstituteExam(exam, classIdSet) {
+  if (exam.scope === 'institute') return true
+  return (exam.exam_classes ?? []).some((ec) => classIdSet.has(ec.class_id))
+}
+
 function getPeriodEndTime(periodNumber, startTime) {
   return PERIOD_END_TIMES[periodNumber] ?? startTime?.slice(0, 5) ?? ''
 }
@@ -177,6 +204,16 @@ export default function Dashboard() {
     attendanceMarked: 0,
     attendanceTotal: 0,
   })
+  const [adminAttendanceClasses, setAdminAttendanceClasses] = useState([])
+  const [adminTodayExams, setAdminTodayExams] = useState([])
+  const [adminPendingGrading, setAdminPendingGrading] = useState([])
+  const [adminWeekActivity, setAdminWeekActivity] = useState({
+    announcementCount: 0,
+    lastAnnouncementTitle: null,
+    gradedExamsCount: 0,
+  })
+  const [adminBestClass, setAdminBestClass] = useState(null)
+  const [adminWorstClass, setAdminWorstClass] = useState(null)
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [todaySchedule, setTodaySchedule] = useState([])
   const [teacherClassCards, setTeacherClassCards] = useState([])
@@ -404,50 +441,156 @@ export default function Dashboard() {
         setTeacherClassCards(classCards)
       } else if (userRole === 'admin' && instituteId) {
         const today = todayDateStr()
+        const weekAgo = new Date()
+        weekAgo.setDate(weekAgo.getDate() - 7)
+        const weekAgoIso = weekAgo.toISOString()
 
-        const [studentsRes, teachersRes, scoresRes, instituteRes, classRes] = await Promise.all([
-          supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'student')
-            .eq('institute_id', instituteId),
-          supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true })
-            .eq('role', 'teacher')
-            .eq('institute_id', instituteId),
-          supabase.from('topic_scores').select('percentage'),
-          supabase
-            .from('institutes')
-            .select('name')
-            .eq('id', instituteId)
-            .single(),
-          supabase
-            .from('classes')
-            .select('id')
-            .eq('institute_id', instituteId),
-        ])
+        const [studentsRes, teachersRes, instituteRes, classRes, studentsForScores] =
+          await Promise.all([
+            supabase
+              .from('users')
+              .select('*', { count: 'exact', head: true })
+              .eq('role', 'student')
+              .eq('institute_id', instituteId),
+            supabase
+              .from('users')
+              .select('*', { count: 'exact', head: true })
+              .eq('role', 'teacher')
+              .eq('institute_id', instituteId),
+            supabase
+              .from('institutes')
+              .select('name')
+              .eq('id', instituteId)
+              .single(),
+            supabase
+              .from('classes')
+              .select('id, name')
+              .eq('institute_id', instituteId)
+              .order('name'),
+            supabase
+              .from('users')
+              .select('id, class_id')
+              .eq('role', 'student')
+              .eq('institute_id', instituteId),
+          ])
 
-        const classIds = classRes.data?.map((c) => c.id) ?? []
-        let attendanceMarked = 0
+        const classes = classRes.data ?? []
+        const classIds = classes.map((c) => c.id)
+        const classIdSet = new Set(classIds)
+        const classNameMap = Object.fromEntries(classes.map((c) => [c.id, c.name]))
+        const studentRows = studentsForScores.data ?? []
+        const studentIds = studentRows.map((s) => s.id)
+        const studentClassMap = Object.fromEntries(
+          studentRows.filter((s) => s.class_id).map((s) => [s.id, s.class_id])
+        )
 
+        let markedClassIds = new Set()
         if (classIds.length > 0) {
           const { data: attendanceToday } = await supabase
             .from('attendance')
             .select('class_id')
             .eq('date', today)
+            .eq('institute_id', instituteId)
             .in('class_id', classIds)
 
-          attendanceMarked = new Set((attendanceToday ?? []).map((a) => a.class_id)).size
+          markedClassIds = new Set((attendanceToday ?? []).map((a) => a.class_id))
         }
 
-        const pcts = (scoresRes.data ?? [])
-          .map((r) => r.percentage)
-          .filter((p) => p != null)
+        const attendanceClasses = classes.map((c) => ({
+          id: c.id,
+          name: c.name,
+          marked: markedClassIds.has(c.id),
+        }))
+
+        let scoresData = []
+        if (studentIds.length > 0) {
+          const { data: scores } = await supabase
+            .from('topic_scores')
+            .select('percentage, student_id, exam_id, created_at')
+            .in('student_id', studentIds)
+          scoresData = scores ?? []
+        }
+
+        const pcts = scoresData.map((r) => r.percentage).filter((p) => p != null)
         const avg =
           pcts.length > 0
             ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
             : 0
+
+        const classTotals = {}
+        const classCounts = {}
+        for (const row of scoresData) {
+          if (row.percentage == null) continue
+          const classId = studentClassMap[row.student_id]
+          if (!classId) continue
+          classTotals[classId] = (classTotals[classId] ?? 0) + row.percentage
+          classCounts[classId] = (classCounts[classId] ?? 0) + 1
+        }
+
+        const classAvgs = Object.keys(classTotals)
+          .map((classId) => ({
+            classId,
+            name: classNameMap[classId] ?? 'Class',
+            avg: Math.round(classTotals[classId] / classCounts[classId]),
+          }))
+          .sort((a, b) => b.avg - a.avg)
+
+        const { data: allExamsRaw } = await supabase
+          .from('exams')
+          .select(
+            'id, name, exam_date, exam_type, scope, exam_types(name), exam_classes(class_id, classes(name))'
+          )
+          .order('exam_date', { ascending: false })
+
+        const instituteExams = (allExamsRaw ?? []).filter((e) =>
+          isInstituteExam(e, classIdSet)
+        )
+
+        const todayExams = instituteExams.filter((e) => e.exam_date === today)
+        const pastExams = instituteExams.filter((e) => e.exam_date < today)
+        const pastExamIds = pastExams.map((e) => e.id)
+        const instituteExamIds = instituteExams.map((e) => e.id)
+
+        const examsWithResults = new Set()
+        if (pastExamIds.length > 0) {
+          const [omrRes, tsRes] = await Promise.all([
+            supabase.from('omr_results').select('exam_id').in('exam_id', pastExamIds),
+            supabase.from('topic_scores').select('exam_id').in('exam_id', pastExamIds),
+          ])
+          for (const row of omrRes.data ?? []) examsWithResults.add(row.exam_id)
+          for (const row of tsRes.data ?? []) examsWithResults.add(row.exam_id)
+        }
+
+        const pendingGrading = pastExams.filter((e) => !examsWithResults.has(e.id))
+
+        const weekAnnouncements = (announcementData ?? []).filter(
+          (a) => new Date(a.created_at) >= weekAgo
+        )
+        const sortedWeekAnnouncements = [...weekAnnouncements].sort(
+          (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        )
+
+        const gradedExamsThisWeek = new Set()
+        if (instituteExamIds.length > 0) {
+          const [omrWeekRes, tsWeekRes] = await Promise.all([
+            supabase
+              .from('omr_results')
+              .select('exam_id, created_at')
+              .in('exam_id', instituteExamIds)
+              .gte('created_at', weekAgoIso),
+            supabase
+              .from('topic_scores')
+              .select('exam_id, created_at')
+              .in('exam_id', instituteExamIds)
+              .gte('created_at', weekAgoIso),
+          ])
+          for (const row of omrWeekRes.data ?? []) {
+            if (row.exam_id) gradedExamsThisWeek.add(row.exam_id)
+          }
+          for (const row of tsWeekRes.data ?? []) {
+            if (row.exam_id) gradedExamsThisWeek.add(row.exam_id)
+          }
+        }
 
         setInstituteName(instituteRes.data?.name ?? '')
         setAdminStats({
@@ -455,9 +598,19 @@ export default function Dashboard() {
           teachers: teachersRes.count ?? 0,
           classes: classIds.length,
           avg,
-          attendanceMarked,
+          attendanceMarked: markedClassIds.size,
           attendanceTotal: classIds.length,
         })
+        setAdminAttendanceClasses(attendanceClasses)
+        setAdminTodayExams(todayExams)
+        setAdminPendingGrading(pendingGrading)
+        setAdminWeekActivity({
+          announcementCount: weekAnnouncements.length,
+          lastAnnouncementTitle: sortedWeekAnnouncements[0]?.title ?? null,
+          gradedExamsCount: gradedExamsThisWeek.size,
+        })
+        setAdminBestClass(classAvgs[0] ?? null)
+        setAdminWorstClass(classAvgs.length > 1 ? classAvgs[classAvgs.length - 1] : null)
         setRecentAnnouncements((announcementData ?? []).slice(0, 3))
       }
 
@@ -693,112 +846,251 @@ export default function Dashboard() {
 
       {userRole === 'admin' && (
         <>
-          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 border border-blue-100 p-5 shadow-sm">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h1 className="text-xl md:text-2xl font-bold text-gray-900">
-                  {timeGreeting.text}, Admin! {timeGreeting.emoji}
-                </h1>
-                {instituteName && (
-                  <p className="text-sm text-indigo-700 font-medium mt-1">{instituteName}</p>
+          {/* ZONE 1 — Today */}
+          <div className="flex flex-col gap-5">
+            <AdminZoneHeader label="Today" barColor="bg-blue-500" />
+
+            <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 border border-blue-100 p-5 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+                    {timeGreeting.text}, Admin! {timeGreeting.emoji}
+                  </h1>
+                  {instituteName && (
+                    <p className="text-sm text-indigo-700 font-medium mt-1">{instituteName}</p>
+                  )}
+                  <p className="text-sm text-gray-600 mt-2">
+                    {adminStats.students} Students · {adminStats.teachers} Teachers · {adminStats.classes} Classes
+                  </p>
+                </div>
+                <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 font-medium shrink-0">
+                  Admin
+                </span>
+              </div>
+            </div>
+
+            <AdminSectionTitle title="Today's Attendance" barColor="bg-green-500" />
+            {adminAttendanceClasses.length === 0 ? (
+              <p className="text-sm text-gray-400">No classes in this institute yet.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                {adminAttendanceClasses.map((cls) => (
+                  <div
+                    key={cls.id}
+                    className="rounded-xl shadow-sm bg-white p-3 border border-gray-100"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="font-semibold text-gray-900 text-sm truncate">{cls.name}</p>
+                      {cls.marked ? (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium shrink-0">
+                          ✅ Marked
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => navigate('/attendance')}
+                          className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full font-medium shrink-0 hover:bg-orange-200 transition-colors"
+                        >
+                          ⚠️ Pending
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <AdminSectionTitle title="Today's Exams" barColor="bg-orange-500" />
+            {adminTodayExams.length === 0 ? (
+              <p className="text-sm text-gray-400">No exams scheduled today</p>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {adminTodayExams.map((exam) => (
+                  <div
+                    key={exam.id}
+                    className="rounded-xl shadow-sm bg-white p-3 border border-gray-100 min-w-[180px] max-w-xs"
+                  >
+                    <p className="font-semibold text-gray-900 text-sm">{exam.name}</p>
+                    <p className="text-xs text-gray-500 mt-1">{formatExamClassLabel(exam)}</p>
+                    <span className="inline-block mt-2 text-xs px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-medium">
+                      {exam.exam_types?.name ?? (exam.exam_type === 'written' ? 'Written' : 'MCQ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* ZONE 2 — This Week */}
+          <div className="flex flex-col gap-5">
+            <AdminZoneHeader label="This Week" barColor="bg-purple-500" />
+
+            <AdminSectionTitle title="Pending Grading" barColor="bg-orange-500" />
+            {adminPendingGrading.length === 0 ? (
+              <p className="text-sm text-green-600 font-medium">All exams graded ✅</p>
+            ) : (
+              <div className="space-y-2">
+                {adminPendingGrading.map((exam) => (
+                  <div
+                    key={exam.id}
+                    className="rounded-xl shadow-sm bg-white p-3 border border-orange-100 border-l-4 border-l-orange-400"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-semibold text-gray-900 text-sm">{exam.name}</p>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-medium">
+                        {formatExamDate(exam.exam_date)}
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                        {exam.exam_type === 'written' ? 'Written' : 'MCQ'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <AdminSectionTitle title="This Week's Activity" barColor="bg-pink-500" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-xl shadow-sm bg-white p-4 border border-gray-100">
+                <p className="text-xs text-gray-500">Announcements posted this week</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {adminWeekActivity.announcementCount}
+                </p>
+                {adminWeekActivity.lastAnnouncementTitle ? (
+                  <p className="text-xs text-gray-600 mt-2 truncate">
+                    Latest: {adminWeekActivity.lastAnnouncementTitle}
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 mt-2">No announcements this week</p>
                 )}
-                <p className="text-sm text-gray-600 mt-2">
-                  {adminStats.students} Students · {adminStats.teachers} Teachers · {adminStats.classes} Classes
+              </div>
+              <div className="rounded-xl shadow-sm bg-white p-4 border border-gray-100">
+                <p className="text-xs text-gray-500">Exams graded this week</p>
+                <p className="text-2xl font-bold text-gray-900 mt-1">
+                  {adminWeekActivity.gradedExamsCount}
                 </p>
               </div>
-              <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 font-medium shrink-0">
-                Admin
-              </span>
             </div>
           </div>
 
-          <AdminSectionTitle title="Overview" barColor="bg-blue-500" />
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <AdminStatCard
-              icon="👥"
-              label="Total Students"
-              value={adminStats.students}
-              borderColor="border-t-blue-500"
-            />
-            <AdminStatCard
-              icon="👨‍🏫"
-              label="Total Teachers"
-              value={adminStats.teachers}
-              borderColor="border-t-green-500"
-            />
-            <AdminStatCard
-              icon="🏫"
-              label="Total Classes"
-              value={adminStats.classes}
-              borderColor="border-t-orange-500"
-            />
-            <AdminStatCard
-              icon="📊"
-              label="Institute Avg Score"
-              value={`${adminStats.avg}%`}
-              borderColor="border-t-purple-500"
-            />
-            <AdminStatCard
-              icon="📅"
-              label="Attendance Today"
-              value={`${adminStats.attendanceMarked}/${adminStats.attendanceTotal}`}
-              borderColor="border-t-indigo-500"
-            />
-          </div>
+          {/* ZONE 3 — Institute Overview */}
+          <div className="flex flex-col gap-5">
+            <AdminZoneHeader label="Institute Overview" barColor="bg-indigo-500" />
 
-          <AdminSectionTitle title="Quick Actions" barColor="bg-emerald-500" />
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => navigate('/classes')}
-              className="bg-blue-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-blue-600 transition-colors"
-            >
-              <span className="text-xl">🏫</span>
-              <span className="text-sm font-semibold">Classes</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/students')}
-              className="bg-emerald-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-600 transition-colors"
-            >
-              <span className="text-xl">👥</span>
-              <span className="text-sm font-semibold">Students</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/teachers')}
-              className="bg-indigo-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-indigo-600 transition-colors"
-            >
-              <span className="text-xl">👨‍🏫</span>
-              <span className="text-sm font-semibold">Teachers</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/exams')}
-              className="bg-orange-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-orange-600 transition-colors"
-            >
-              <span className="text-xl">📝</span>
-              <span className="text-sm font-semibold">Exams</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/results')}
-              className="bg-purple-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-purple-600 transition-colors"
-            >
-              <span className="text-xl">📊</span>
-              <span className="text-sm font-semibold">Results</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/announcements')}
-              className="bg-pink-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-pink-600 transition-colors"
-            >
-              <span className="text-xl">📢</span>
-              <span className="text-sm font-semibold">Announcements</span>
-            </button>
-          </div>
+            <AdminSectionTitle title="Stats" barColor="bg-blue-500" />
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <AdminStatCard
+                icon="👥"
+                label="Total Students"
+                value={adminStats.students}
+                borderColor="border-t-blue-500"
+              />
+              <AdminStatCard
+                icon="👨‍🏫"
+                label="Total Teachers"
+                value={adminStats.teachers}
+                borderColor="border-t-green-500"
+              />
+              <AdminStatCard
+                icon="🏫"
+                label="Total Classes"
+                value={adminStats.classes}
+                borderColor="border-t-orange-500"
+              />
+              <AdminStatCard
+                icon="📊"
+                label="Institute Avg Score"
+                value={`${adminStats.avg}%`}
+                borderColor="border-t-purple-500"
+              />
+              <AdminStatCard
+                icon="📅"
+                label="Classes with Attendance Today"
+                value={`${adminStats.attendanceMarked}/${adminStats.attendanceTotal}`}
+                borderColor="border-t-indigo-500"
+              />
+            </div>
 
-          <AnnouncementsSection announcements={recentAnnouncements} navigate={navigate} />
+            <AdminSectionTitle title="Best & Worst Class" barColor="bg-amber-500" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="rounded-xl shadow-sm bg-white p-4 border border-green-100 border-t-4 border-t-green-500">
+                <p className="text-xs text-gray-500">🏆 Best</p>
+                {adminBestClass ? (
+                  <>
+                    <p className="text-lg font-bold text-gray-900 mt-1">{adminBestClass.name}</p>
+                    <p className="text-sm text-green-600 font-medium mt-1">{adminBestClass.avg}% avg</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 mt-2">No score data yet</p>
+                )}
+              </div>
+              <div className="rounded-xl shadow-sm bg-white p-4 border border-orange-100 border-t-4 border-t-orange-500">
+                <p className="text-xs text-gray-500">⚠️ Needs Attention</p>
+                {adminWorstClass ? (
+                  <>
+                    <p className="text-lg font-bold text-gray-900 mt-1">{adminWorstClass.name}</p>
+                    <p className="text-sm text-orange-600 font-medium mt-1">{adminWorstClass.avg}% avg</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-400 mt-2">No score data yet</p>
+                )}
+              </div>
+            </div>
+
+            <AdminSectionTitle title="Quick Actions" barColor="bg-emerald-500" />
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => navigate('/classes')}
+                className="bg-blue-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-blue-600 transition-colors"
+              >
+                <span className="text-xl">🏫</span>
+                <span className="text-sm font-semibold">Classes</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/students')}
+                className="bg-emerald-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-600 transition-colors"
+              >
+                <span className="text-xl">👥</span>
+                <span className="text-sm font-semibold">Students</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/teachers')}
+                className="bg-indigo-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-indigo-600 transition-colors"
+              >
+                <span className="text-xl">👨‍🏫</span>
+                <span className="text-sm font-semibold">Teachers</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/exams')}
+                className="bg-orange-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-orange-600 transition-colors"
+              >
+                <span className="text-xl">📝</span>
+                <span className="text-sm font-semibold">Exams</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/results')}
+                className="bg-purple-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-purple-600 transition-colors"
+              >
+                <span className="text-xl">📊</span>
+                <span className="text-sm font-semibold">Results</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/announcements')}
+                className="bg-pink-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-pink-600 transition-colors"
+              >
+                <span className="text-xl">📢</span>
+                <span className="text-sm font-semibold">Announcements</span>
+              </button>
+            </div>
+
+            <AnnouncementsSection announcements={recentAnnouncements} navigate={navigate} />
+          </div>
         </>
       )}
 
