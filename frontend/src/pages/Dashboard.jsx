@@ -449,6 +449,11 @@ export default function Dashboard() {
   const [adminWorstClass, setAdminWorstClass] = useState(null)
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [todaySchedule, setTodaySchedule] = useState([])
+  const [todayAttendance, setTodayAttendance] = useState({
+    status: 'not_marked',
+    presentCount: 0,
+    totalCount: 0,
+  })
   const [teacherClassCards, setTeacherClassCards] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -499,6 +504,7 @@ export default function Dashboard() {
             setStats({})
             setStudentInfo({})
             setTodaySchedule([])
+            setTodayAttendance({ status: 'not_marked', presentCount: 0, totalCount: 0 })
             setLoading(false)
             return
           }
@@ -589,6 +595,29 @@ export default function Dashboard() {
         } else {
           setTodaySchedule([])
         }
+
+        const { data: attendanceRows } = await supabase
+          .from('attendance')
+          .select('status')
+          .eq('student_id', studentId)
+          .eq('date', todayDateStr())
+
+        const records = attendanceRows ?? []
+        const totalCount = records.length
+        const presentCount = records.filter((r) => r.status === 'present').length
+        const hasPresent = presentCount > 0
+        const allAbsent = totalCount > 0 && records.every((r) => r.status === 'absent')
+
+        let attendanceStatus = 'not_marked'
+        if (totalCount === 0) {
+          attendanceStatus = 'not_marked'
+        } else if (hasPresent) {
+          attendanceStatus = 'present'
+        } else if (allAbsent) {
+          attendanceStatus = 'absent'
+        }
+
+        setTodayAttendance({ status: attendanceStatus, presentCount, totalCount })
 
         setStats({
           lastExamName,
@@ -937,6 +966,33 @@ export default function Dashboard() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-1 h-5 bg-green-500 rounded-full" />
+              <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">Today&apos;s Attendance</h2>
+            </div>
+            <div
+              className={`rounded-xl border p-4 shadow-sm ${
+                todayAttendance.status === 'present'
+                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
+                  : todayAttendance.status === 'absent'
+                    ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+                    : 'bg-gray-50 dark:bg-[#262626] border-gray-200 dark:border-[#363636] text-gray-700 dark:text-[#A8A8A8]'
+              }`}
+            >
+              <p className="text-lg font-semibold">
+                {todayAttendance.status === 'present' && '✅ Present'}
+                {todayAttendance.status === 'absent' && '❌ Absent'}
+                {todayAttendance.status === 'not_marked' && '🕐 Not Marked Yet'}
+              </p>
+              <p className="text-sm mt-2 opacity-90">
+                {todayAttendance.totalCount === 0
+                  ? 'No attendance recorded today'
+                  : `Present in ${todayAttendance.presentCount} out of ${todayAttendance.totalCount} periods today`}
+              </p>
+            </div>
           </div>
 
           <StatCard
