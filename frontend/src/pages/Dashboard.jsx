@@ -45,6 +45,32 @@ function todayDateStr() {
   return new Date().toISOString().split('T')[0]
 }
 
+function getTimeGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return { text: 'Good Morning', emoji: '☀️' }
+  if (hour < 17) return { text: 'Good Afternoon', emoji: '🌤️' }
+  return { text: 'Good Evening', emoji: '🌙' }
+}
+
+function AdminStatCard({ icon, label, value, borderColor }) {
+  return (
+    <div className={`rounded-xl shadow-sm bg-white p-4 border-t-4 ${borderColor}`}>
+      <span className="text-xl">{icon}</span>
+      <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+      <p className="text-xs text-gray-500 mt-1">{label}</p>
+    </div>
+  )
+}
+
+function AdminSectionTitle({ title, barColor = 'bg-blue-500' }) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <div className={`w-1 h-5 ${barColor} rounded-full`} />
+      <h2 className="font-bold text-gray-800 text-base">{title}</h2>
+    </div>
+  )
+}
+
 function getPeriodEndTime(periodNumber, startTime) {
   return PERIOD_END_TIMES[periodNumber] ?? startTime?.slice(0, 5) ?? ''
 }
@@ -142,11 +168,14 @@ export default function Dashboard() {
   const [stats, setStats] = useState({})
   const [studentInfo, setStudentInfo] = useState({})
   const [parentName, setParentName] = useState('')
+  const [instituteName, setInstituteName] = useState('')
   const [adminStats, setAdminStats] = useState({
     students: 0,
     teachers: 0,
-    exams: 0,
+    classes: 0,
     avg: 0,
+    attendanceMarked: 0,
+    attendanceTotal: 0,
   })
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [todaySchedule, setTodaySchedule] = useState([])
@@ -374,7 +403,9 @@ export default function Dashboard() {
         classCards.sort((a, b) => a.className.localeCompare(b.className))
         setTeacherClassCards(classCards)
       } else if (userRole === 'admin' && instituteId) {
-        const [studentsRes, teachersRes, scoresRes] = await Promise.all([
+        const today = todayDateStr()
+
+        const [studentsRes, teachersRes, scoresRes, instituteRes, classRes] = await Promise.all([
           supabase
             .from('users')
             .select('*', { count: 'exact', head: true })
@@ -386,22 +417,28 @@ export default function Dashboard() {
             .eq('role', 'teacher')
             .eq('institute_id', instituteId),
           supabase.from('topic_scores').select('percentage'),
+          supabase
+            .from('institutes')
+            .select('name')
+            .eq('id', instituteId)
+            .single(),
+          supabase
+            .from('classes')
+            .select('id')
+            .eq('institute_id', instituteId),
         ])
 
-        const { data: classData } = await supabase
-          .from('classes')
-          .select('id')
-          .eq('institute_id', instituteId)
+        const classIds = classRes.data?.map((c) => c.id) ?? []
+        let attendanceMarked = 0
 
-        const classIds = classData?.map((c) => c.id) ?? []
-
-        let examCount = 0
         if (classIds.length > 0) {
-          const { count } = await supabase
-            .from('exam_classes')
-            .select('exam_id', { count: 'exact', head: true })
+          const { data: attendanceToday } = await supabase
+            .from('attendance')
+            .select('class_id')
+            .eq('date', today)
             .in('class_id', classIds)
-          examCount = count ?? 0
+
+          attendanceMarked = new Set((attendanceToday ?? []).map((a) => a.class_id)).size
         }
 
         const pcts = (scoresRes.data ?? [])
@@ -412,11 +449,14 @@ export default function Dashboard() {
             ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
             : 0
 
+        setInstituteName(instituteRes.data?.name ?? '')
         setAdminStats({
           students: studentsRes.count ?? 0,
           teachers: teachersRes.count ?? 0,
-          exams: examCount,
+          classes: classIds.length,
           avg,
+          attendanceMarked,
+          attendanceTotal: classIds.length,
         })
         setRecentAnnouncements((announcementData ?? []).slice(0, 3))
       }
@@ -434,6 +474,8 @@ export default function Dashboard() {
       </div>
     )
   }
+
+  const timeGreeting = getTimeGreeting()
 
   return (
     <div className="max-w-4xl flex flex-col gap-5">
@@ -651,39 +693,108 @@ export default function Dashboard() {
 
       {userRole === 'admin' && (
         <>
-          <div className="rounded-2xl bg-blue-50 border border-blue-100 p-5">
-            <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">EduPulse Admin</p>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Welcome, {userName}!</h1>
+          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-100 border border-blue-100 p-5 shadow-sm">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h1 className="text-xl md:text-2xl font-bold text-gray-900">
+                  {timeGreeting.text}, Admin! {timeGreeting.emoji}
+                </h1>
+                {instituteName && (
+                  <p className="text-sm text-indigo-700 font-medium mt-1">{instituteName}</p>
+                )}
+                <p className="text-sm text-gray-600 mt-2">
+                  {adminStats.students} Students · {adminStats.teachers} Teachers · {adminStats.classes} Classes
+                </p>
+              </div>
+              <span className="text-xs bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 font-medium shrink-0">
+                Admin
+              </span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <StatCard label="Total Students" value={adminStats.students} />
-            <StatCard label="Total Teachers" value={adminStats.teachers} />
-            <StatCard label="Total Exams" value={adminStats.exams} />
-            <StatCard label="Institute Avg" value={`${adminStats.avg}%`} />
+          <AdminSectionTitle title="Overview" barColor="bg-blue-500" />
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <AdminStatCard
+              icon="👥"
+              label="Total Students"
+              value={adminStats.students}
+              borderColor="border-t-blue-500"
+            />
+            <AdminStatCard
+              icon="👨‍🏫"
+              label="Total Teachers"
+              value={adminStats.teachers}
+              borderColor="border-t-green-500"
+            />
+            <AdminStatCard
+              icon="🏫"
+              label="Total Classes"
+              value={adminStats.classes}
+              borderColor="border-t-orange-500"
+            />
+            <AdminStatCard
+              icon="📊"
+              label="Institute Avg Score"
+              value={`${adminStats.avg}%`}
+              borderColor="border-t-purple-500"
+            />
+            <AdminStatCard
+              icon="📅"
+              label="Attendance Today"
+              value={`${adminStats.attendanceMarked}/${adminStats.attendanceTotal}`}
+              borderColor="border-t-indigo-500"
+            />
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <AdminSectionTitle title="Quick Actions" barColor="bg-emerald-500" />
+          <div className="grid grid-cols-3 gap-3">
             <button
               type="button"
               onClick={() => navigate('/classes')}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="bg-blue-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-blue-600 transition-colors"
             >
-              Manage Classes
+              <span className="text-xl">🏫</span>
+              <span className="text-sm font-semibold">Classes</span>
             </button>
             <button
               type="button"
               onClick={() => navigate('/students')}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="bg-emerald-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-emerald-600 transition-colors"
             >
-              Manage Students
+              <span className="text-xl">👥</span>
+              <span className="text-sm font-semibold">Students</span>
             </button>
             <button
               type="button"
-              onClick={() => navigate('/admin')}
-              className="border border-gray-300 text-gray-700 font-medium px-4 py-2 rounded-lg hover:bg-gray-50"
+              onClick={() => navigate('/teachers')}
+              className="bg-indigo-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-indigo-600 transition-colors"
             >
-              Full Admin Panel
+              <span className="text-xl">👨‍🏫</span>
+              <span className="text-sm font-semibold">Teachers</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/exams')}
+              className="bg-orange-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-orange-600 transition-colors"
+            >
+              <span className="text-xl">📝</span>
+              <span className="text-sm font-semibold">Exams</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/results')}
+              className="bg-purple-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-purple-600 transition-colors"
+            >
+              <span className="text-xl">📊</span>
+              <span className="text-sm font-semibold">Results</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/announcements')}
+              className="bg-pink-500 text-white p-4 rounded-xl shadow-sm flex flex-col items-center gap-2 hover:bg-pink-600 transition-colors"
+            >
+              <span className="text-xl">📢</span>
+              <span className="text-sm font-semibold">Announcements</span>
             </button>
           </div>
 
