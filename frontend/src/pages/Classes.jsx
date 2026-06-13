@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 
@@ -83,6 +83,7 @@ export default function Classes() {
   const [creatingGroup, setCreatingGroup] = useState(false)
   const [addGroupClassId, setAddGroupClassId] = useState({})
   const [addGroupSubjectId, setAddGroupSubjectId] = useState({})
+  const [selectedGroupFilterId, setSelectedGroupFilterId] = useState('')
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -413,6 +414,15 @@ export default function Classes() {
       .filter((g) => g.class_group_members?.some((m) => m.class_id === classId))
       .map((g) => g.id)
   }
+
+  const filteredClasses = useMemo(() => {
+    if (!selectedGroupFilterId) return classes
+    const group = groups.find((g) => g.id === selectedGroupFilterId)
+    const classIds = new Set(
+      (group?.class_group_members ?? []).map((m) => m.class_id).filter(Boolean)
+    )
+    return classes.filter((c) => classIds.has(c.id))
+  }, [classes, groups, selectedGroupFilterId])
 
   async function assignClassToGroups(classId, groupIds) {
     for (const groupId of groupIds) {
@@ -900,13 +910,30 @@ export default function Classes() {
         </div>
       )}
 
+      {groups.length > 0 && (
+        <div className="mb-4">
+          <select
+            value={selectedGroupFilterId}
+            onChange={(e) => setSelectedGroupFilterId(e.target.value)}
+            className={`w-full sm:w-auto ${SELECT_CLASS}`}
+          >
+            <option value="">All Groups</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {loading ? (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading classes…</p>
       ) : classes.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No classes yet. Create one above.</p>
+      ) : filteredClasses.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No classes in this group.</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {classes.map((cls) => {
+          {filteredClasses.map((cls) => {
             const isExpanded = expandedClassId === cls.id
             return (
               <li
