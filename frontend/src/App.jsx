@@ -19,6 +19,8 @@ import Teachers from './pages/Teachers'
 import Schedule from './pages/Schedule'
 import Attendance from './pages/Attendance'
 import Profile from './pages/Profile'
+import SuperAdminLogin from './pages/SuperAdminLogin'
+import SuperAdminDashboard from './pages/SuperAdminDashboard'
 
 export default function App() {
   const [session, setSession] = useState(null)
@@ -72,6 +74,8 @@ export default function App() {
             <Route path="/profile" element={<Profile />} />
           </Route>
         </Route>
+        <Route path="/superadmin/login" element={<SuperAdminLogin />} />
+        <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
         <Route
           path="*"
           element={<Navigate to={session ? '/dashboard' : '/login'} replace />}
