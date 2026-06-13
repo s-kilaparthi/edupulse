@@ -2,6 +2,16 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
+import {
+  DEFAULT_WEEKLY_OFF,
+  WEEK_DAY_NAMES,
+  fetchHolidayData,
+  formatDateDDMMYYYY,
+  getDayOffInfo,
+  getWeekDatesForGrid,
+  normalizeWeeklyOff,
+  todayISO,
+} from '../utils/holidays'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
@@ -11,6 +21,7 @@ const DEFAULT_SCHEDULE_SETTINGS = {
   period_duration: 60,
   periods_per_day: 8,
   breaks: [],
+  weekly_off: [...DEFAULT_WEEKLY_OFF],
 }
 
 function parseTime(timeStr) {
@@ -46,12 +57,13 @@ function PeriodTimeDisplay({ start, end }) {
 }
 
 function normalizeSettings(row) {
-  if (!row) return { ...DEFAULT_SCHEDULE_SETTINGS, breaks: [] }
+  if (!row) return { ...DEFAULT_SCHEDULE_SETTINGS, breaks: [], weekly_off: [...DEFAULT_WEEKLY_OFF] }
   return {
     start_time: (row.start_time ?? '09:00').slice(0, 5),
     period_duration: row.period_duration ?? 60,
     periods_per_day: row.periods_per_day ?? 8,
     breaks: Array.isArray(row.breaks) ? [...row.breaks].sort((a, b) => a.after_period - b.after_period) : [],
+    weekly_off: normalizeWeeklyOff(row.weekly_off),
   }
 }
 
@@ -96,6 +108,11 @@ export default function Schedule() {
   const [scheduleSettings, setScheduleSettings] = useState(DEFAULT_SCHEDULE_SETTINGS)
   const [settingsDraft, setSettingsDraft] = useState(DEFAULT_SCHEDULE_SETTINGS)
   const [showSettings, setShowSettings] = useState(false)
+  const [showHolidayModal, setShowHolidayModal] = useState(false)
+  const [holidays, setHolidays] = useState([])
+  const [holidayDate, setHolidayDate] = useState(todayISO())
+  const [holidayName, setHolidayName] = useState('')
+  const [savingHoliday, setSavingHoliday] = useState(false)
   const [showAddBreakForm, setShowAddBreakForm] = useState(false)
   const [breakAfterPeriod, setBreakAfterPeriod] = useState('')
   const [breakLabel, setBreakLabel] = useState('')
@@ -120,6 +137,21 @@ export default function Schedule() {
   const periodTimes = useMemo(
     () => calculatePeriodTimes(scheduleSettings),
     [scheduleSettings]
+  )
+
+  const weekDates = useMemo(() => getWeekDatesForGrid(), [])
+
+  const dayOffMap = useMemo(() => {
+    const map = {}
+    for (const day of DAYS) {
+      map[day] = getDayOffInfo(day, weekDates, holidays, scheduleSettings.weekly_off)
+    }
+    return map
+  }, [weekDates, holidays, scheduleSettings.weekly_off])
+
+  const upcomingHolidays = useMemo(
+    () => holidays.filter((h) => h.date?.slice(0, 10) >= todayISO()),
+    [holidays]
   )
 
   useEffect(() => {
@@ -149,13 +181,17 @@ export default function Schedule() {
     if (!instituteId) return
 
     async function loadSettings() {
-      const { data } = await supabase
-        .from('schedule_settings')
-        .select('start_time, period_duration, periods_per_day, breaks')
-        .eq('institute_id', instituteId)
-        .maybeSingle()
+      const [{ data }, holidayData] = await Promise.all([
+        supabase
+          .from('schedule_settings')
+          .select('start_time, period_duration, periods_per_day, breaks, weekly_off')
+          .eq('institute_id', instituteId)
+          .maybeSingle(),
+        fetchHolidayData(instituteId),
+      ])
 
       setScheduleSettings(normalizeSettings(data))
+      setHolidays(holidayData.holidays)
     }
 
     loadSettings()
@@ -320,6 +356,81 @@ export default function Schedule() {
     }))
   }
 
+  function toggleWeeklyOffDay(dayName) {
+    setSettingsDraft((prev) => {
+      const current = normalizeWeeklyOff(prev.weekly_off)
+      const next = current.includes(dayName)
+        ? current.filter((d) => d !== dayName)
+        : [...current, dayName]
+      return { ...prev, weekly_off: next }
+    })
+  }
+
+  function openHolidayModal() {
+    setHolidayDate(todayISO())
+    setHolidayName('')
+    setShowHolidayModal(true)
+    setError(null)
+  }
+
+  function closeHolidayModal() {
+    setShowHolidayModal(false)
+    setHolidayName('')
+  }
+
+  async function refreshHolidays() {
+    if (!instituteId) return
+    const { holidays: rows } = await fetchHolidayData(instituteId)
+    setHolidays(rows)
+  }
+
+  async function handleSaveHoliday() {
+    if (!instituteId || !holidayDate || !holidayName.trim()) {
+      setError('Please enter a date and holiday name.')
+      return
+    }
+
+    setSavingHoliday(true)
+    setError(null)
+
+    try {
+      const { error: insertError } = await supabase.from('holidays').insert({
+        institute_id: instituteId,
+        date: holidayDate,
+        name: holidayName.trim(),
+      })
+      if (insertError) throw new Error(insertError.message)
+
+      await refreshHolidays()
+      setHolidayName('')
+      setHolidayDate(todayISO())
+    } catch (err) {
+      setError(err.message)
+    }
+
+    setSavingHoliday(false)
+  }
+
+  async function handleDeleteHoliday(holiday) {
+    if (!window.confirm(`Delete holiday "${holiday.name}" on ${formatDateDDMMYYYY(holiday.date)}?`)) {
+      return
+    }
+
+    setError(null)
+
+    try {
+      const { error: deleteError } = await supabase
+        .from('holidays')
+        .delete()
+        .eq('id', holiday.id)
+      if (deleteError) throw new Error(deleteError.message)
+
+      await refreshHolidays()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   async function syncInstituteSlotTimes(settings) {
     if (!instituteId) return
 
@@ -348,6 +459,7 @@ export default function Schedule() {
         period_duration: Number(settingsDraft.period_duration),
         periods_per_day: Number(settingsDraft.periods_per_day),
         breaks: [...settingsDraft.breaks].sort((a, b) => a.after_period - b.after_period),
+        weekly_off: normalizeWeeklyOff(settingsDraft.weekly_off),
       }
 
       const { error: upsertError } = await supabase
@@ -478,13 +590,22 @@ export default function Schedule() {
       <div className="flex items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">Schedule</h1>
         {isAdmin && (
-          <button
-            type="button"
-            onClick={openSettingsPanel}
-            className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors shrink-0"
-          >
-            ⚙️ Settings
-          </button>
+          <div className="flex gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={openHolidayModal}
+              className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
+            >
+              Mark Holiday
+            </button>
+            <button
+              type="button"
+              onClick={openSettingsPanel}
+              className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
+            >
+              ⚙️ Settings
+            </button>
+          </div>
         )}
       </div>
 
@@ -567,14 +688,22 @@ export default function Schedule() {
                     <th className="sticky left-0 bg-white dark:bg-[#1C1C1C] z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] px-3 py-3 break-words">
                       Period
                     </th>
-                    {DAY_LABELS.map((label) => (
-                      <th
-                        key={label}
-                        className="min-w-[100px] text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] px-2 py-3 break-words"
-                      >
-                        {label}
-                      </th>
-                    ))}
+                    {DAY_LABELS.map((label, i) => {
+                      const day = DAYS[i]
+                      const isOff = Boolean(dayOffMap[day])
+                      return (
+                        <th
+                          key={label}
+                          className={`min-w-[100px] text-center text-xs font-semibold px-2 py-3 break-words ${
+                            isOff
+                              ? 'text-red-500 dark:text-red-400'
+                              : 'text-gray-500 dark:text-[#A8A8A8]'
+                          }`}
+                        >
+                          {label}
+                        </th>
+                      )
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -601,6 +730,28 @@ export default function Schedule() {
                         </td>
                       ) : (
                         DAYS.map((day) => {
+                          const off = dayOffMap[day]
+                          if (off) {
+                            if (index !== 0) return null
+                            return (
+                              <td
+                                key={day}
+                                rowSpan={periodTimes.length}
+                                className="min-w-[100px] p-1.5 align-middle break-words"
+                              >
+                                <div
+                                  className={`flex items-center justify-center text-center text-xs font-medium rounded-lg px-2 py-4 min-h-full ${
+                                    off.type === 'holiday'
+                                      ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                                      : 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
+                                  }`}
+                                >
+                                  {off.type === 'holiday' ? off.name : 'Weekly Holiday'}
+                                </div>
+                              </td>
+                            )
+                          }
+
                           const slot = getSlot(day, row.period)
                           const isMyPeriod = slot && slot.teacher_id === userId
                           const hideOtherTeacherSlot = isTeacher && showMyPeriodsOnly && slot && !isMyPeriod
@@ -811,6 +962,28 @@ export default function Schedule() {
                     )}
                   </div>
 
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">
+                      Weekly Holidays
+                    </label>
+                    <div className="space-y-2">
+                      {WEEK_DAY_NAMES.map((dayName) => (
+                        <label
+                          key={dayName}
+                          className="flex items-center gap-2 text-sm text-gray-700 dark:text-[#A8A8A8] cursor-pointer"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={normalizeWeeklyOff(settingsDraft.weekly_off).includes(dayName)}
+                            onChange={() => toggleWeeklyOffDay(dayName)}
+                            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                          />
+                          {dayName}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
                   <button
                     type="button"
                     onClick={handleSaveSettings}
@@ -819,6 +992,102 @@ export default function Schedule() {
                   >
                     {savingSettings ? 'Saving…' : 'Save Settings'}
                   </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {showHolidayModal && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeHolidayModal()
+              }}
+            >
+              <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-lg mx-4 md:mx-0 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-[#FFFFFF]">Mark Holiday</h3>
+                  <button
+                    type="button"
+                    onClick={closeHolidayModal}
+                    className="text-gray-400 dark:text-[#A8A8A8] hover:text-gray-600 text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={holidayDate}
+                      onChange={(e) => setHolidayDate(e.target.value)}
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">
+                      Holiday Name
+                    </label>
+                    <input
+                      type="text"
+                      value={holidayName}
+                      onChange={(e) => setHolidayName(e.target.value)}
+                      placeholder="e.g. Diwali, Independence Day"
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveHoliday}
+                      disabled={savingHoliday || !holidayDate || !holidayName.trim()}
+                      className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-40"
+                    >
+                      {savingHoliday ? 'Saving…' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={closeHolidayModal}
+                      className="px-4 py-2.5 rounded-lg text-sm font-medium border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:bg-gray-50 dark:hover:bg-[#262626]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <h4 className="text-xs font-semibold text-gray-600 dark:text-[#A8A8A8] mb-3 uppercase tracking-wide">
+                      Upcoming Holidays
+                    </h4>
+                    {upcomingHolidays.length === 0 ? (
+                      <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No upcoming holidays.</p>
+                    ) : (
+                      <ul className="space-y-2">
+                        {upcomingHolidays.map((holiday) => (
+                          <li
+                            key={holiday.id}
+                            className="flex items-center justify-between gap-3 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] px-3 py-2 text-sm"
+                          >
+                            <span className="text-gray-700 dark:text-[#A8A8A8]">
+                              {formatDateDDMMYYYY(holiday.date)} | {holiday.name}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteHoliday(holiday)}
+                              className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0"
+                            >
+                              Delete
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
+import { checkDateHolidayStatus, fetchHolidayData, todayISO } from '../utils/holidays'
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
@@ -480,6 +481,7 @@ export default function Dashboard() {
   const [adminHasGroups, setAdminHasGroups] = useState(false)
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [todaySchedule, setTodaySchedule] = useState([])
+  const [todayDayOff, setTodayDayOff] = useState({ isOff: false, type: null, name: null })
   const [todayAttendance, setTodayAttendance] = useState({
     status: 'not_marked',
     presentCount: 0,
@@ -612,7 +614,12 @@ export default function Dashboard() {
           studentName: studentDisplayName,
         })
 
-        if (studentClassId) {
+        const today = todayISO()
+        const holidayData = instituteId ? await fetchHolidayData(instituteId) : { weeklyOff: [], holidays: [] }
+        const dayOffStatus = checkDateHolidayStatus(today, holidayData.holidays, holidayData.weeklyOff)
+        setTodayDayOff(dayOffStatus)
+
+        if (studentClassId && !dayOffStatus.isOff) {
           const dayName = DAYS[new Date().getDay()]
           const { data: slots } = await supabase
             .from('schedule_slots')
@@ -1054,7 +1061,13 @@ export default function Dashboard() {
               <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Today&apos;s Schedule</h2>
               <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">{formatTodayDate()}</span>
             </div>
-            {todaySchedule.length === 0 ? (
+            {todayDayOff.isOff ? (
+              <div className="rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 px-4 py-6 text-center font-medium">
+                {todayDayOff.type === 'holiday'
+                  ? `Holiday — ${todayDayOff.name}`
+                  : 'Weekly Holiday'}
+              </div>
+            ) : todaySchedule.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-2xl mb-2">📅</p>
                 <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No classes scheduled today</p>

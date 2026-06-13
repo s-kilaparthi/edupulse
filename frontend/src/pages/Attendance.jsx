@@ -7,6 +7,7 @@ import {
   filterClassesByGroup,
   fetchTeacherClassesAndGroups,
 } from '../utils/teacherGroups'
+import { checkDateHolidayStatus, fetchHolidayData } from '../utils/holidays'
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const STATUS_OPTIONS = ['present', 'absent', 'late']
@@ -306,6 +307,8 @@ export default function Attendance() {
   const [teacherSelectedGroupId, setTeacherSelectedGroupId] = useState('')
   const [teacherTab, setTeacherTab] = useState('mark')
   const [selectedAttendanceClassId, setSelectedAttendanceClassId] = useState('')
+  const [weeklyOff, setWeeklyOff] = useState(['Sunday'])
+  const [holidays, setHolidays] = useState([])
 
   const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
@@ -328,6 +331,17 @@ export default function Attendance() {
     () => extractGroupClasses(selectedGroup),
     [selectedGroup]
   )
+
+  const selectedDateOff = useMemo(
+    () => checkDateHolidayStatus(selectedDate, holidays, weeklyOff),
+    [selectedDate, holidays, weeklyOff]
+  )
+
+  useEffect(() => {
+    if (selectedDateOff.isOff) {
+      setActiveSlotId(null)
+    }
+  }, [selectedDateOff.isOff])
 
   const teacherDisplayClasses = useMemo(
     () => filterClassesByGroup(teacherReportClasses, teacherSelectedGroupId, teacherClassGroups),
@@ -367,6 +381,15 @@ export default function Attendance() {
         }
       })
   }, [session])
+
+  useEffect(() => {
+    if (!instituteId) return
+
+    fetchHolidayData(instituteId).then(({ weeklyOff: off, holidays: rows }) => {
+      setWeeklyOff(off)
+      setHolidays(rows)
+    })
+  }, [instituteId])
 
   useEffect(() => {
     if (!instituteId || !isAdmin) return
@@ -616,6 +639,7 @@ export default function Attendance() {
 
   async function handleSaveAttendance(slot) {
     if (!slot || !userId || !instituteId) return
+    if (selectedDateOff.isOff) return
 
     setSaving(true)
     setError(null)
@@ -859,6 +883,7 @@ export default function Attendance() {
   }, [isTeacher, teacherTab, teacherSelectedGroupId, groupDateRange, selectedClassId, teacherDisplayClasses, instituteId])
 
   function handleSlotToggle(slot) {
+    if (selectedDateOff.isOff) return
     const isActive = activeSlotId === slot.id
     setActiveSlotId(isActive ? null : slot.id)
     if (!isActive) fetchStudentsForSlot(slot)
@@ -1236,6 +1261,12 @@ export default function Attendance() {
           </div>
         </div>
 
+        {selectedDateOff.isOff && (
+          <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 mb-6 text-sm font-medium">
+            This day is marked as a holiday. Attendance cannot be marked.
+          </div>
+        )}
+
         {isTeacher && !selectedAttendanceClassId && (
           <p className="text-sm text-gray-400 dark:text-[#A8A8A8] text-center py-8">
             Select a class to mark attendance.
@@ -1244,7 +1275,7 @@ export default function Attendance() {
 
         {loading ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading slots…</p>
-        ) : showClassSelector && !adminHasScope ? (
+        ) : selectedDateOff.isOff ? null : showClassSelector && !adminHasScope ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">
             Select a class, or choose a group with All Classes to view combined schedule.
           </p>
