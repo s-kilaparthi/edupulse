@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
@@ -30,6 +30,60 @@ function getDayName(dateStr) {
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
+}
+
+function extractGroupClasses(group) {
+  const members = group?.class_group_members ?? []
+  return members
+    .map((m) => {
+      const cls = m.classes
+      if (!cls) return null
+      return { id: m.class_id ?? cls.id, name: cls.name }
+    })
+    .filter(Boolean)
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+}
+
+function filterClassesByGroup(allClasses, groupId, classGroups) {
+  if (!groupId) return allClasses
+  const group = classGroups.find((g) => g.id === groupId)
+  const groupClassIds = new Set(extractGroupClasses(group).map((c) => c.id))
+  return allClasses.filter((c) => groupClassIds.has(c.id))
+}
+
+function getGroupDateBounds(range) {
+  const today = todayStr()
+  if (range === 'today') return { from: today, to: today }
+  if (range === 'week') {
+    const d = new Date()
+    const day = d.getDay()
+    const diff = day === 0 ? 6 : day - 1
+    const monday = new Date(d)
+    monday.setDate(d.getDate() - diff)
+    return { from: monday.toISOString().split('T')[0], to: today }
+  }
+  const d = new Date()
+  const first = new Date(d.getFullYear(), d.getMonth(), 1)
+  return { from: first.toISOString().split('T')[0], to: today }
+}
+
+function getAttendancePctColor(pct) {
+  if (pct >= 75) {
+    return {
+      text: 'text-green-600',
+      bg: 'bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-800',
+    }
+  }
+  if (pct >= 50) {
+    return {
+      text: 'text-orange-600',
+      bg: 'bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800',
+    }
+  }
+  return {
+    text: 'text-red-600',
+    bg: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800',
+  }
 }
 
 function formatDateDDMMYYYY(dateStr) {
@@ -236,6 +290,11 @@ export default function Attendance() {
   const [saving, setSaving] = useState(false)
   const [savedSlots, setSavedSlots] = useState(new Set())
   const [classes, setClasses] = useState([])
+  const [classGroups, setClassGroups] = useState([])
+  const [selectedGroupId, setSelectedGroupId] = useState('')
+  const [groupDateRange, setGroupDateRange] = useState('week')
+  const [groupSummary, setGroupSummary] = useState(null)
+  const [sectionStats, setSectionStats] = useState([])
   const [selectedClassId, setSelectedClassId] = useState('')
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -267,6 +326,21 @@ export default function Attendance() {
   const isAdmin = userRole === 'admin'
   const [effectiveStudentId, setEffectiveStudentId] = useState(null)
 
+  const displayClasses = useMemo(
+    () => filterClassesByGroup(classes, selectedGroupId, classGroups),
+    [classes, selectedGroupId, classGroups]
+  )
+
+  const selectedGroup = useMemo(
+    () => classGroups.find((g) => g.id === selectedGroupId) ?? null,
+    [classGroups, selectedGroupId]
+  )
+
+  const groupClasses = useMemo(
+    () => extractGroupClasses(selectedGroup),
+    [selectedGroup]
+  )
+
   useEffect(() => {
     if (!session?.user?.id) return
 
@@ -294,13 +368,30 @@ export default function Attendance() {
   useEffect(() => {
     if (!instituteId || !isAdmin) return
 
-    supabase
-      .from('classes')
-      .select('id, name')
-      .eq('institute_id', instituteId)
-      .order('name')
-      .then(({ data }) => setClasses(data ?? []))
+    Promise.all([
+      supabase
+        .from('classes')
+        .select('id, name')
+        .eq('institute_id', instituteId)
+        .order('name'),
+      supabase
+        .from('class_groups')
+        .select('id, name, class_group_members(class_id, classes(id, name))')
+        .eq('institute_id', instituteId)
+        .order('name'),
+    ]).then(([classesRes, groupsRes]) => {
+      setClasses(classesRes.data ?? [])
+      setClassGroups(groupsRes.data ?? [])
+    })
   }, [instituteId, isAdmin])
+
+  useEffect(() => {
+    if (!isAdmin || !selectedGroupId) return
+    const visibleIds = new Set(displayClasses.map((c) => c.id))
+    if (selectedClassId && !visibleIds.has(selectedClassId)) {
+      setSelectedClassId('')
+    }
+  }, [isAdmin, selectedGroupId, displayClasses, selectedClassId])
 
   useEffect(() => {
     if (!userId || !isTeacher) return
@@ -409,7 +500,17 @@ export default function Attendance() {
   }, [userId, instituteId, selectedDate, fetchSavedSlots])
 
   const fetchAdminSlots = useCallback(async () => {
-    if (!selectedClassId || !instituteId || !selectedDate) {
+    if (!instituteId || !selectedDate) {
+      setTodaySlots([])
+      return
+    }
+
+    let classIds = []
+    if (selectedClassId) {
+      classIds = [selectedClassId]
+    } else if (selectedGroupId && groupClasses.length > 0) {
+      classIds = groupClasses.map((c) => c.id)
+    } else {
       setTodaySlots([])
       return
     }
@@ -424,7 +525,7 @@ export default function Attendance() {
       .select(
         'id, class_id, subject_id, period_number, start_time, end_time, teacher_id, classes(name), subjects(name)'
       )
-      .eq('class_id', selectedClassId)
+      .in('class_id', classIds)
       .eq('day_of_week', dayName)
       .eq('institute_id', instituteId)
       .order('period_number')
@@ -439,7 +540,7 @@ export default function Attendance() {
     }
 
     setLoading(false)
-  }, [selectedClassId, instituteId, selectedDate, fetchSavedSlots])
+  }, [instituteId, selectedDate, selectedClassId, selectedGroupId, groupClasses, fetchSavedSlots])
 
   useEffect(() => {
     if (!userId || !instituteId) return
@@ -448,9 +549,10 @@ export default function Attendance() {
 
   useEffect(() => {
     if (!instituteId || !isAdmin || adminTab !== 'mark') return
-    if (selectedClassId) fetchAdminSlots()
+    const hasScope = selectedClassId || (selectedGroupId && groupClasses.length > 0)
+    if (hasScope) fetchAdminSlots()
     else setTodaySlots([])
-  }, [isAdmin, adminTab, selectedClassId, instituteId, selectedDate, fetchAdminSlots])
+  }, [isAdmin, adminTab, selectedClassId, selectedGroupId, groupClasses, instituteId, selectedDate, fetchAdminSlots])
 
   useEffect(() => {
     if (!instituteId || !isStudentView || !effectiveStudentId) return
@@ -556,30 +658,7 @@ export default function Attendance() {
     setSaving(false)
   }
 
-  async function fetchReports() {
-    if (!selectedClassId || !reportFromDate || !reportToDate) return
-
-    setReportLoading(true)
-    setError(null)
-
-    const [studentsRes, attendanceRes] = await Promise.all([
-      supabase
-        .from('users')
-        .select('id, name, roll_number')
-        .eq('role', 'student')
-        .eq('class_id', selectedClassId)
-        .order('roll_number'),
-      supabase
-        .from('attendance')
-        .select('student_id, status')
-        .eq('class_id', selectedClassId)
-        .gte('date', reportFromDate)
-        .lte('date', reportToDate),
-    ])
-
-    const classStudents = studentsRes.data ?? []
-    const records = attendanceRes.data ?? []
-
+  function buildReportRows(classStudents, records) {
     const agg = {}
     for (const s of classStudents) {
       agg[s.id] = {
@@ -600,16 +679,151 @@ export default function Attendance() {
       else if (r.status === 'late') agg[r.student_id].late += 1
     }
 
-    setReportRows(
-      Object.values(agg).map((row) => {
+    return Object.values(agg).map((row) => {
+      const counted = row.present + row.late
+      const pct = row.total > 0 ? Math.round((counted / row.total) * 100) : 0
+      return { ...row, pct }
+    })
+  }
+
+  function buildSectionStats(classStudents, records, groupClassList) {
+    const enrolledByClass = {}
+    for (const s of classStudents) {
+      enrolledByClass[s.class_id] = (enrolledByClass[s.class_id] ?? 0) + 1
+    }
+
+    const statsByClass = {}
+    for (const cls of groupClassList) {
+      statsByClass[cls.id] = {
+        id: cls.id,
+        name: cls.name,
+        present: 0,
+        absent: 0,
+        late: 0,
+        total: 0,
+        enrolled: enrolledByClass[cls.id] ?? 0,
+      }
+    }
+
+    for (const r of records) {
+      if (!statsByClass[r.class_id]) continue
+      statsByClass[r.class_id].total += 1
+      if (r.status === 'present') statsByClass[r.class_id].present += 1
+      else if (r.status === 'absent') statsByClass[r.class_id].absent += 1
+      else if (r.status === 'late') statsByClass[r.class_id].late += 1
+    }
+
+    return Object.values(statsByClass)
+      .map((row) => {
         const counted = row.present + row.late
         const pct = row.total > 0 ? Math.round((counted / row.total) * 100) : 0
-        return { ...row, pct }
+        return { ...row, pct, presentTotal: counted }
       })
-    )
+      .sort((a, b) => b.pct - a.pct)
+  }
+
+  async function fetchGroupReports() {
+    if (!selectedGroupId || !instituteId || groupClasses.length === 0) {
+      setGroupSummary(null)
+      setSectionStats([])
+      setReportRows([])
+      return
+    }
+
+    setReportLoading(true)
+    setError(null)
+
+    const { from, to } = getGroupDateBounds(groupDateRange)
+    const allGroupClassIds = groupClasses.map((c) => c.id)
+
+    const [studentsRes, attendanceRes] = await Promise.all([
+      supabase
+        .from('users')
+        .select('id, name, roll_number, class_id')
+        .eq('role', 'student')
+        .in('class_id', allGroupClassIds)
+        .order('roll_number'),
+      supabase
+        .from('attendance')
+        .select('student_id, class_id, status')
+        .in('class_id', allGroupClassIds)
+        .gte('date', from)
+        .lte('date', to),
+    ])
+
+    const allStudents = studentsRes.data ?? []
+    const allRecords = attendanceRes.data ?? []
+
+    let groupPresent = 0
+    for (const r of allRecords) {
+      if (r.status === 'present' || r.status === 'late') groupPresent += 1
+    }
+
+    const groupPct = allRecords.length > 0
+      ? Math.round((groupPresent / allRecords.length) * 100)
+      : 0
+
+    setGroupSummary({
+      name: selectedGroup?.name ?? 'Group',
+      present: groupPresent,
+      total: allRecords.length,
+      pct: groupPct,
+      from,
+      to,
+    })
+
+    setSectionStats(buildSectionStats(allStudents, allRecords, groupClasses))
+
+    const tableClassIds = selectedClassId
+      ? new Set([selectedClassId])
+      : new Set(allGroupClassIds)
+    const tableStudents = allStudents.filter((s) => tableClassIds.has(s.class_id))
+    const tableRecords = allRecords.filter((r) => tableClassIds.has(r.class_id))
+    setReportRows(buildReportRows(tableStudents, tableRecords))
 
     setReportLoading(false)
   }
+
+  async function fetchReports() {
+    if (isAdmin && selectedGroupId) {
+      await fetchGroupReports()
+      return
+    }
+
+    if (!selectedClassId || !reportFromDate || !reportToDate) return
+
+    setReportLoading(true)
+    setError(null)
+
+    const [studentsRes, attendanceRes] = await Promise.all([
+      supabase
+        .from('users')
+        .select('id, name, roll_number')
+        .eq('role', 'student')
+        .eq('class_id', selectedClassId)
+        .order('roll_number'),
+      supabase
+        .from('attendance')
+        .select('student_id, status')
+        .eq('class_id', selectedClassId)
+        .gte('date', reportFromDate)
+        .lte('date', reportToDate),
+    ])
+
+    setReportRows(buildReportRows(studentsRes.data ?? [], attendanceRes.data ?? []))
+    setReportLoading(false)
+  }
+
+  useEffect(() => {
+    if (!isAdmin || adminTab !== 'reports') return
+    if (!selectedGroupId) {
+      setGroupSummary(null)
+      setSectionStats([])
+      return
+    }
+    if (groupClasses.length === 0) return
+    fetchGroupReports()
+  }, [isAdmin, adminTab, selectedGroupId, groupDateRange, selectedClassId, groupClasses, instituteId])
 
   function handleSlotToggle(slot) {
     const isActive = activeSlotId === slot.id
@@ -733,9 +947,29 @@ export default function Attendance() {
   }
 
   function renderReportsTab(classList) {
+    const summaryColors = groupSummary ? getAttendancePctColor(groupSummary.pct) : null
+
     return (
       <>
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          {isAdmin && (
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Group</label>
+              <select
+                value={selectedGroupId}
+                onChange={(e) => {
+                  setSelectedGroupId(e.target.value)
+                  setSelectedClassId('')
+                }}
+                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+              >
+                <option value="">All Groups</option>
+                {classGroups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="flex-1">
             <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Class</label>
             <select
@@ -743,7 +977,11 @@ export default function Attendance() {
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
             >
-              <option value="">Select class…</option>
+              {isAdmin && selectedGroupId ? (
+                <option value="">All Classes</option>
+              ) : (
+                <option value="">Select class…</option>
+              )}
               {classList.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -751,36 +989,98 @@ export default function Attendance() {
               ))}
             </select>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">From</label>
-            <input
-              type="date"
-              value={reportFromDate}
-              onChange={(e) => setReportFromDate(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">To</label>
-            <input
-              type="date"
-              value={reportToDate}
-              max={todayStr()}
-              onChange={(e) => setReportToDate(e.target.value)}
-              className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-            />
-          </div>
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={fetchReports}
-              disabled={!selectedClassId || reportLoading}
-              className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow text-sm hover:bg-blue-700 disabled:opacity-40"
-            >
-              {reportLoading ? 'Loading…' : 'Generate Report'}
-            </button>
-          </div>
+          {!isAdmin || !selectedGroupId ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">From</label>
+                <input
+                  type="date"
+                  value={reportFromDate}
+                  onChange={(e) => setReportFromDate(e.target.value)}
+                  className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">To</label>
+                <input
+                  type="date"
+                  value={reportToDate}
+                  max={todayStr()}
+                  onChange={(e) => setReportToDate(e.target.value)}
+                  className="w-full md:w-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                />
+              </div>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={fetchReports}
+                  disabled={!selectedClassId || reportLoading}
+                  className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow text-sm hover:bg-blue-700 disabled:opacity-40"
+                >
+                  {reportLoading ? 'Loading…' : 'Generate Report'}
+                </button>
+              </div>
+            </>
+          ) : null}
         </div>
+
+        {isAdmin && selectedGroupId && groupSummary && (
+          <div className={`rounded-xl border-2 p-5 mb-4 ${summaryColors.bg}`}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+              <h3 className="font-semibold text-gray-900 dark:text-[#FFFFFF]">
+                {groupSummary.name} Attendance Overview
+              </h3>
+              <div className="flex gap-2">
+                {[
+                  { value: 'today', label: 'Today' },
+                  { value: 'week', label: 'This Week' },
+                  { value: 'month', label: 'This Month' },
+                ].map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setGroupDateRange(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+                      groupDateRange === opt.value
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className={`text-3xl font-bold ${summaryColors.text}`}>{groupSummary.pct}%</p>
+            <p className="text-sm text-gray-600 dark:text-[#A8A8A8] mt-1">
+              {groupSummary.present} / {groupSummary.total} present
+            </p>
+          </div>
+        )}
+
+        {isAdmin && selectedGroupId && sectionStats.length > 0 && (
+          <div className="grid grid-cols-2 md:flex md:flex-wrap gap-3 mb-6">
+            {sectionStats.map((section) => {
+              const colors = getAttendancePctColor(section.pct)
+              return (
+                <div
+                  key={section.id}
+                  className={`rounded-xl border-2 p-4 md:flex-1 md:min-w-[160px] ${colors.bg}`}
+                >
+                  <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm mb-1">{section.name}</p>
+                  <p className={`text-2xl font-bold ${colors.text}`}>{section.pct}%</p>
+                  <p className="text-xs text-gray-600 dark:text-[#A8A8A8] mt-1">
+                    {section.presentTotal} / {section.enrolled} students
+                  </p>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {reportLoading && isAdmin && selectedGroupId && (
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mb-4">Loading group attendance…</p>
+        )}
 
         {reportRows.length > 0 && (
           <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700">
@@ -797,7 +1097,9 @@ export default function Attendance() {
                 </tr>
               </thead>
               <tbody>
-                {reportRows.map((row) => (
+                {reportRows.map((row) => {
+                  const rowColors = getAttendancePctColor(row.pct)
+                  return (
                   <tr key={row.name + row.roll_number} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#262626]">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900 dark:text-[#FFFFFF]">{row.name}</p>
@@ -807,15 +1109,12 @@ export default function Attendance() {
                     <td className="text-center px-3 py-3 text-red-600">{row.absent}</td>
                     <td className="text-center px-3 py-3 text-yellow-600">{row.late}</td>
                     <td className="text-center px-3 py-3 text-gray-700 dark:text-[#A8A8A8]">{row.total}</td>
-                    <td
-                      className={`text-center px-4 py-3 font-bold ${
-                        row.pct >= 75 ? 'text-green-600' : 'text-red-600'
-                      }`}
-                    >
-                      {row.pct}%{row.pct < 75 && ' ⚠️'}
+                    <td className={`text-center px-4 py-3 font-bold ${rowColors.text}`}>
+                      {row.pct}%{row.pct < 50 && ' ⚠️'}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
             </div>
@@ -832,28 +1131,53 @@ export default function Attendance() {
           : [])
       : todaySlots
 
+    const adminHasScope = selectedClassId || (selectedGroupId && groupClasses.length > 0)
+
     return (
       <>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-3 mb-6">
           {showClassSelector && (
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Class</label>
-              <select
-                value={selectedClassId}
-                onChange={(e) => {
-                  setSelectedClassId(e.target.value)
-                  setActiveSlotId(null)
-                }}
-                className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-              >
-                <option value="">Select class…</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Group</label>
+                <select
+                  value={selectedGroupId}
+                  onChange={(e) => {
+                    setSelectedGroupId(e.target.value)
+                    setSelectedClassId('')
+                    setActiveSlotId(null)
+                  }}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="">All Groups</option>
+                  {classGroups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Class</label>
+                <select
+                  value={selectedClassId}
+                  onChange={(e) => {
+                    setSelectedClassId(e.target.value)
+                    setActiveSlotId(null)
+                  }}
+                  className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                >
+                  {selectedGroupId ? (
+                    <option value="">All Classes</option>
+                  ) : (
+                    <option value="">Select class…</option>
+                  )}
+                  {displayClasses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Date</label>
@@ -878,8 +1202,10 @@ export default function Attendance() {
 
         {loading ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading slots…</p>
-        ) : showClassSelector && !selectedClassId ? (
-          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Select a class to view schedule slots.</p>
+        ) : showClassSelector && !adminHasScope ? (
+          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">
+            Select a class, or choose a group with All Classes to view combined schedule.
+          </p>
         ) : isTeacher && !selectedAttendanceClassId ? null : displayedSlots.length === 0 ? (
           <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
             <p className="text-gray-500 dark:text-[#A8A8A8]">No scheduled classes for this day.</p>
@@ -1076,7 +1402,7 @@ export default function Attendance() {
 
           {adminTab === 'mark' && renderMarkAttendance(true)}
 
-          {adminTab === 'reports' && renderReportsTab(classes)}
+          {adminTab === 'reports' && renderReportsTab(displayClasses)}
 
           {adminTab === 'student' && renderStudentReport(classes)}
         </>
