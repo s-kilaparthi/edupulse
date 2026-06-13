@@ -6,6 +6,8 @@ import { checkDateHolidayStatus, fetchHolidayData, todayISO } from '../utils/hol
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
+const DISMISSED_PINNED_KEY = 'dismissedPinnedAnnouncements'
+
 const BAR_COLORS = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500']
 
 const CLASS_CARD_TOP_BORDERS = [
@@ -167,6 +169,27 @@ function studentCanSeeAnnouncement(announcement, studentClassId, studentId) {
   }
   if (!target_type) return true
   return false
+}
+
+function getDismissedPinnedIds() {
+  try {
+    const raw = localStorage.getItem(DISMISSED_PINNED_KEY)
+    return raw ? JSON.parse(raw) : []
+  } catch {
+    return []
+  }
+}
+
+function pickPinnedAnnouncement(announcements, dismissedIds) {
+  return (announcements ?? [])
+    .filter((a) => a.is_pinned && !dismissedIds.includes(a.id))
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] ?? null
+}
+
+function formatPinnedBodyPreview(body, maxLen = 80) {
+  if (!body) return ''
+  if (body.length <= maxLen) return body
+  return `${body.slice(0, maxLen)}...`
 }
 
 function StatCard({ label, value, sub, onClick, hint }) {
@@ -480,6 +503,7 @@ export default function Dashboard() {
   const [adminGroupOverview, setAdminGroupOverview] = useState([])
   const [adminHasGroups, setAdminHasGroups] = useState(false)
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
+  const [pinnedAnnouncementBanner, setPinnedAnnouncementBanner] = useState(null)
   const [todaySchedule, setTodaySchedule] = useState([])
   const [todayDayOff, setTodayDayOff] = useState({ isOff: false, type: null, name: null })
   const [todayAttendance, setTodayAttendance] = useState({
@@ -515,6 +539,7 @@ export default function Dashboard() {
       setLoading(true)
 
       const { data: announcementData } = await supabase.rpc('get_my_announcements')
+      const dismissedPinnedIds = getDismissedPinnedIds()
 
       if (userRole === 'student' || userRole === 'parent') {
         let studentId = session.user.id
@@ -538,6 +563,7 @@ export default function Dashboard() {
             setStudentInfo({})
             setTodaySchedule([])
             setTodayAttendance({ status: 'not_marked', presentCount: 0, totalCount: 0 })
+            setPinnedAnnouncementBanner(null)
             setLoading(false)
             return
           }
@@ -671,8 +697,12 @@ export default function Dashboard() {
           )
         }
         setRecentAnnouncements(announcements.slice(0, 3))
+        setPinnedAnnouncementBanner(pickPinnedAnnouncement(announcements, dismissedPinnedIds))
       } else if (userRole === 'teacher') {
         setRecentAnnouncements((announcementData ?? []).slice(0, 3))
+        setPinnedAnnouncementBanner(
+          pickPinnedAnnouncement(announcementData ?? [], dismissedPinnedIds)
+        )
 
         const dayName = DAYS[new Date().getDay()]
         const today = todayDateStr()
@@ -1002,6 +1032,7 @@ export default function Dashboard() {
         setAdminBestGroup(groupAvgs[0] ?? null)
         setAdminWorstGroup(groupAvgs.length > 1 ? groupAvgs[groupAvgs.length - 1] : null)
         setRecentAnnouncements((announcementData ?? []).slice(0, 3))
+        setPinnedAnnouncementBanner(null)
       }
 
       setLoading(false)
@@ -1020,8 +1051,43 @@ export default function Dashboard() {
 
   const timeGreeting = getTimeGreeting()
 
+  function dismissPinnedAnnouncement(announcementId) {
+    const dismissed = getDismissedPinnedIds()
+    if (!dismissed.includes(announcementId)) {
+      localStorage.setItem(
+        DISMISSED_PINNED_KEY,
+        JSON.stringify([...dismissed, announcementId])
+      )
+    }
+    setPinnedAnnouncementBanner(null)
+  }
+
   return (
     <div className="max-w-4xl flex flex-col gap-5">
+      {pinnedAnnouncementBanner
+        && (userRole === 'student' || userRole === 'parent' || userRole === 'teacher') && (
+        <div className="bg-blue-600 text-white px-4 py-3 rounded-xl mb-4 flex items-center gap-3">
+          <p className="text-sm flex-1 min-w-0">
+            📢 {pinnedAnnouncementBanner.title}:{' '}
+            {formatPinnedBodyPreview(pinnedAnnouncementBanner.body)}
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/announcements')}
+            className="shrink-0 text-xs font-medium bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg"
+          >
+            View
+          </button>
+          <button
+            type="button"
+            onClick={() => dismissPinnedAnnouncement(pinnedAnnouncementBanner.id)}
+            className="shrink-0 text-white/80 hover:text-white text-sm leading-none px-1"
+            aria-label="Dismiss announcement"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       {(userRole === 'student' || userRole === 'parent') && (
         <>
           <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-100 dark:from-[#1C1C1C] dark:to-[#262626] p-5 shadow-sm">
