@@ -38,6 +38,10 @@ function todayStr() {
   return new Date().toISOString().split('T')[0]
 }
 
+function isPastAttendanceReminderTime() {
+  return new Date().getHours() >= 14
+}
+
 function getGroupDateBounds(range) {
   const today = todayStr()
   if (range === 'today') return { from: today, to: today }
@@ -309,6 +313,7 @@ export default function Attendance() {
   const [selectedAttendanceClassId, setSelectedAttendanceClassId] = useState('')
   const [weeklyOff, setWeeklyOff] = useState(['Sunday'])
   const [holidays, setHolidays] = useState([])
+  const [attendanceReminder, setAttendanceReminder] = useState(null)
 
   const isTeacher = userRole === 'teacher'
   const isStudent = userRole === 'student'
@@ -340,6 +345,7 @@ export default function Attendance() {
   useEffect(() => {
     if (selectedDateOff.isOff) {
       setActiveSlotId(null)
+      setAttendanceReminder(null)
     }
   }, [selectedDateOff.isOff])
 
@@ -665,6 +671,7 @@ export default function Attendance() {
     } else {
       setSavedSlots((prev) => new Set([...prev, slot.id]))
       setActiveSlotId(null)
+      setAttendanceReminder(null)
       try {
         await sendAttendanceNotifications({
           students,
@@ -885,6 +892,17 @@ export default function Attendance() {
   function handleSlotToggle(slot) {
     if (selectedDateOff.isOff) return
     const isActive = activeSlotId === slot.id
+    if (
+      isActive
+      && selectedDate === todayStr()
+      && isPastAttendanceReminderTime()
+      && !savedSlots.has(slot.id)
+    ) {
+      const className = teacherReportClasses.find((c) => c.id === selectedAttendanceClassId)?.name
+        ?? slot.classes?.name
+        ?? 'your class'
+      setAttendanceReminder(className)
+    }
     setActiveSlotId(isActive ? null : slot.id)
     if (!isActive) fetchStudentsForSlot(slot)
   }
@@ -1200,6 +1218,17 @@ export default function Attendance() {
 
     const adminHasScope = selectedClassId || (selectedGroupId && groupClasses.length > 0)
 
+    const reminderClassName = teacherReportClasses.find((c) => c.id === selectedAttendanceClassId)?.name
+    const showAttendanceReminder = isTeacher
+      && selectedDate === todayStr()
+      && isPastAttendanceReminderTime()
+      && !selectedDateOff.isOff
+      && selectedAttendanceClassId
+      && displayedSlots.length > 0
+      && displayedSlots.some((s) => !savedSlots.has(s.id))
+
+    const effectiveReminderClass = (showAttendanceReminder && reminderClassName) || attendanceReminder
+
     return (
       <>
         <div className="flex flex-col sm:flex-row sm:items-end gap-3 mb-6">
@@ -1264,6 +1293,12 @@ export default function Attendance() {
         {selectedDateOff.isOff && (
           <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-3 mb-6 text-sm font-medium">
             This day is marked as a holiday. Attendance cannot be marked.
+          </div>
+        )}
+
+        {effectiveReminderClass && (
+          <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 border border-yellow-200 dark:border-yellow-800 px-4 py-3 mb-6 text-sm font-medium">
+            Reminder: You haven&apos;t marked attendance for {effectiveReminderClass} today.
           </div>
         )}
 

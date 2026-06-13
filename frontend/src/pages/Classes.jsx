@@ -648,6 +648,19 @@ export default function Classes() {
       return
     }
 
+    const classLabel = classes.find((c) => c.id === classId)?.name ?? 'your class'
+    const subjectLabel = allSubjects.find((s) => s.id === addSubjectId)?.name ?? 'a subject'
+    const { error: notifError } = await supabase.from('notifications').insert({
+      user_id: addTeacherId,
+      title: `Class Assigned — ${classLabel}`,
+      body: `You have been assigned to teach ${subjectLabel} for ${classLabel}.`,
+      type: 'class_assigned',
+      is_read: false,
+    })
+    if (notifError) console.error('Class assignment notification error:', notifError)
+
+    setAddTeacherId('')
+    setAddSubjectId('')
     await loadClassDetails(classId)
   }
 

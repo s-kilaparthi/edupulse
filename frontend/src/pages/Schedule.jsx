@@ -401,6 +401,26 @@ export default function Schedule() {
       })
       if (insertError) throw new Error(insertError.message)
 
+      const holidayLabel = holidayName.trim()
+      const { data: instituteTeachers } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role', 'teacher')
+        .eq('institute_id', instituteId)
+
+      if (instituteTeachers?.length) {
+        const dateLabel = formatDateDDMMYYYY(holidayDate)
+        const notifRows = instituteTeachers.map((teacher) => ({
+          user_id: teacher.id,
+          title: `Holiday — ${holidayLabel}`,
+          body: `The institute will be closed on ${dateLabel} for ${holidayLabel}.`,
+          type: 'holiday',
+          is_read: false,
+        }))
+        const { error: notifError } = await supabase.from('notifications').insert(notifRows)
+        if (notifError) console.error('Holiday notification error:', notifError)
+      }
+
       await refreshHolidays()
       setHolidayName('')
       setHolidayDate(todayISO())
@@ -510,6 +530,11 @@ export default function Schedule() {
 
     try {
       const period = getPeriodRow(editingSlot.period)
+      const subjectName = editableSubjects.find((s) => s.id === subjectId)?.name
+        ?? subjects.find((s) => s.id === subjectId)?.name
+        ?? 'Subject'
+      const className = selectedClassName ?? 'your class'
+      const startTime = period?.start ?? ''
 
       for (const day of editDays) {
         const existing = getSlot(day, editingSlot.period)
@@ -537,6 +562,18 @@ export default function Schedule() {
             institute_id: instituteId,
           })
           if (insertError) throw new Error(insertError.message)
+        }
+
+        if (isAdmin && teacherId) {
+          const dayLabel = day.charAt(0).toUpperCase() + day.slice(1)
+          const { error: notifError } = await supabase.from('notifications').insert({
+            user_id: teacherId,
+            title: `Schedule Updated — ${className}`,
+            body: `Your schedule for ${className} has been updated. ${subjectName} on ${dayLabel} Period ${editingSlot.period} at ${startTime}.`,
+            type: 'schedule_update',
+            is_read: false,
+          })
+          if (notifError) console.error('Schedule update notification error:', notifError)
         }
       }
 

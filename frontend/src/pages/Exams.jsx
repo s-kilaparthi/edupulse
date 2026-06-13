@@ -359,6 +359,16 @@ export default function Exams() {
           .from('exam_teachers')
           .insert({ exam_id: exam.id, teacher_id: teacherId })
         if (insertError) throw new Error(insertError.message)
+
+        const examTypeName = exam.exam_types?.name ?? exam.exam_type ?? 'exam'
+        const { error: notifError } = await supabase.from('notifications').insert({
+          user_id: teacherId,
+          title: `Exam Assigned — ${exam.name}`,
+          body: `You have been assigned to grade ${exam.name} (${examTypeName}). Please add questions and grade results.`,
+          type: 'exam_assigned',
+          is_read: false,
+        })
+        if (notifError) console.error('Exam assignment notification error:', notifError)
       }
 
       await fetchExams()

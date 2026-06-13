@@ -233,6 +233,27 @@ export default function Students() {
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Failed to create student')
 
+      if (newStudentClassId) {
+        const classLabel = allClasses.find((c) => c.id === newStudentClassId)?.name ?? 'your class'
+        const { data: classTeachers } = await supabase
+          .from('class_teachers')
+          .select('teacher_id')
+          .eq('class_id', newStudentClassId)
+
+        const teacherIds = [...new Set((classTeachers ?? []).map((ct) => ct.teacher_id))]
+        if (teacherIds.length > 0) {
+          const notifRows = teacherIds.map((teacherId) => ({
+            user_id: teacherId,
+            title: `New Student — ${classLabel}`,
+            body: `${name} (Roll #${roll}) has been added to ${classLabel}.`,
+            type: 'student_added',
+            is_read: false,
+          }))
+          const { error: notifError } = await supabase.from('notifications').insert(notifRows)
+          if (notifError) console.error('Student added notification error:', notifError)
+        }
+      }
+
       setStudentName('')
       setRollNumber('')
       setNewStudentClassId('')
