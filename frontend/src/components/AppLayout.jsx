@@ -200,14 +200,14 @@ export default function AppLayout({ session }) {
               <img
                 src={instituteBranding.logo_url}
                 alt={brandingTitle}
-                className="w-8 h-8 rounded-lg object-cover"
+                className="w-10 h-10 rounded-xl object-cover"
               />
             ) : (
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-sm">{logoLetter}</span>
               </div>
             )}
-            <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{brandingTitle}</span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">{brandingTitle}</span>
           </Link>
         </div>
         <div className="flex items-center gap-3">
