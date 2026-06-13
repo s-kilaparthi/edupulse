@@ -3,6 +3,8 @@ import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
 
+const GROUP_TARGET_TYPES = ['group_students', 'group_teachers', 'entire_group']
+
 function getTargetLabel(announcement) {
   switch (announcement.target_type) {
     case 'everyone':
@@ -21,6 +23,18 @@ function getTargetLabel(announcement) {
       return '👤 Specific Teacher'
     case 'specific_student':
       return '👤 Specific Student'
+    case 'group_students':
+      return announcement.group_name
+        ? `👥 Group: ${announcement.group_name}`
+        : '👥 Group Students'
+    case 'group_teachers':
+      return announcement.group_name
+        ? `👨‍🏫 Group Teachers: ${announcement.group_name}`
+        : '👨‍🏫 Group Teachers'
+    case 'entire_group':
+      return announcement.group_name
+        ? `🏫 Entire Group: ${announcement.group_name}`
+        : '🏫 Entire Group'
     default:
       return 'Institute-wide'
   }
@@ -174,6 +188,7 @@ export default function Announcements() {
   const [isPinned, setIsPinned] = useState(false)
   const [subjects, setSubjects] = useState([])
   const [classes, setClasses] = useState([])
+  const [classGroups, setClassGroups] = useState([])
   const [teachers, setTeachers] = useState([])
   const [saving, setSaving] = useState(false)
   const [showForm, setShowForm] = useState(false)
@@ -188,7 +203,9 @@ export default function Announcements() {
   const [targetIds, setTargetIds] = useState([])
   const [targetSubjectIds, setTargetSubjectIds] = useState([])
   const [teacherClasses, setTeacherClasses] = useState([])
+  const [teacherClassGroups, setTeacherClassGroups] = useState([])
   const [teacherTargetClassIds, setTeacherTargetClassIds] = useState([])
+  const [teacherSelectedGroupId, setTeacherSelectedGroupId] = useState('')
   const [teacherAnnouncementTarget, setTeacherAnnouncementTarget] = useState('students')
   const [teacherSpecificStudentRoll, setTeacherSpecificStudentRoll] = useState('')
   const [teacherSpecificStudent, setTeacherSpecificStudent] = useState(null)
@@ -237,14 +254,20 @@ export default function Announcements() {
           .eq('institute_id', instituteId)
           .order('name'),
         supabase
+          .from('class_groups')
+          .select('id, name')
+          .eq('institute_id', instituteId)
+          .order('name'),
+        supabase
           .from('users')
           .select('id, name')
           .eq('role', 'teacher')
           .eq('institute_id', instituteId)
           .order('name'),
-      ]).then(([subjectsRes, classesRes, teachersRes]) => {
+      ]).then(([subjectsRes, classesRes, groupsRes, teachersRes]) => {
         if (subjectsRes.data) setSubjects(subjectsRes.data)
         if (classesRes.data) setClasses(classesRes.data)
+        if (groupsRes.data) setClassGroups(groupsRes.data)
         if (teachersRes.data) setTeachers(teachersRes.data)
       })
     } else if (userRole === 'teacher') {
@@ -261,22 +284,53 @@ export default function Announcements() {
 
   useEffect(() => {
     if (userRole !== 'teacher' || !session?.user?.id) return
-    supabase
-      .from('class_teachers')
-      .select('class_id, classes(id, name)')
-      .eq('teacher_id', session.user.id)
-      .then(({ data }) => {
-        const seen = new Set()
-        const unique = []
-        for (const row of data ?? []) {
-          if (row.classes && !seen.has(row.class_id)) {
-            seen.add(row.class_id)
-            unique.push(row.classes)
-          }
+
+    async function loadTeacherClassesAndGroups() {
+      const { data } = await supabase
+        .from('class_teachers')
+        .select('class_id, classes(id, name)')
+        .eq('teacher_id', session.user.id)
+
+      const seen = new Set()
+      const unique = []
+      const teacherClassIds = []
+      for (const row of data ?? []) {
+        if (row.classes && !seen.has(row.class_id)) {
+          seen.add(row.class_id)
+          unique.push(row.classes)
+          teacherClassIds.push(row.class_id)
         }
-        setTeacherClasses(unique)
-      })
-  }, [userRole, session])
+      }
+      setTeacherClasses(unique)
+
+      if (!teacherClassIds.length) {
+        setTeacherClassGroups([])
+        return
+      }
+
+      const { data: members } = await supabase
+        .from('class_group_members')
+        .select('group_id')
+        .in('class_id', teacherClassIds)
+
+      const groupIds = [...new Set((members ?? []).map((m) => m.group_id))]
+      if (!groupIds.length || !instituteId) {
+        setTeacherClassGroups([])
+        return
+      }
+
+      const { data: groups } = await supabase
+        .from('class_groups')
+        .select('id, name')
+        .eq('institute_id', instituteId)
+        .in('id', groupIds)
+        .order('name')
+
+      setTeacherClassGroups(groups ?? [])
+    }
+
+    loadTeacherClassesAndGroups()
+  }, [userRole, session, instituteId])
 
   const loadAnnouncements = useCallback(async () => {
     if (!session?.user?.id) return
@@ -307,9 +361,32 @@ export default function Announcements() {
       }
     }
 
+    const groupIds = [
+      ...new Set(
+        rows
+          .filter((a) => GROUP_TARGET_TYPES.includes(a.target_type) && a.target_ids?.[0])
+          .map((a) => a.target_ids[0])
+      ),
+    ]
+
+    const groupNameMap = {}
+    if (groupIds.length > 0) {
+      const { data: groups } = await supabase
+        .from('class_groups')
+        .select('id, name')
+        .in('id', groupIds)
+
+      for (const g of groups ?? []) {
+        groupNameMap[g.id] = g.name
+      }
+    }
+
     const enriched = rows.map((a) => ({
       ...a,
       users: creatorMap[a.created_by] ?? null,
+      group_name: GROUP_TARGET_TYPES.includes(a.target_type) && a.target_ids?.[0]
+        ? groupNameMap[a.target_ids[0]] ?? null
+        : null,
     }))
 
     setAnnouncements(enriched)
@@ -330,6 +407,7 @@ export default function Announcements() {
       'subject_teachers',
       'specific_teacher',
       'specific_student',
+      ...GROUP_TARGET_TYPES,
     ].includes(targetType)
 
     if (isAdmin && needsTargets && targetIds.length === 0) {
@@ -344,6 +422,11 @@ export default function Announcements() {
 
     if (userRole === 'teacher' && teacherAnnouncementTarget === 'specific_student' && !teacherSpecificStudent) {
       setError('Please find a student by roll number.')
+      return
+    }
+
+    if (userRole === 'teacher' && teacherAnnouncementTarget === 'group' && !teacherSelectedGroupId) {
+      setError('Please select a group.')
       return
     }
 
@@ -369,6 +452,9 @@ export default function Announcements() {
       } else if (teacherAnnouncementTarget === 'specific_student') {
         finalTargetType = 'specific_student'
         finalTargetIds = teacherSpecificStudent ? [teacherSpecificStudent.id] : []
+      } else if (teacherAnnouncementTarget === 'group') {
+        finalTargetType = 'group_students'
+        finalTargetIds = teacherSelectedGroupId ? [teacherSelectedGroupId] : []
       }
     }
 
@@ -392,6 +478,7 @@ export default function Announcements() {
       setTargetIds([])
       setTargetSubjectIds([])
       setTeacherTargetClassIds([])
+      setTeacherSelectedGroupId('')
       setTeacherAnnouncementTarget('students')
       setTeacherSpecificStudentRoll('')
       setTeacherSpecificStudent(null)
@@ -577,6 +664,7 @@ export default function Announcements() {
                   onClick={() => {
                     setTeacherAnnouncementTarget('students')
                     setTeacherTargetClassIds([])
+                    setTeacherSelectedGroupId('')
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
                     teacherAnnouncementTarget === 'students'
@@ -588,7 +676,10 @@ export default function Announcements() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTeacherAnnouncementTarget('class_students')}
+                  onClick={() => {
+                    setTeacherAnnouncementTarget('class_students')
+                    setTeacherSelectedGroupId('')
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
                     teacherAnnouncementTarget === 'class_students'
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
@@ -599,7 +690,24 @@ export default function Announcements() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setTeacherAnnouncementTarget('specific_student')}
+                  onClick={() => {
+                    setTeacherAnnouncementTarget('group')
+                    setTeacherTargetClassIds([])
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                    teacherAnnouncementTarget === 'group'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
+                  }`}
+                >
+                  Send to Group
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTeacherAnnouncementTarget('specific_student')
+                    setTeacherSelectedGroupId('')
+                  }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
                     teacherAnnouncementTarget === 'specific_student'
                       ? 'border-blue-600 bg-blue-50 text-blue-700'
@@ -609,6 +717,27 @@ export default function Announcements() {
                   👤 Specific Student
                 </button>
               </div>
+
+              {teacherAnnouncementTarget === 'group' && (
+                <div>
+                  {teacherClassGroups.length === 0 ? (
+                    <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">
+                      No groups found for your assigned classes.
+                    </p>
+                  ) : (
+                    <select
+                      value={teacherSelectedGroupId}
+                      onChange={(e) => setTeacherSelectedGroupId(e.target.value)}
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                    >
+                      <option value="">Select group...</option>
+                      {teacherClassGroups.map((g) => (
+                        <option key={g.id} value={g.id}>{g.name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
 
               {teacherAnnouncementTarget === 'class_students' && (
                 <div className="flex flex-wrap gap-2">
@@ -686,6 +815,9 @@ export default function Announcements() {
                   { value: 'class_students', label: '📚 Specific Classes (Students)' },
                   { value: 'class_teachers', label: '🏫 Class Teachers' },
                   { value: 'subject_teachers', label: '📖 Subject Teachers' },
+                  { value: 'group_students', label: '👥 Group Students' },
+                  { value: 'group_teachers', label: '👨‍🏫 Group Teachers' },
+                  { value: 'entire_group', label: '🏫 Entire Group' },
                   { value: 'specific_teacher', label: '👤 Specific Teacher' },
                   { value: 'specific_student', label: '👤 Specific Student' },
                 ].map((opt) => (
@@ -768,6 +900,19 @@ export default function Announcements() {
                     </label>
                   ))}
                 </div>
+              )}
+
+              {GROUP_TARGET_TYPES.includes(targetType) && (
+                <select
+                  value={targetIds[0] ?? ''}
+                  onChange={(e) => setTargetIds(e.target.value ? [e.target.value] : [])}
+                  className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="">Select group...</option>
+                  {classGroups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
               )}
 
               {targetType === 'specific_teacher' && (
