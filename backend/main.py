@@ -568,10 +568,17 @@ async def superadmin_get_institute(institute_id: str, request: Request):
             .execute()
         )
 
+        classes_result = supabase_admin.from_('classes').select('id').eq('institute_id', institute_id).execute()
+        class_ids = [c['id'] for c in (classes_result.data or [])]
+        total_exams = 0
+        if class_ids:
+            exams_result = supabase_admin.from_('exam_classes').select('exam_id', count='exact').in_('class_id', class_ids).execute()
+            total_exams = exams_result.count or 0
+
         return {
             'institute': institute_result.data[0],
             'users': users_result.data or [],
-            'total_exams': _count_rows(supabase_admin, 'exams', {'institute_id': institute_id}),
+            'total_exams': total_exams,
             'total_classes': _count_rows(supabase_admin, 'classes', {'institute_id': institute_id}),
             'total_announcements': _count_rows(
                 supabase_admin, 'announcements', {'institute_id': institute_id}
