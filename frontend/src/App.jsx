@@ -19,6 +19,7 @@ import Teachers from './pages/Teachers'
 import Schedule from './pages/Schedule'
 import Attendance from './pages/Attendance'
 import Profile from './pages/Profile'
+import FeePayment from './pages/FeePayment'
 import SuperAdminLogin from './pages/SuperAdminLogin'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
 
@@ -71,6 +72,7 @@ export default function App() {
             <Route path="/results" element={<Results />} />
             <Route path="/announcements" element={<Announcements />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/fees" element={<FeePayment />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
         </Route>
