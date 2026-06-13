@@ -421,6 +421,56 @@ export default function Schedule() {
         if (notifError) console.error('Holiday notification error:', notifError)
       }
 
+      const dateLabel = formatDateDDMMYYYY(holidayDate)
+      const holidayNotif = {
+        title: `Holiday — ${holidayLabel}`,
+        body: `The institute will be closed on ${dateLabel} for ${holidayLabel}.`,
+        type: 'holiday',
+        is_read: false,
+      }
+
+      const { data: instituteStudents } = await supabase
+        .from('users')
+        .select('id, roll_number')
+        .eq('role', 'student')
+        .eq('institute_id', instituteId)
+
+      if (instituteStudents?.length) {
+        const studentParentNotifRows = instituteStudents.map((student) => ({
+          user_id: student.id,
+          ...holidayNotif,
+        }))
+
+        const { data: instituteParents } = await supabase
+          .from('users')
+          .select('id, roll_number')
+          .eq('role', 'parent')
+          .eq('institute_id', instituteId)
+
+        const parentByRoll = new Map()
+        for (const parent of instituteParents ?? []) {
+          if (parent.roll_number != null && parent.roll_number !== '') {
+            parentByRoll.set(String(parent.roll_number), parent.id)
+          }
+        }
+
+        for (const student of instituteStudents) {
+          if (student.roll_number == null || student.roll_number === '') continue
+          const parentId = parentByRoll.get(String(student.roll_number))
+          if (parentId) {
+            studentParentNotifRows.push({
+              user_id: parentId,
+              ...holidayNotif,
+            })
+          }
+        }
+
+        const { error: studentNotifError } = await supabase
+          .from('notifications')
+          .insert(studentParentNotifRows)
+        if (studentNotifError) console.error('Holiday student/parent notification error:', studentNotifError)
+      }
+
       await refreshHolidays()
       setHolidayName('')
       setHolidayDate(todayISO())
@@ -591,11 +641,32 @@ export default function Schedule() {
     setError(null)
 
     try {
+      const slot = scheduleSlots.find((s) => s.id === slotId)
+
       const { error: deleteError } = await supabase
         .from('schedule_slots')
         .delete()
         .eq('id', slotId)
       if (deleteError) throw new Error(deleteError.message)
+
+      if (isAdmin && slot?.teacher_id) {
+        const className = selectedClassName ?? 'your class'
+        const subjectName = slot.subjects?.name ?? 'Subject'
+        const dayLabel = slot.day_of_week
+          ? slot.day_of_week.charAt(0).toUpperCase() + slot.day_of_week.slice(1)
+          : ''
+        const periodRow = getPeriodRow(slot.period_number)
+        const startTime = periodRow?.start ?? ''
+
+        const { error: notifError } = await supabase.from('notifications').insert({
+          user_id: slot.teacher_id,
+          title: `Schedule Updated — ${className}`,
+          body: `Your ${subjectName} class on ${dayLabel} Period ${slot.period_number} at ${startTime} has been removed.`,
+          type: 'schedule_update',
+          is_read: false,
+        })
+        if (notifError) console.error('Schedule removal notification error:', notifError)
+      }
 
       await fetchSlots()
       closeEdit()
