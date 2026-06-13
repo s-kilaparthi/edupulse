@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+from datetime import datetime, timezone
 
 import httpx
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
@@ -10,6 +11,61 @@ from supabase import create_client
 from omr.scanner import scan_omr
 
 app = FastAPI()
+
+
+def _supabase_admin():
+    supabase_url = os.environ.get('SUPABASE_URL')
+    supabase_service_key = os.environ.get('SUPABASE_SERVICE_KEY')
+    if not supabase_url or not supabase_service_key:
+        raise HTTPException(status_code=500, detail="Supabase service credentials not configured")
+    return create_client(supabase_url, supabase_service_key)
+
+
+async def verify_superadmin(request: Request):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token = auth_header.split(' ')[1]
+    supabase_admin = _supabase_admin()
+    user = supabase_admin.auth.get_user(token)
+    if not user or not user.user:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    result = supabase_admin.from_('superadmins').select('id').eq('id', user.user.id).execute()
+    if not result.data:
+        raise HTTPException(status_code=403, detail="Not a superadmin")
+    return user.user.id
+
+
+def _count_rows(supabase_admin, table, filters=None):
+    query = supabase_admin.from_(table).select('id', count='exact', head=True)
+    if filters:
+        for column, value in filters.items():
+            query = query.eq(column, value)
+    result = query.execute()
+    return result.count or 0
+
+
+def _role_counts_by_institute(supabase_admin):
+    result = supabase_admin.from_('users').select('institute_id, role').execute()
+    counts = {}
+    for row in result.data or []:
+        institute_id = row.get('institute_id')
+        if not institute_id:
+            continue
+        if institute_id not in counts:
+            counts[institute_id] = {
+                'total_admins': 0,
+                'total_teachers': 0,
+                'total_students': 0,
+            }
+        role = row.get('role')
+        if role == 'admin':
+            counts[institute_id]['total_admins'] += 1
+        elif role == 'teacher':
+            counts[institute_id]['total_teachers'] += 1
+        elif role == 'student':
+            counts[institute_id]['total_students'] += 1
+    return counts
 
 app.add_middleware(
     CORSMiddleware,
@@ -448,6 +504,218 @@ async def delete_user(user_id: str):
     except Exception as e:
         import traceback
         print("Delete user error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/superadmin/institutes")
+async def superadmin_list_institutes(request: Request):
+    try:
+        await verify_superadmin(request)
+        supabase_admin = _supabase_admin()
+
+        institutes_result = (
+            supabase_admin
+            .from_('institutes')
+            .select('id, name, city, state, created_at, is_active')
+            .order('created_at', desc=True)
+            .execute()
+        )
+        role_counts = _role_counts_by_institute(supabase_admin)
+
+        institutes = []
+        for institute in institutes_result.data or []:
+            counts = role_counts.get(institute['id'], {})
+            institutes.append({
+                **institute,
+                'total_admins': counts.get('total_admins', 0),
+                'total_teachers': counts.get('total_teachers', 0),
+                'total_students': counts.get('total_students', 0),
+                'is_active': institute.get('is_active', True),
+            })
+
+        return {'institutes': institutes}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Superadmin list institutes error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/superadmin/institute/{institute_id}")
+async def superadmin_get_institute(institute_id: str, request: Request):
+    try:
+        await verify_superadmin(request)
+        supabase_admin = _supabase_admin()
+
+        institute_result = (
+            supabase_admin
+            .from_('institutes')
+            .select('id, name, city, state, created_at, is_active')
+            .eq('id', institute_id)
+            .limit(1)
+            .execute()
+        )
+        if not institute_result.data:
+            raise HTTPException(status_code=404, detail="Institute not found")
+
+        users_result = (
+            supabase_admin
+            .from_('users')
+            .select('id, name, email, role, is_active')
+            .eq('institute_id', institute_id)
+            .order('role')
+            .execute()
+        )
+
+        return {
+            'institute': institute_result.data[0],
+            'users': users_result.data or [],
+            'total_exams': _count_rows(supabase_admin, 'exams', {'institute_id': institute_id}),
+            'total_classes': _count_rows(supabase_admin, 'classes', {'institute_id': institute_id}),
+            'total_announcements': _count_rows(
+                supabase_admin, 'announcements', {'institute_id': institute_id}
+            ),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Superadmin get institute error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/superadmin/institute/{institute_id}/suspend")
+async def superadmin_suspend_institute(institute_id: str, request: Request):
+    try:
+        await verify_superadmin(request)
+        supabase_admin = _supabase_admin()
+
+        institute_result = (
+            supabase_admin
+            .from_('institutes')
+            .select('id')
+            .eq('id', institute_id)
+            .limit(1)
+            .execute()
+        )
+        if not institute_result.data:
+            raise HTTPException(status_code=404, detail="Institute not found")
+
+        supabase_admin.from_('institutes').update({'is_active': False}).eq('id', institute_id).execute()
+        supabase_admin.from_('users').update({'is_active': False}).eq('institute_id', institute_id).execute()
+
+        return {'success': True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Superadmin suspend institute error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/superadmin/institute/{institute_id}/activate")
+async def superadmin_activate_institute(institute_id: str, request: Request):
+    try:
+        await verify_superadmin(request)
+        supabase_admin = _supabase_admin()
+
+        institute_result = (
+            supabase_admin
+            .from_('institutes')
+            .select('id')
+            .eq('id', institute_id)
+            .limit(1)
+            .execute()
+        )
+        if not institute_result.data:
+            raise HTTPException(status_code=404, detail="Institute not found")
+
+        supabase_admin.from_('institutes').update({'is_active': True}).eq('id', institute_id).execute()
+        supabase_admin.from_('users').update({'is_active': True}).eq('institute_id', institute_id).execute()
+
+        return {'success': True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Superadmin activate institute error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.delete("/superadmin/institute/{institute_id}")
+async def superadmin_delete_institute(institute_id: str, request: Request):
+    try:
+        await verify_superadmin(request)
+        supabase_admin = _supabase_admin()
+
+        institute_result = (
+            supabase_admin
+            .from_('institutes')
+            .select('id')
+            .eq('id', institute_id)
+            .limit(1)
+            .execute()
+        )
+        if not institute_result.data:
+            raise HTTPException(status_code=404, detail="Institute not found")
+
+        users_result = (
+            supabase_admin
+            .from_('users')
+            .select('id')
+            .eq('institute_id', institute_id)
+            .execute()
+        )
+        user_ids = [row['id'] for row in users_result.data or []]
+
+        supabase_admin.from_('institutes').delete().eq('id', institute_id).execute()
+
+        for user_id in user_ids:
+            try:
+                supabase_admin.auth.admin.delete_user(user_id)
+            except Exception as auth_err:
+                print(f"Auth delete skipped for {user_id}: {auth_err}")
+
+        return {'success': True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Superadmin delete institute error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/superadmin/stats")
+async def superadmin_stats(request: Request):
+    try:
+        await verify_superadmin(request)
+        supabase_admin = _supabase_admin()
+
+        now = datetime.now(timezone.utc)
+        first_of_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+        new_institutes_result = (
+            supabase_admin
+            .from_('institutes')
+            .select('id', count='exact', head=True)
+            .gte('created_at', first_of_month)
+            .execute()
+        )
+
+        return {
+            'total_institutes': _count_rows(supabase_admin, 'institutes'),
+            'total_students': _count_rows(supabase_admin, 'users', {'role': 'student'}),
+            'total_teachers': _count_rows(supabase_admin, 'users', {'role': 'teacher'}),
+            'total_exams': _count_rows(supabase_admin, 'exams'),
+            'total_announcements': _count_rows(supabase_admin, 'announcements'),
+            'new_institutes_this_month': new_institutes_result.count or 0,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Superadmin stats error:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 
