@@ -1191,7 +1191,7 @@ export default function Results() {
   const [reportsStudentName, setReportsStudentName] = useState('')
   const [reportViewExamId, setReportViewExamId] = useState('')
   const [classGroups, setClassGroups] = useState([])
-  const [reportGroupId, setReportGroupId] = useState('')
+  const [reportGroupId, setReportGroupId] = useState(navState?.groupId ?? '')
   const [reportSelectedClassIds, setReportSelectedClassIds] = useState([])
   const [reportViewMode, setReportViewMode] = useState('mixed')
   const [studentGroupId, setStudentGroupId] = useState('')

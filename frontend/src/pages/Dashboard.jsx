@@ -45,6 +45,33 @@ function todayDateStr() {
   return new Date().toISOString().split('T')[0]
 }
 
+function getWeekDateBounds() {
+  const today = todayDateStr()
+  const d = new Date()
+  const day = d.getDay()
+  const diff = day === 0 ? 6 : day - 1
+  const monday = new Date(d)
+  monday.setDate(d.getDate() - diff)
+  return { from: monday.toISOString().split('T')[0], to: today }
+}
+
+function extractGroupClasses(group) {
+  const members = group?.class_group_members ?? []
+  return members
+    .map((m) => {
+      const cls = m.classes
+      if (!cls) return null
+      return { id: m.class_id ?? cls.id, name: cls.name }
+    })
+    .filter(Boolean)
+}
+
+function getScorePctColor(pct) {
+  if (pct >= 70) return 'text-green-600'
+  if (pct >= 40) return 'text-orange-600'
+  return 'text-red-600'
+}
+
 function getTimeGreeting() {
   const hour = new Date().getHours()
   if (hour < 12) return { text: 'Good Morning', emoji: '☀️' }
@@ -447,6 +474,10 @@ export default function Dashboard() {
   })
   const [adminBestClass, setAdminBestClass] = useState(null)
   const [adminWorstClass, setAdminWorstClass] = useState(null)
+  const [adminBestGroup, setAdminBestGroup] = useState(null)
+  const [adminWorstGroup, setAdminWorstGroup] = useState(null)
+  const [adminGroupOverview, setAdminGroupOverview] = useState([])
+  const [adminHasGroups, setAdminHasGroups] = useState(false)
   const [recentAnnouncements, setRecentAnnouncements] = useState([])
   const [todaySchedule, setTodaySchedule] = useState([])
   const [todayAttendance, setTodayAttendance] = useState({
@@ -708,7 +739,7 @@ export default function Dashboard() {
         weekAgo.setDate(weekAgo.getDate() - 7)
         const weekAgoIso = weekAgo.toISOString()
 
-        const [studentsRes, teachersRes, instituteRes, classRes, studentsForScores] =
+        const [studentsRes, teachersRes, instituteRes, classRes, studentsForScores, groupsRes] =
           await Promise.all([
             supabase
               .from('users')
@@ -735,9 +766,15 @@ export default function Dashboard() {
               .select('id, class_id')
               .eq('role', 'student')
               .eq('institute_id', instituteId),
+            supabase
+              .from('class_groups')
+              .select('id, name, class_group_members(class_id, classes(id, name))')
+              .eq('institute_id', instituteId)
+              .order('name'),
           ])
 
         const classes = classRes.data ?? []
+        const groups = groupsRes.data ?? []
         const classIds = classes.map((c) => c.id)
         const classIdSet = new Set(classIds)
         const classNameMap = Object.fromEntries(classes.map((c) => [c.id, c.name]))
@@ -797,6 +834,62 @@ export default function Dashboard() {
             avg: Math.round(classTotals[classId] / classCounts[classId]),
           }))
           .sort((a, b) => b.avg - a.avg)
+
+        const weekBounds = getWeekDateBounds()
+        let weekAttendance = []
+        if (classIds.length > 0) {
+          const { data: attendanceWeek } = await supabase
+            .from('attendance')
+            .select('class_id, status')
+            .eq('institute_id', instituteId)
+            .in('class_id', classIds)
+            .gte('date', weekBounds.from)
+            .lte('date', weekBounds.to)
+          weekAttendance = attendanceWeek ?? []
+        }
+
+        let groupOverview = []
+        let groupAvgs = []
+
+        if (groups.length > 0) {
+          groupOverview = groups.map((group) => {
+            const groupClasses = extractGroupClasses(group)
+            const groupClassIdSet = new Set(groupClasses.map((c) => c.id))
+            const groupStudents = studentRows.filter((s) => s.class_id && groupClassIdSet.has(s.class_id))
+            const groupStudentIds = new Set(groupStudents.map((s) => s.id))
+
+            const groupPercentages = scoresData
+              .filter((r) => r.percentage != null && groupStudentIds.has(r.student_id))
+              .map((r) => r.percentage)
+
+            const scorePct = groupPercentages.length > 0
+              ? Math.round(groupPercentages.reduce((a, b) => a + b, 0) / groupPercentages.length)
+              : 0
+
+            const groupAttendance = weekAttendance.filter((r) => groupClassIdSet.has(r.class_id))
+            const presentCount = groupAttendance.filter(
+              (r) => r.status === 'present' || r.status === 'late'
+            ).length
+            const attendancePct = groupAttendance.length > 0
+              ? Math.round((presentCount / groupAttendance.length) * 100)
+              : 0
+
+            return {
+              id: group.id,
+              name: group.name,
+              sectionCount: groupClasses.length,
+              studentCount: groupStudents.length,
+              attendancePct,
+              scorePct,
+              hasScoreData: groupPercentages.length > 0,
+            }
+          })
+
+          groupAvgs = groupOverview
+            .filter((g) => g.hasScoreData)
+            .map((g) => ({ id: g.id, name: g.name, avg: g.scorePct }))
+            .sort((a, b) => b.avg - a.avg)
+        }
 
         const { data: allExamsRaw } = await supabase
           .from('exams')
@@ -874,6 +967,10 @@ export default function Dashboard() {
         })
         setAdminBestClass(classAvgs[0] ?? null)
         setAdminWorstClass(classAvgs.length > 1 ? classAvgs[classAvgs.length - 1] : null)
+        setAdminHasGroups(groups.length > 0)
+        setAdminGroupOverview(groupOverview)
+        setAdminBestGroup(groupAvgs[0] ?? null)
+        setAdminWorstGroup(groupAvgs.length > 1 ? groupAvgs[groupAvgs.length - 1] : null)
         setRecentAnnouncements((announcementData ?? []).slice(0, 3))
       }
 
@@ -1323,11 +1420,54 @@ export default function Dashboard() {
               />
             </div>
 
-            <AdminSectionTitle title="Best & Worst Class" barColor="bg-amber-500" />
+            {adminHasGroups && (
+              <>
+                <AdminSectionTitle title="Group Overview" barColor="bg-amber-500" />
+                {adminGroupOverview.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {adminGroupOverview.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => navigate('/results', { state: { tab: 'reports', groupId: group.id } })}
+                        className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border-2 border-gray-200 dark:border-gray-700 text-left hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 transition-all"
+                      >
+                        <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{group.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-1">
+                          {group.sectionCount} Sections · {group.studentCount} Students
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-[#A8A8A8] mt-1">
+                          Attendance: {group.attendancePct}% this week
+                        </p>
+                        <p className={`text-sm font-bold mt-1 ${getScorePctColor(group.scorePct)}`}>
+                          Avg Score: {group.scorePct}%
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            <AdminSectionTitle
+              title={adminHasGroups ? 'Best & Worst Group' : 'Best & Worst Class'}
+              barColor="bg-amber-500"
+            />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border border-green-100 border-t-4 border-t-green-500">
-                <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">🏆 Best</p>
-                {adminBestClass ? (
+                <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">
+                  {adminHasGroups ? '🏆 Best Group' : '🏆 Best'}
+                </p>
+                {adminHasGroups ? (
+                  adminBestGroup ? (
+                    <>
+                      <p className="text-lg font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">{adminBestGroup.name}</p>
+                      <p className="text-sm text-green-600 font-medium mt-1">{adminBestGroup.avg}% avg</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-400 dark:text-[#A8A8A8] mt-2">No score data yet</p>
+                  )
+                ) : adminBestClass ? (
                   <>
                     <p className="text-lg font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">{adminBestClass.name}</p>
                     <p className="text-sm text-green-600 font-medium mt-1">{adminBestClass.avg}% avg</p>
@@ -1338,7 +1478,16 @@ export default function Dashboard() {
               </div>
               <div className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-4 border border-orange-100 border-t-4 border-t-orange-500">
                 <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">⚠️ Needs Attention</p>
-                {adminWorstClass ? (
+                {adminHasGroups ? (
+                  adminWorstGroup ? (
+                    <>
+                      <p className="text-lg font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">{adminWorstGroup.name}</p>
+                      <p className="text-sm text-orange-600 font-medium mt-1">{adminWorstGroup.avg}% avg</p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-gray-400 dark:text-[#A8A8A8] mt-2">No score data yet</p>
+                  )
+                ) : adminWorstClass ? (
                   <>
                     <p className="text-lg font-bold text-gray-900 dark:text-[#FFFFFF] mt-1">{adminWorstClass.name}</p>
                     <p className="text-sm text-orange-600 font-medium mt-1">{adminWorstClass.avg}% avg</p>
