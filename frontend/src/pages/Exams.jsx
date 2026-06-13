@@ -106,6 +106,7 @@ export default function Exams() {
   const [activeTopicId, setActiveTopicId] = useState('')
   const [selectedQNums, setSelectedQNums] = useState([])
   const [questionMap, setQuestionMap] = useState({})
+  const [showWrittenQuestionText, setShowWrittenQuestionText] = useState(false)
 
   const [showAIGenerator, setShowAIGenerator] = useState(false)
   const [aiExamId, setAiExamId] = useState(null)
@@ -572,8 +573,27 @@ export default function Exams() {
   function toggleSubject(subject) {
     setSelectedSubjects((prev) => {
       const exists = prev.find((s) => s.subject_id === subject.id)
-      if (exists) return prev.filter((s) => s.subject_id !== subject.id)
-      return [...prev, { subject_id: subject.id, name: subject.name, question_from: '', question_to: '' }]
+      if (exists) {
+        const next = prev.filter((s) => s.subject_id !== subject.id)
+        if (next.length === 1) {
+          return [{
+            ...next[0],
+            question_from: '1',
+            question_to: next[0].question_to || totalQuestions || '',
+          }]
+        }
+        return next
+      }
+      const next = [...prev, {
+        subject_id: subject.id,
+        name: subject.name,
+        question_from: prev.length === 0 ? '1' : '',
+        question_to: prev.length === 0 ? (totalQuestions || '') : '',
+      }]
+      if (next.length === 1) {
+        return [{ ...next[0], question_from: '1', question_to: next[0].question_to || totalQuestions || '' }]
+      }
+      return next
     })
   }
 
@@ -645,12 +665,21 @@ export default function Exams() {
       setError('Please select at least one subject.')
       return
     }
-    for (const s of selectedSubjects) {
-      const from = parseInt(s.question_from, 10)
+    if (selectedSubjects.length === 1) {
+      const s = selectedSubjects[0]
       const to = parseInt(s.question_to, 10)
-      if (!from || !to || from < 1 || to < from || to > total) {
-        setError(`Invalid question range for ${s.name}. Must be between 1 and ${total}, start <= end.`)
+      if (!to || to < 1 || to > total) {
+        setError(`Invalid total questions for ${s.name}. Must be between 1 and ${total}.`)
         return
+      }
+    } else {
+      for (const s of selectedSubjects) {
+        const from = parseInt(s.question_from, 10)
+        const to = parseInt(s.question_to, 10)
+        if (!from || !to || from < 1 || to < from || to > total) {
+          setError(`Invalid question range for ${s.name}. Must be between 1 and ${total}, start <= end.`)
+          return
+        }
       }
     }
 
@@ -679,7 +708,7 @@ export default function Exams() {
       const examSubjectRows = selectedSubjects.map((s) => ({
         exam_id: newExam.id,
         subject_id: s.subject_id,
-        question_from: parseInt(s.question_from, 10),
+        question_from: selectedSubjects.length === 1 ? 1 : parseInt(s.question_from, 10),
         question_to: parseInt(s.question_to, 10),
       }))
       const { error: esError } = await supabase.from('exam_subjects').insert(examSubjectRows)
@@ -736,6 +765,7 @@ export default function Exams() {
     setActiveTopicId('')
     setSelectedQNums([])
     setQuestionMap({})
+    setShowWrittenQuestionText(false)
     const es = exam.exam_subjects ?? []
     setExamSubjects(es)
     const subjectIds = es.map((s) => s.subject_id)
@@ -778,6 +808,9 @@ export default function Exams() {
         }
       })
       setQuestionMap(map)
+      setShowWrittenQuestionText(
+        existingQuestions.some((q) => q.question_text?.trim())
+      )
     }
 
     setTimeout(() => {
@@ -793,6 +826,7 @@ export default function Exams() {
     setActiveTopicId('')
     setSelectedQNums([])
     setQuestionMap({})
+    setShowWrittenQuestionText(false)
   }
 
   function getActiveSubjectRange() {
@@ -1378,26 +1412,44 @@ export default function Exams() {
                             {s.name}
                           </label>
                           {selected && (
-                            <>
-                              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Q from</span>
-                              <input
-                                type="number"
-                                min={1}
-                                value={selected.question_from}
-                                onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
-                                placeholder="1"
-                                className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-                              />
-                              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">to</span>
-                              <input
-                                type="number"
-                                min={1}
-                                value={selected.question_to}
-                                onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
-                                placeholder="30"
-                                className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-                              />
-                            </>
+                            selectedSubjects.length === 1 ? (
+                              <>
+                                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Total Questions</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={parseInt(totalQuestions, 10) || undefined}
+                                  value={selected.question_to || totalQuestions}
+                                  onChange={(e) => {
+                                    updateSubjectRange(s.id, 'question_from', '1')
+                                    updateSubjectRange(s.id, 'question_to', e.target.value)
+                                  }}
+                                  placeholder={totalQuestions || '90'}
+                                  className="w-20 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Q from</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={selected.question_from}
+                                  onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
+                                  placeholder="1"
+                                  className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                                />
+                                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">to</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={selected.question_to}
+                                  onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
+                                  placeholder="30"
+                                  className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                                />
+                              </>
+                            )
                           )}
                         </div>
                       )
@@ -1542,26 +1594,44 @@ export default function Exams() {
                             {s.name}
                           </label>
                           {selected && (
-                            <>
-                              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Q from</span>
-                              <input
-                                type="number"
-                                min={1}
-                                value={selected.question_from}
-                                onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
-                                placeholder="1"
-                                className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-                              />
-                              <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">to</span>
-                              <input
-                                type="number"
-                                min={1}
-                                value={selected.question_to}
-                                onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
-                                placeholder="30"
-                                className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-                              />
-                            </>
+                            selectedSubjects.length === 1 ? (
+                              <>
+                                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Total Questions</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={parseInt(totalQuestions, 10) || undefined}
+                                  value={selected.question_to || totalQuestions}
+                                  onChange={(e) => {
+                                    updateSubjectRange(s.id, 'question_from', '1')
+                                    updateSubjectRange(s.id, 'question_to', e.target.value)
+                                  }}
+                                  placeholder={totalQuestions || '90'}
+                                  className="w-20 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                                />
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">Q from</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={selected.question_from}
+                                  onChange={(e) => updateSubjectRange(s.id, 'question_from', e.target.value)}
+                                  placeholder="1"
+                                  className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                                />
+                                <span className="text-xs text-gray-500 dark:text-[#A8A8A8]">to</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={selected.question_to}
+                                  onChange={(e) => updateSubjectRange(s.id, 'question_to', e.target.value)}
+                                  placeholder="30"
+                                  className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                                />
+                              </>
+                            )
                           )}
                         </div>
                       )
@@ -2190,6 +2260,62 @@ export default function Exams() {
                           </>
                         )}
 
+                        {allNums.length > 0 && isWrittenExam && (
+                          <div className="mb-4">
+                            {!showWrittenQuestionText ? (
+                              <button
+                                type="button"
+                                onClick={() => setShowWrittenQuestionText(true)}
+                                className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] border-2 border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-4 py-2 rounded-lg hover:shadow-md transition-shadow"
+                              >
+                                ✏️ Add Question Text (optional)
+                              </button>
+                            ) : (
+                              <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4">
+                                <div className="flex items-center justify-between mb-3">
+                                  <p className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Written Questions</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowWrittenQuestionText(false)}
+                                    className="text-xs font-medium text-gray-500 dark:text-[#A8A8A8] hover:text-gray-700 dark:hover:text-[#FFFFFF]"
+                                  >
+                                    Hide
+                                  </button>
+                                </div>
+                                <div className="space-y-3 max-h-72 overflow-y-auto">
+                                  {allNums.map((num) => {
+                                    const q = questionMap[num]
+                                    return (
+                                      <div
+                                        key={num}
+                                        className={`p-3 rounded-lg border ${
+                                          !q?.topic_id
+                                            ? 'border-orange-200 bg-orange-50'
+                                            : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C]'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 mb-2">
+                                          <span className="text-xs font-medium text-gray-700 dark:text-[#A8A8A8]">Q{num}</span>
+                                          {q?.topic_name && (
+                                            <span className="text-xs text-blue-600">{q.topic_name}</span>
+                                          )}
+                                        </div>
+                                        <input
+                                          type="text"
+                                          value={q?.question_text ?? ''}
+                                          onChange={(e) => updateQuestionText(num, e.target.value)}
+                                          placeholder="Question text (optional)"
+                                          className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                                        />
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         {allNums.length > 0 && !isWrittenExam && (
                           <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4 mb-4">
                             <div className="flex items-center justify-between mb-3">
@@ -2227,51 +2353,6 @@ export default function Exams() {
                                         <option key={opt} value={opt}>{opt}</option>
                                       ))}
                                     </select>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
-
-                        {allNums.length > 0 && isWrittenExam && (
-                          <div className="border-t-2 border-gray-200 dark:border-gray-700 pt-4 mb-4">
-                            <div className="flex items-center justify-between mb-3">
-                              <p className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Written Questions</p>
-                              <div className="flex gap-3 text-xs">
-                                {unassignedCount > 0 && (
-                                  <span className="text-orange-600">{unassignedCount} unassigned</span>
-                                )}
-                                {unassignedCount === 0 && (
-                                  <span className="text-green-600">All topics assigned ✓</span>
-                                )}
-                              </div>
-                            </div>
-                            <div className="space-y-3 max-h-72 overflow-y-auto">
-                              {allNums.map((num) => {
-                                const q = questionMap[num]
-                                return (
-                                  <div
-                                    key={num}
-                                    className={`p-3 rounded-lg border ${
-                                      !q?.topic_id
-                                        ? 'border-orange-200 bg-orange-50'
-                                        : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C]'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <span className="text-xs font-medium text-gray-700 dark:text-[#A8A8A8]">Q{num}</span>
-                                      {q?.topic_name && (
-                                        <span className="text-xs text-blue-600">{q.topic_name}</span>
-                                      )}
-                                    </div>
-                                    <input
-                                      type="text"
-                                      value={q?.question_text ?? ''}
-                                      onChange={(e) => updateQuestionText(num, e.target.value)}
-                                      placeholder="Question text (optional)"
-                                      className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-                                    />
                                   </div>
                                 )
                               })}
