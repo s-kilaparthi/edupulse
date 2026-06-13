@@ -727,9 +727,32 @@ export default function Dashboard() {
               ...cls,
               studentCount: studentCount ?? 0,
               attendanceMarked: (attendanceToday?.length ?? 0) > 0,
+              groupNames: [],
             }
           })
         )
+
+        const teacherClassIds = classCards.map((c) => c.classId)
+        if (teacherClassIds.length > 0 && instituteId) {
+          const { data: members } = await supabase
+            .from('class_group_members')
+            .select('class_id, class_groups(name)')
+            .in('class_id', teacherClassIds)
+
+          const groupNamesByClass = {}
+          for (const m of members ?? []) {
+            const name = m.class_groups?.name
+            if (!name) continue
+            if (!groupNamesByClass[m.class_id]) groupNamesByClass[m.class_id] = []
+            if (!groupNamesByClass[m.class_id].includes(name)) {
+              groupNamesByClass[m.class_id].push(name)
+            }
+          }
+
+          for (const card of classCards) {
+            card.groupNames = groupNamesByClass[card.classId] ?? []
+          }
+        }
 
         classCards.sort((a, b) => a.className.localeCompare(b.className))
         setTeacherClassCards(classCards)
@@ -1176,7 +1199,21 @@ export default function Dashboard() {
                   className={`rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border-2 border-gray-200 dark:border-gray-700 border-t-4 ${CLASS_CARD_TOP_BORDERS[index % CLASS_CARD_TOP_BORDERS.length]} hover:shadow-md transition-shadow`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{cls.className}</p>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{cls.className}</p>
+                      {cls.groupNames?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {cls.groupNames.map((groupName) => (
+                            <span
+                              key={groupName}
+                              className="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 text-xs px-2 py-0.5 rounded-full"
+                            >
+                              {groupName}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     {cls.attendanceMarked ? (
                       <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0">
                         ✅ Marked

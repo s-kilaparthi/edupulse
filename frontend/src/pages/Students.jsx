@@ -1,25 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
-
-function extractGroupClasses(group) {
-  const members = group?.class_group_members ?? []
-  return members
-    .map((m) => {
-      const cls = m.classes
-      if (!cls) return null
-      return { id: m.class_id ?? cls.id, name: cls.name }
-    })
-    .filter(Boolean)
-    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-}
-
-function filterClassesByGroup(allClasses, groupId, classGroups) {
-  if (!groupId) return allClasses
-  const group = classGroups.find((g) => g.id === groupId)
-  const groupClassIds = new Set(extractGroupClasses(group).map((c) => c.id))
-  return allClasses.filter((c) => groupClassIds.has(c.id))
-}
+import {
+  filterClassesByGroup,
+  fetchTeacherClassesAndGroups,
+} from '../utils/teacherGroups'
 
 export default function Students() {
   const { session } = useOutletContext()
@@ -50,6 +35,8 @@ export default function Students() {
 
   const [selectedFilterClass, setSelectedFilterClass] = useState('')
   const [teacherClasses, setTeacherClasses] = useState([])
+  const [teacherClassGroups, setTeacherClassGroups] = useState([])
+  const [teacherSelectedGroupId, setTeacherSelectedGroupId] = useState('')
   const [teacherSearch, setTeacherSearch] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
   const [adminFilterClassId, setAdminFilterClassId] = useState('')
@@ -71,6 +58,21 @@ export default function Students() {
   const groupClassIds = useMemo(
     () => new Set(displayClasses.map((c) => c.id)),
     [displayClasses]
+  )
+
+  const teacherDisplayClasses = useMemo(
+    () => filterClassesByGroup(teacherClasses, teacherSelectedGroupId, teacherClassGroups),
+    [teacherClasses, teacherSelectedGroupId, teacherClassGroups]
+  )
+
+  const teacherSelectedGroup = useMemo(
+    () => teacherClassGroups.find((g) => g.id === teacherSelectedGroupId) ?? null,
+    [teacherClassGroups, teacherSelectedGroupId]
+  )
+
+  const teacherGroupClassIds = useMemo(
+    () => new Set(teacherDisplayClasses.map((c) => c.id)),
+    [teacherDisplayClasses]
   )
 
   useEffect(() => {
@@ -114,25 +116,31 @@ export default function Students() {
     }
   }, [isAdmin, adminSelectedGroupId, adminFilterClassId, groupClassIds])
 
+  useEffect(() => {
+    if (!isTeacher || !session?.user?.id || !instituteId) return
+    fetchTeacherClassesAndGroups(session.user.id, instituteId).then(({ classes, groups }) => {
+      setTeacherClasses(classes)
+      setTeacherClassGroups(groups)
+    })
+  }, [isTeacher, session, instituteId])
+
+  useEffect(() => {
+    if (!isTeacher || !teacherSelectedGroupId) return
+    if (selectedFilterClass && !teacherGroupClassIds.has(selectedFilterClass)) {
+      setSelectedFilterClass('')
+    }
+  }, [isTeacher, teacherSelectedGroupId, selectedFilterClass, teacherGroupClassIds])
+
   async function fetchStudents() {
     setError(null)
 
     if (userRole === 'teacher') {
-      const { data: tcData } = await supabase
-        .from('class_teachers')
-        .select('class_id, classes(id, name)')
-        .eq('teacher_id', session.user.id)
-
-      const seen = new Set()
-      const uniqueClasses = []
-      for (const row of tcData ?? []) {
-        if (row.classes && !seen.has(row.class_id)) {
-          seen.add(row.class_id)
-          uniqueClasses.push(row.classes)
-        }
-      }
+      const { classes: uniqueClasses } = await fetchTeacherClassesAndGroups(
+        session.user.id,
+        instituteId
+      )
       setTeacherClasses(uniqueClasses)
-      const classIds = [...seen]
+      const classIds = uniqueClasses.map((c) => c.id)
 
       if (classIds.length === 0) {
         setStudents([])
@@ -308,7 +316,12 @@ export default function Students() {
 
   const displayedStudents = isTeacher
     ? students
-        .filter((s) => !selectedFilterClass || s.class_id === selectedFilterClass)
+        .filter((s) => {
+          if (teacherSelectedGroupId && (!s.class_id || !teacherGroupClassIds.has(s.class_id))) {
+            return false
+          }
+          return !selectedFilterClass || s.class_id === selectedFilterClass
+        })
         .filter(
           (s) =>
             !teacherSearch ||
@@ -334,6 +347,7 @@ export default function Students() {
   const listStudents = isAdmin ? adminDisplayedStudents : displayedStudents
 
   const showGroupSummary = isAdmin && adminSelectedGroupId && !adminFilterClassId && selectedGroup
+  const showTeacherGroupSummary = isTeacher && teacherSelectedGroupId && !selectedFilterClass && teacherSelectedGroup
 
   return (
     <>
@@ -504,37 +518,7 @@ export default function Students() {
 
       <section>
         {isTeacher && teacherClasses.length > 0 && (
-          <div className="flex gap-2 flex-wrap mb-4">
-            <button
-              type="button"
-              onClick={() => setSelectedFilterClass('')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                selectedFilterClass === ''
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-200'
-              }`}
-            >
-              All Classes
-            </button>
-            {teacherClasses.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setSelectedFilterClass(c.id)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                  selectedFilterClass === c.id
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-200'
-                }`}
-              >
-                {c.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {isTeacher && (
-          <div className="mb-4">
+          <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm mb-4">
             <input
               type="text"
               value={teacherSearch}
@@ -542,6 +526,53 @@ export default function Students() {
               placeholder="Search by roll number or name..."
               className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
             />
+
+            {teacherClassGroups.length > 0 && (
+              <div className="mt-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Group</label>
+                <select
+                  value={teacherSelectedGroupId}
+                  onChange={(e) => {
+                    setTeacherSelectedGroupId(e.target.value)
+                    setSelectedFilterClass('')
+                  }}
+                  className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="">All Groups</option>
+                  {teacherClassGroups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => setSelectedFilterClass('')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  selectedFilterClass === ''
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-200'
+                }`}
+              >
+                All Classes
+              </button>
+              {teacherDisplayClasses.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setSelectedFilterClass(c.id)}
+                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    selectedFilterClass === c.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-200'
+                  }`}
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -549,6 +580,10 @@ export default function Students() {
           {showGroupSummary ? (
             <span className="font-medium text-gray-800 dark:text-[#FFFFFF]">
               {selectedGroup.name} · {listStudents.length} Students · {displayClasses.length} Sections
+            </span>
+          ) : showTeacherGroupSummary ? (
+            <span className="font-medium text-gray-800 dark:text-[#FFFFFF]">
+              {teacherSelectedGroup.name} · {listStudents.length} Students · {teacherDisplayClasses.length} Sections (your classes)
             </span>
           ) : (
             <>

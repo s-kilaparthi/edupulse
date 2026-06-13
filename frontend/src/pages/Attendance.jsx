@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
+import {
+  extractGroupClasses,
+  filterClassesByGroup,
+  fetchTeacherClassesAndGroups,
+} from '../utils/teacherGroups'
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const STATUS_OPTIONS = ['present', 'absent', 'late']
@@ -30,25 +35,6 @@ function getDayName(dateStr) {
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
-}
-
-function extractGroupClasses(group) {
-  const members = group?.class_group_members ?? []
-  return members
-    .map((m) => {
-      const cls = m.classes
-      if (!cls) return null
-      return { id: m.class_id ?? cls.id, name: cls.name }
-    })
-    .filter(Boolean)
-    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-}
-
-function filterClassesByGroup(allClasses, groupId, classGroups) {
-  if (!groupId) return allClasses
-  const group = classGroups.find((g) => g.id === groupId)
-  const groupClassIds = new Set(extractGroupClasses(group).map((c) => c.id))
-  return allClasses.filter((c) => groupClassIds.has(c.id))
 }
 
 function getGroupDateBounds(range) {
@@ -316,6 +302,8 @@ export default function Attendance() {
   const [reportStudents, setReportStudents] = useState([])
   const [studentAttendance, setStudentAttendance] = useState([])
   const [teacherReportClasses, setTeacherReportClasses] = useState([])
+  const [teacherClassGroups, setTeacherClassGroups] = useState([])
+  const [teacherSelectedGroupId, setTeacherSelectedGroupId] = useState('')
   const [teacherTab, setTeacherTab] = useState('mark')
   const [selectedAttendanceClassId, setSelectedAttendanceClassId] = useState('')
 
@@ -339,6 +327,21 @@ export default function Attendance() {
   const groupClasses = useMemo(
     () => extractGroupClasses(selectedGroup),
     [selectedGroup]
+  )
+
+  const teacherDisplayClasses = useMemo(
+    () => filterClassesByGroup(teacherReportClasses, teacherSelectedGroupId, teacherClassGroups),
+    [teacherReportClasses, teacherSelectedGroupId, teacherClassGroups]
+  )
+
+  const teacherSelectedGroup = useMemo(
+    () => teacherClassGroups.find((g) => g.id === teacherSelectedGroupId) ?? null,
+    [teacherClassGroups, teacherSelectedGroupId]
+  )
+
+  const teacherGroupClasses = useMemo(
+    () => extractGroupClasses(teacherSelectedGroup),
+    [teacherSelectedGroup]
   )
 
   useEffect(() => {
@@ -394,24 +397,20 @@ export default function Attendance() {
   }, [isAdmin, selectedGroupId, displayClasses, selectedClassId])
 
   useEffect(() => {
-    if (!userId || !isTeacher) return
+    if (!userId || !isTeacher || !instituteId) return
 
-    supabase
-      .from('class_teachers')
-      .select('class_id, classes(id, name)')
-      .eq('teacher_id', userId)
-      .then(({ data }) => {
-        const unique = []
-        const seen = new Set()
-        for (const row of data ?? []) {
-          if (!seen.has(row.class_id)) {
-            seen.add(row.class_id)
-            unique.push(row.classes)
-          }
-        }
-        setTeacherReportClasses(unique.filter(Boolean))
-      })
-  }, [userId, isTeacher])
+    fetchTeacherClassesAndGroups(userId, instituteId).then(({ classes, groups }) => {
+      setTeacherReportClasses(classes)
+      setTeacherClassGroups(groups)
+    })
+  }, [userId, isTeacher, instituteId])
+
+  useEffect(() => {
+    if (!isTeacher || !teacherSelectedGroupId) return
+    if (selectedClassId && !teacherDisplayClasses.some((c) => c.id === selectedClassId)) {
+      setSelectedClassId('')
+    }
+  }, [isTeacher, teacherSelectedGroupId, selectedClassId, teacherDisplayClasses])
 
   useEffect(() => {
     if (!reportClassId) {
@@ -722,8 +721,8 @@ export default function Attendance() {
       .sort((a, b) => b.pct - a.pct)
   }
 
-  async function fetchGroupReports() {
-    if (!selectedGroupId || !instituteId || groupClasses.length === 0) {
+  async function fetchScopedGroupReports(scopeClasses, activeGroupId, activeGroupName, classIdFilter) {
+    if (!activeGroupId || !instituteId || scopeClasses.length === 0) {
       setGroupSummary(null)
       setSectionStats([])
       setReportRows([])
@@ -734,19 +733,19 @@ export default function Attendance() {
     setError(null)
 
     const { from, to } = getGroupDateBounds(groupDateRange)
-    const allGroupClassIds = groupClasses.map((c) => c.id)
+    const scopeClassIds = scopeClasses.map((c) => c.id)
 
     const [studentsRes, attendanceRes] = await Promise.all([
       supabase
         .from('users')
         .select('id, name, roll_number, class_id')
         .eq('role', 'student')
-        .in('class_id', allGroupClassIds)
+        .in('class_id', scopeClassIds)
         .order('roll_number'),
       supabase
         .from('attendance')
         .select('student_id, class_id, status')
-        .in('class_id', allGroupClassIds)
+        .in('class_id', scopeClassIds)
         .gte('date', from)
         .lte('date', to),
     ])
@@ -764,7 +763,7 @@ export default function Attendance() {
       : 0
 
     setGroupSummary({
-      name: selectedGroup?.name ?? 'Group',
+      name: activeGroupName ?? 'Group',
       present: groupPresent,
       total: allRecords.length,
       pct: groupPct,
@@ -772,11 +771,11 @@ export default function Attendance() {
       to,
     })
 
-    setSectionStats(buildSectionStats(allStudents, allRecords, groupClasses))
+    setSectionStats(buildSectionStats(allStudents, allRecords, scopeClasses))
 
-    const tableClassIds = selectedClassId
-      ? new Set([selectedClassId])
-      : new Set(allGroupClassIds)
+    const tableClassIds = classIdFilter
+      ? new Set([classIdFilter])
+      : new Set(scopeClassIds)
     const tableStudents = allStudents.filter((s) => tableClassIds.has(s.class_id))
     const tableRecords = allRecords.filter((r) => tableClassIds.has(r.class_id))
     setReportRows(buildReportRows(tableStudents, tableRecords))
@@ -784,9 +783,32 @@ export default function Attendance() {
     setReportLoading(false)
   }
 
+  async function fetchGroupReports() {
+    await fetchScopedGroupReports(
+      groupClasses,
+      selectedGroupId,
+      selectedGroup?.name,
+      selectedClassId || null
+    )
+  }
+
+  async function fetchTeacherGroupReports() {
+    await fetchScopedGroupReports(
+      teacherDisplayClasses,
+      teacherSelectedGroupId,
+      teacherSelectedGroup?.name,
+      selectedClassId || null
+    )
+  }
+
   async function fetchReports() {
     if (isAdmin && selectedGroupId) {
       await fetchGroupReports()
+      return
+    }
+
+    if (isTeacher && teacherSelectedGroupId) {
+      await fetchTeacherGroupReports()
       return
     }
 
@@ -824,6 +846,17 @@ export default function Attendance() {
     if (groupClasses.length === 0) return
     fetchGroupReports()
   }, [isAdmin, adminTab, selectedGroupId, groupDateRange, selectedClassId, groupClasses, instituteId])
+
+  useEffect(() => {
+    if (!isTeacher || teacherTab !== 'reports') return
+    if (!teacherSelectedGroupId) {
+      setGroupSummary(null)
+      setSectionStats([])
+      return
+    }
+    if (teacherDisplayClasses.length === 0) return
+    fetchTeacherGroupReports()
+  }, [isTeacher, teacherTab, teacherSelectedGroupId, groupDateRange, selectedClassId, teacherDisplayClasses, instituteId])
 
   function handleSlotToggle(slot) {
     const isActive = activeSlotId === slot.id
@@ -946,25 +979,33 @@ export default function Attendance() {
     )
   }
 
-  function renderReportsTab(classList) {
+  function renderReportsTab(classList, { teacherView = false } = {}) {
+    const activeGroupId = teacherView ? teacherSelectedGroupId : selectedGroupId
+    const activeGroups = teacherView ? teacherClassGroups : classGroups
+    const activeDisplayClasses = teacherView ? teacherDisplayClasses : displayClasses
+    const showGroupFeatures = activeGroupId && (teacherView || isAdmin)
     const summaryColors = groupSummary ? getAttendancePctColor(groupSummary.pct) : null
 
     return (
       <>
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          {isAdmin && (
+          {(isAdmin || teacherView) && activeGroups.length > 0 && (
             <div className="flex-1">
               <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Group</label>
               <select
-                value={selectedGroupId}
+                value={activeGroupId}
                 onChange={(e) => {
-                  setSelectedGroupId(e.target.value)
+                  if (teacherView) {
+                    setTeacherSelectedGroupId(e.target.value)
+                  } else {
+                    setSelectedGroupId(e.target.value)
+                  }
                   setSelectedClassId('')
                 }}
                 className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
                 <option value="">All Groups</option>
-                {classGroups.map((g) => (
+                {activeGroups.map((g) => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
@@ -977,19 +1018,19 @@ export default function Attendance() {
               onChange={(e) => setSelectedClassId(e.target.value)}
               className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
             >
-              {isAdmin && selectedGroupId ? (
+              {showGroupFeatures ? (
                 <option value="">All Classes</option>
               ) : (
                 <option value="">Select class…</option>
               )}
-              {classList.map((c) => (
+              {(teacherView ? activeDisplayClasses : classList).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
               ))}
             </select>
           </div>
-          {!isAdmin || !selectedGroupId ? (
+          {!showGroupFeatures ? (
             <>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">From</label>
@@ -1024,11 +1065,12 @@ export default function Attendance() {
           ) : null}
         </div>
 
-        {isAdmin && selectedGroupId && groupSummary && (
+        {showGroupFeatures && groupSummary && (
           <div className={`rounded-xl border-2 p-5 mb-4 ${summaryColors.bg}`}>
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
               <h3 className="font-semibold text-gray-900 dark:text-[#FFFFFF]">
                 {groupSummary.name} Attendance Overview
+                {teacherView && ' (your classes)'}
               </h3>
               <div className="flex gap-2">
                 {[
@@ -1058,7 +1100,7 @@ export default function Attendance() {
           </div>
         )}
 
-        {isAdmin && selectedGroupId && sectionStats.length > 0 && (
+        {showGroupFeatures && sectionStats.length > 0 && (
           <div className="grid grid-cols-2 md:flex md:flex-wrap gap-3 mb-6">
             {sectionStats.map((section) => {
               const colors = getAttendancePctColor(section.pct)
@@ -1070,7 +1112,7 @@ export default function Attendance() {
                   <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm mb-1">{section.name}</p>
                   <p className={`text-2xl font-bold ${colors.text}`}>{section.pct}%</p>
                   <p className="text-xs text-gray-600 dark:text-[#A8A8A8] mt-1">
-                    {section.presentTotal} / {section.enrolled} students
+                    {section.presentTotal} / {section.total} present
                   </p>
                 </div>
               )
@@ -1078,7 +1120,7 @@ export default function Attendance() {
           </div>
         )}
 
-        {reportLoading && isAdmin && selectedGroupId && (
+        {reportLoading && showGroupFeatures && (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mb-4">Loading group attendance…</p>
         )}
 
@@ -1293,7 +1335,7 @@ export default function Attendance() {
               {renderMarkAttendance(false)}
             </>
           )}
-          {teacherTab === 'reports' && renderReportsTab(teacherReportClasses)}
+          {teacherTab === 'reports' && renderReportsTab(teacherReportClasses, { teacherView: true })}
           {teacherTab === 'student' && renderStudentReport(teacherReportClasses)}
         </>
       )}

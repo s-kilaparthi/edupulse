@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useLocation } from 'react-router-dom'
 import { ArrowUp, ArrowDown, Minus, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../supabase'
+import { fetchTeacherClassesAndGroups } from '../utils/teacherGroups'
 
 function topicStatus(pct) {
   if (pct >= 75) return 'strong'
@@ -798,43 +799,33 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
         return
       }
 
-      const { data: groupsData } = await supabase
-        .from('class_groups')
-        .select('id, name, class_group_members(class_id, classes(id, name))')
-        .eq('institute_id', userData.institute_id)
-        .order('name')
-
-      setClassGroups(groupsData ?? [])
-
       if (userRole === 'admin') {
+        const { data: groupsData } = await supabase
+          .from('class_groups')
+          .select('id, name, class_group_members(class_id, classes(id, name))')
+          .eq('institute_id', userData.institute_id)
+          .order('name')
+
         const { data } = await supabase
           .from('classes')
           .select('id, name')
           .eq('institute_id', userData.institute_id)
           .order('name')
 
+        setClassGroups(groupsData ?? [])
         const classList = data ?? []
         setClasses(classList)
         setClassId(classList.length === 1 ? classList[0].id : '')
         return
       }
 
-      const { data } = await supabase
-        .from('class_teachers')
-        .select('class_id, classes(id, name)')
-        .eq('teacher_id', session.user.id)
-
-      const unique = []
-      const seen = new Set()
-      for (const row of data ?? []) {
-        if (row.classes && !seen.has(row.class_id)) {
-          seen.add(row.class_id)
-          unique.push(row.classes)
-        }
-      }
-      unique.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-      setClasses(unique)
-      setClassId(unique.length === 1 ? unique[0].id : '')
+      const { classes: teacherCls, groups } = await fetchTeacherClassesAndGroups(
+        session.user.id,
+        userData.institute_id
+      )
+      setClassGroups(groups)
+      setClasses(teacherCls)
+      setClassId(teacherCls.length === 1 ? teacherCls[0].id : '')
     }
 
     loadClassesAndGroups()
@@ -1285,10 +1276,11 @@ export default function Results() {
       .sort((a, b) => a.name.localeCompare(b.name))
   }, [reportExams, reportExamId])
 
-  const studentFilteredClasses = useMemo(
-    () => filterClassesByGroup(classes, studentGroupId, classGroups),
-    [classes, studentGroupId, classGroups],
-  )
+  const studentFilteredClasses = useMemo(() => {
+    const sourceClasses = userRole === 'teacher' ? teacherClasses : classes
+    const sourceGroups = userRole === 'teacher' ? teacherClassGroups : classGroups
+    return filterClassesByGroup(sourceClasses, studentGroupId, sourceGroups)
+  }, [userRole, teacherClasses, classes, studentGroupId, teacherClassGroups, classGroups])
 
   const sectionWiseRankings = useMemo(() => {
     if (!reportGroupId || reportViewMode !== 'section' || !reportRankings.length) return []
@@ -1474,7 +1466,7 @@ export default function Results() {
   }, [examId, isTeacher, session])
 
   useEffect(() => {
-    if (!isTeacherMainView || !session?.user?.id) return
+    if (!isAdminMainView || !session?.user?.id) return
 
     supabase
       .from('users')
@@ -1495,7 +1487,7 @@ export default function Results() {
           setClasses([])
         }
       })
-  }, [isTeacherMainView, session])
+  }, [isAdminMainView, session])
 
   useEffect(() => {
     if (!isAdminMainView || !session?.user?.id) return
@@ -1532,40 +1524,6 @@ export default function Results() {
     }
 
     async function loadTeacherClassesAndGroups() {
-      const { data: assignments } = await supabase
-        .from('class_teachers')
-        .select('class_id, classes(id, name)')
-        .eq('teacher_id', session.user.id)
-
-      const unique = []
-      const seen = new Set()
-      const teacherClassIds = []
-      for (const row of assignments ?? []) {
-        if (row.classes && !seen.has(row.class_id)) {
-          seen.add(row.class_id)
-          unique.push(row.classes)
-          teacherClassIds.push(row.class_id)
-        }
-      }
-      unique.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
-      setTeacherClasses(unique)
-
-      if (!teacherClassIds.length) {
-        setTeacherClassGroups([])
-        return
-      }
-
-      const { data: members } = await supabase
-        .from('class_group_members')
-        .select('group_id')
-        .in('class_id', teacherClassIds)
-
-      const groupIds = [...new Set((members ?? []).map((m) => m.group_id))]
-      if (!groupIds.length) {
-        setTeacherClassGroups([])
-        return
-      }
-
       const { data: userData } = await supabase
         .from('users')
         .select('institute_id')
@@ -1573,18 +1531,17 @@ export default function Results() {
         .single()
 
       if (!userData?.institute_id) {
+        setTeacherClasses([])
         setTeacherClassGroups([])
         return
       }
 
-      const { data: groups } = await supabase
-        .from('class_groups')
-        .select('id, name, class_group_members(class_id, classes(id, name))')
-        .eq('institute_id', userData.institute_id)
-        .in('id', groupIds)
-        .order('name')
-
-      setTeacherClassGroups(groups ?? [])
+      const { classes, groups } = await fetchTeacherClassesAndGroups(
+        session.user.id,
+        userData.institute_id
+      )
+      setTeacherClasses(classes)
+      setTeacherClassGroups(groups)
     }
 
     loadTeacherClassesAndGroups()
@@ -1964,10 +1921,14 @@ export default function Results() {
       if (selectedClassId) {
         studentQuery = studentQuery.eq('class_id', selectedClassId)
       } else if (studentGroupId) {
-        const groupClassIds = filterClassesByGroup(classes, studentGroupId, classGroups).map((c) => c.id)
+        const sourceClasses = userRole === 'teacher' ? teacherClasses : classes
+        const sourceGroups = userRole === 'teacher' ? teacherClassGroups : classGroups
+        const groupClassIds = filterClassesByGroup(sourceClasses, studentGroupId, sourceGroups).map((c) => c.id)
         if (groupClassIds.length) {
           studentQuery = studentQuery.in('class_id', groupClassIds)
         }
+      } else if (userRole === 'teacher' && teacherClasses.length) {
+        studentQuery = studentQuery.in('class_id', teacherClasses.map((c) => c.id))
       }
 
       const { data: students } = await studentQuery
@@ -2075,7 +2036,7 @@ export default function Results() {
     }
 
     loadTeacherOverview()
-  }, [isTeacherMainView, examId, exams, selectedClassId, studentGroupId, classGroups, classes, session])
+  }, [isTeacherMainView, examId, exams, selectedClassId, studentGroupId, classGroups, classes, session, userRole, teacherClasses, teacherClassGroups])
 
   useEffect(() => {
     if (!isCardExamView || cardExamId) {
@@ -2631,7 +2592,7 @@ export default function Results() {
               </select>
               {activeTab === 'student' && (
                 <>
-                  {classGroups.length > 0 && (
+                  {(userRole === 'teacher' ? teacherClassGroups : classGroups).length > 0 && (
                     <select
                       value={studentGroupId}
                       onChange={(e) => {
@@ -2644,7 +2605,7 @@ export default function Results() {
                       className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                     >
                       <option value="">All Groups</option>
-                      {classGroups.map((g) => (
+                      {(userRole === 'teacher' ? teacherClassGroups : classGroups).map((g) => (
                         <option key={g.id} value={g.id}>{g.name}</option>
                       ))}
                     </select>
