@@ -26,18 +26,31 @@ export function ThemeProvider({ session, children }) {
 
     let cancelled = false
 
-    supabase
-      .from('users')
-      .select('theme')
-      .eq('id', session.user.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
+    async function loadTheme() {
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('theme')
+          .eq('id', session.user.id)
+          .maybeSingle()
+
         if (cancelled) return
+
         const nextTheme = !error && data?.theme === 'dark' ? 'dark' : 'light'
         setTheme(nextTheme)
         applyThemeToDocument(nextTheme)
-        setThemeLoaded(true)
-      })
+      } catch {
+        if (cancelled) return
+        setTheme('light')
+        applyThemeToDocument('light')
+      } finally {
+        if (!cancelled) {
+          setThemeLoaded(true)
+        }
+      }
+    }
+
+    loadTheme()
 
     return () => {
       cancelled = true
