@@ -49,6 +49,9 @@ export default function Subjects() {
   const [noteTitle, setNoteTitle] = useState('')
   const [noteUrl, setNoteUrl] = useState('')
   const [savingNote, setSavingNote] = useState(false)
+  const [editingSubjectId, setEditingSubjectId] = useState(null)
+  const [editSubjectName, setEditSubjectName] = useState('')
+  const [savingSubjectEdit, setSavingSubjectEdit] = useState(false)
   const [sharePopoverNoteId, setSharePopoverNoteId] = useState(null)
   const [sharedClassMap, setSharedClassMap] = useState({})
   const [sharingNoteId, setSharingNoteId] = useState(null)
@@ -698,6 +701,42 @@ export default function Subjects() {
     }
   }
 
+  function handleStartEditSubject(subject) {
+    setEditingSubjectId(subject.id)
+    setEditSubjectName(subject.name)
+    setManageClassesSubjectId(null)
+    setShowAddTopic(null)
+  }
+
+  function handleCancelEditSubject() {
+    setEditingSubjectId(null)
+    setEditSubjectName('')
+  }
+
+  async function handleSaveSubjectEdit(subjectId) {
+    const name = editSubjectName.trim()
+    if (!name) return
+
+    setSavingSubjectEdit(true)
+    setError(null)
+
+    const { error: updateError } = await supabase
+      .from('subjects')
+      .update({ name })
+      .eq('id', subjectId)
+
+    if (updateError) {
+      setError(updateError.message)
+    } else {
+      setEditingSubjectId(null)
+      setEditSubjectName('')
+      setLoading(true)
+      await fetchSubjects()
+    }
+
+    setSavingSubjectEdit(false)
+  }
+
   const showSubjectList = isStudentView || isAdmin || selectedClassId
 
   return (
@@ -896,18 +935,55 @@ export default function Subjects() {
                   ) : (
                     <>
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{subject.name}</span>
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSubject(subject.id, subject.name)}
-                              className="text-xs text-red-500 hover:text-red-700 font-medium"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
+                        {editingSubjectId === subject.id ? (
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                            <input
+                              type="text"
+                              value={editSubjectName}
+                              onChange={(e) => setEditSubjectName(e.target.value)}
+                              className="flex-1 rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                            />
+                            <div className="flex gap-2 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleSaveSubjectEdit(subject.id)}
+                                disabled={savingSubjectEdit || !editSubjectName.trim()}
+                                className="text-xs font-medium bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-40"
+                              >
+                                {savingSubjectEdit ? 'Saving…' : 'Save'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleCancelEditSubject}
+                                className="text-xs font-medium text-gray-500 dark:text-[#A8A8A8] px-3 py-1.5"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{subject.name}</span>
+                            {isAdmin && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditSubject(subject)}
+                                  className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSubject(subject.id, subject.name)}
+                                  className="text-xs text-red-500 hover:text-red-700 font-medium"
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
                         {subject.subject_classes?.length > 0 && (
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {subject.subject_classes.map((sc) => (
