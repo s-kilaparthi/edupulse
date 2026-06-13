@@ -69,6 +69,12 @@ export default function Classes() {
   const [addSubjectId, setAddSubjectId] = useState('')
   const [addClassSubjectId, setAddClassSubjectId] = useState('')
   const [addingTeacher, setAddingTeacher] = useState(false)
+  const [showCopyTeachers, setShowCopyTeachers] = useState(false)
+  const [copySourceClassId, setCopySourceClassId] = useState('')
+  const [copySourceTeachers, setCopySourceTeachers] = useState([])
+  const [loadingCopyPreview, setLoadingCopyPreview] = useState(false)
+  const [copyingTeachers, setCopyingTeachers] = useState(false)
+  const [teacherCopySuccess, setTeacherCopySuccess] = useState('')
   const [addingClassSubject, setAddingClassSubject] = useState(false)
   const [editingClassId, setEditingClassId] = useState(null)
   const [editClassName, setEditClassName] = useState('')
@@ -387,6 +393,113 @@ export default function Classes() {
     setAddTeacherId('')
     setAddSubjectId('')
     setAddClassSubjectId('')
+    setShowCopyTeachers(false)
+    setCopySourceClassId('')
+    setCopySourceTeachers([])
+    setTeacherCopySuccess('')
+  }
+
+  function getSiblingClassesForCopy(currentClassId) {
+    const groupIds = getClassGroupIds(currentClassId)
+    if (!groupIds.length) return []
+
+    const siblingIds = new Set()
+    for (const group of groups) {
+      if (!groupIds.includes(group.id)) continue
+      for (const member of group.class_group_members ?? []) {
+        if (member.class_id && member.class_id !== currentClassId) {
+          siblingIds.add(member.class_id)
+        }
+      }
+    }
+
+    return classes
+      .filter((c) => siblingIds.has(c.id))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  function getCopyableTeacherAssignments(sourceTeachers, targetClass) {
+    const targetSubjectIds = new Set(
+      (targetClass?.subject_classes ?? []).map((sc) => sc.subject_id)
+    )
+    const existing = new Set(
+      classTeachers.map((ct) => `${ct.teacher_id}:${ct.subject_id}`)
+    )
+
+    return sourceTeachers.filter(
+      (ct) =>
+        targetSubjectIds.has(ct.subject_id)
+        && !existing.has(`${ct.teacher_id}:${ct.subject_id}`)
+    )
+  }
+
+  function toggleCopyTeachersPanel() {
+    setShowCopyTeachers((prev) => !prev)
+    setCopySourceClassId('')
+    setCopySourceTeachers([])
+    setTeacherCopySuccess('')
+    setError(null)
+  }
+
+  async function handleCopySourceClassChange(sourceClassId) {
+    setCopySourceClassId(sourceClassId)
+    setCopySourceTeachers([])
+    setTeacherCopySuccess('')
+
+    if (!sourceClassId) return
+
+    setLoadingCopyPreview(true)
+    setError(null)
+
+    const { data, error: fetchError } = await supabase
+      .from('class_teachers')
+      .select('teacher_id, subject_id, users(name), subjects(name)')
+      .eq('class_id', sourceClassId)
+
+    if (fetchError) {
+      setError(fetchError.message)
+      setCopySourceTeachers([])
+    } else {
+      setCopySourceTeachers(data ?? [])
+    }
+
+    setLoadingCopyPreview(false)
+  }
+
+  async function handleConfirmCopyTeachers(targetClassId) {
+    if (!copySourceClassId) return
+
+    const targetClass = classes.find((c) => c.id === targetClassId)
+    const copyable = getCopyableTeacherAssignments(copySourceTeachers, targetClass)
+
+    if (copyable.length === 0) {
+      setTeacherCopySuccess('No new teacher assignments to copy.')
+      return
+    }
+
+    setCopyingTeachers(true)
+    setError(null)
+    setTeacherCopySuccess('')
+
+    const rowsToInsert = copyable.map((ct) => ({
+      class_id: targetClassId,
+      teacher_id: ct.teacher_id,
+      subject_id: ct.subject_id,
+    }))
+
+    const { error: insertError } = await supabase.from('class_teachers').insert(rowsToInsert)
+
+    setCopyingTeachers(false)
+
+    if (insertError) {
+      setError(insertError.message)
+      return
+    }
+
+    const sourceName = classes.find((c) => c.id === copySourceClassId)?.name ?? 'selected class'
+    const successMessage = `Copied ${copyable.length} teacher assignments from ${sourceName}`
+    await loadClassDetails(targetClassId)
+    setTeacherCopySuccess(successMessage)
   }
 
   async function searchUnassignedStudents(query, classId) {
@@ -1310,6 +1423,79 @@ export default function Classes() {
                               </li>
                             ))}
                           </ul>
+                        )}
+
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">
+                            Assign Teacher
+                          </p>
+                          <button
+                            type="button"
+                            onClick={toggleCopyTeachersPanel}
+                            className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                          >
+                            Copy from Class
+                          </button>
+                        </div>
+
+                        {showCopyTeachers && (
+                          <div className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] p-3 space-y-3">
+                            <select
+                              value={copySourceClassId}
+                              onChange={(e) => handleCopySourceClassChange(e.target.value)}
+                              className={`w-full ${SELECT_CLASS}`}
+                            >
+                              <option value="">Select class to copy from</option>
+                              {getSiblingClassesForCopy(cls.id).map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+
+                            {getSiblingClassesForCopy(cls.id).length === 0 && (
+                              <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">
+                                No other classes in the same group.
+                              </p>
+                            )}
+
+                            {loadingCopyPreview && (
+                              <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Loading…</p>
+                            )}
+
+                            {copySourceClassId && !loadingCopyPreview && (
+                              <>
+                                {copySourceTeachers.length === 0 ? (
+                                  <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">
+                                    No teacher assignments in this class.
+                                  </p>
+                                ) : (
+                                  <ul className="space-y-1 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] p-3">
+                                    {copySourceTeachers.map((ct, index) => (
+                                      <li
+                                        key={`${ct.teacher_id}-${ct.subject_id}-${index}`}
+                                        className="text-xs text-gray-700 dark:text-[#A8A8A8]"
+                                      >
+                                        {ct.subjects?.name ?? '—'} — {ct.users?.name ?? '—'}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleConfirmCopyTeachers(cls.id)}
+                                  disabled={copyingTeachers || copySourceTeachers.length === 0}
+                                  className={`${PRIMARY_BTN_CLASS} w-full sm:w-auto`}
+                                >
+                                  {copyingTeachers ? 'Copying…' : 'Copy'}
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+
+                        {teacherCopySuccess && (
+                          <p className="text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg px-3 py-2">
+                            {teacherCopySuccess}
+                          </p>
                         )}
 
                         <div className="flex flex-col sm:flex-row gap-2">
