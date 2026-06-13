@@ -431,8 +431,16 @@ export default function Students() {
 
       {isAdmin && (
         <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm mb-4">
+          <input
+            type="text"
+            value={adminSearch}
+            onChange={(e) => setAdminSearch(e.target.value)}
+            placeholder="Search by roll number or name..."
+            className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+          />
+
           {classGroups.length > 0 && (
-            <div className="mb-3">
+            <div className="mt-3">
               <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Group</label>
               <select
                 value={adminSelectedGroupId}
@@ -449,14 +457,6 @@ export default function Students() {
               </select>
             </div>
           )}
-
-          <input
-            type="text"
-            value={adminSearch}
-            onChange={(e) => setAdminSearch(e.target.value)}
-            placeholder="Search by roll number or name..."
-            className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
-          />
 
           {displayClasses.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
