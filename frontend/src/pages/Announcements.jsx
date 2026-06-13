@@ -5,25 +5,6 @@ import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 const GROUP_TARGET_TYPES = ['group_students', 'group_teachers', 'entire_group']
 
-async function sendAnnouncementNotifications({ instituteId, title, body, targetType, targetIds }) {
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session) return
-  await fetch(`${import.meta.env.VITE_API_URL}/send-announcement-notifications`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${session.access_token}`,
-    },
-    body: JSON.stringify({
-      institute_id: instituteId,
-      title,
-      body,
-      target_type: targetType,
-      target_ids: targetIds,
-    }),
-  })
-}
-
 function getTargetLabel(announcement) {
   switch (announcement.target_type) {
     case 'everyone':
@@ -490,13 +471,27 @@ export default function Announcements() {
     const { error: insertError } = await supabase.from('announcements').insert(insertPayload)
 
     if (!insertError) {
-      await sendAnnouncementNotifications({
-        instituteId,
-        title: insertPayload.title,
-        body: insertPayload.body,
-        targetType: insertPayload.target_type,
-        targetIds: insertPayload.target_ids,
-      })
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session) {
+          await fetch(`${import.meta.env.VITE_API_URL}/send-announcement-notifications`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({
+              institute_id: instituteId,
+              title: insertPayload.title,
+              body: insertPayload.body,
+              target_type: insertPayload.target_type,
+              target_ids: insertPayload.target_ids,
+            }),
+          })
+        }
+      } catch (err) {
+        console.error('Notification error:', err)
+      }
 
       setNewTitle('')
       setNewBody('')
