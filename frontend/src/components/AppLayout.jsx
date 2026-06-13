@@ -10,7 +10,7 @@ const studentNav = [
   { label: 'Schedule', to: '/schedule' },
   { label: 'Attendance', to: '/attendance' },
   { label: 'Announcements', to: '/announcements' },
-  { label: '💳 Fee Payment', to: '/fees' },
+  { label: 'Fee Payment', to: '/fees' },
   { label: 'Profile', to: '/profile' },
 ]
 
@@ -40,7 +40,7 @@ const adminNav = [
   { label: 'Results', to: '/results' },
   { label: 'Announcements', to: '/announcements' },
   { label: 'Admin', to: '/admin' },
-  { label: '💰 Fee Management', to: '/fees' },
+  { label: 'Fee Management', to: '/fees' },
   { label: 'Profile', to: '/profile' },
 ]
 
