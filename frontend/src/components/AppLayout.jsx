@@ -42,6 +42,20 @@ const adminNav = [
   { label: 'Profile', to: '/profile' },
 ]
 
+function getInstituteDisplayName(institute) {
+  if (!institute) return 'EduPulse'
+  if (institute.brand_name?.trim()) return institute.brand_name.trim()
+  const words = (institute.name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (words.length >= 2) return `${words[0]} ${words[1]}`
+  if (words.length === 1) return words[0]
+  return 'EduPulse'
+}
+
+function getLogoLetter(institute) {
+  const source = institute?.brand_name?.trim() || institute?.name?.trim() || 'EduPulse'
+  return source.charAt(0).toUpperCase()
+}
+
 export default function AppLayout({ session }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
@@ -53,15 +67,23 @@ export default function AppLayout({ session }) {
   const [notifications, setNotifications] = useState([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
+  const [instituteBranding, setInstituteBranding] = useState(null)
+
+  const brandingTitle = getInstituteDisplayName(instituteBranding)
+  const logoLetter = getLogoLetter(instituteBranding)
 
   useEffect(() => {
-    if (!session?.user?.id) return
+    if (!session?.user?.id) {
+      setInstituteBranding(null)
+      document.title = 'EduPulse'
+      return
+    }
 
     supabase
       .from('users')
-      .select('is_active, role, name, institute_id')
+      .select('is_active, role, name, institute_id, institutes(name, brand_name, logo_url)')
       .eq('id', session.user.id)
-      .single()
+      .maybeSingle()
       .then(async ({ data }) => {
         if (data?.is_active === false) {
           localStorage.setItem('blocked_message',
@@ -72,9 +94,19 @@ export default function AppLayout({ session }) {
         if (data) {
           setDisplayName(data.name || session.user.email)
           setUserRole(data.role)
+          setInstituteBranding(data.institutes ?? null)
+        } else {
+          setInstituteBranding(null)
         }
       })
   }, [session])
+
+  useEffect(() => {
+    document.title = brandingTitle
+    return () => {
+      document.title = 'EduPulse'
+    }
+  }, [brandingTitle])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -164,10 +196,18 @@ export default function AppLayout({ session }) {
             )}
           </button>
           <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">E</span>
-            </div>
-            <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">EduPulse</span>
+            {instituteBranding?.logo_url ? (
+              <img
+                src={instituteBranding.logo_url}
+                alt={brandingTitle}
+                className="w-8 h-8 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">{logoLetter}</span>
+              </div>
+            )}
+            <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{brandingTitle}</span>
           </Link>
         </div>
         <div className="flex items-center gap-3">

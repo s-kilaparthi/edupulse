@@ -16,6 +16,8 @@ function roleLabel(role) {
   return role.charAt(0).toUpperCase() + role.slice(1)
 }
 
+const LOGO_ACCEPT = 'image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp'
+
 export default function SuperAdminDashboard() {
   const navigate = useNavigate()
   const [authChecking, setAuthChecking] = useState(true)
@@ -31,6 +33,10 @@ export default function SuperAdminDashboard() {
   const [actionLoadingId, setActionLoadingId] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
   const [toast, setToast] = useState(null)
+  const [editingId, setEditingId] = useState(null)
+  const [editForm, setEditForm] = useState({ name: '', brand_name: '', logo_url: '' })
+  const [logoUploading, setLogoUploading] = useState(false)
+  const [savingEdit, setSavingEdit] = useState(false)
 
   const showToast = useCallback((message) => {
     setToast(message)
@@ -118,6 +124,7 @@ export default function SuperAdminDashboard() {
   }
 
   function handleViewDetails(institute) {
+    setEditingId(null)
     if (expandedId === institute.id) {
       setExpandedId(null)
       return
@@ -125,6 +132,93 @@ export default function SuperAdminDashboard() {
     setExpandedId(institute.id)
     if (!detailsById[institute.id]) {
       loadInstituteDetails(institute.id)
+    }
+  }
+
+  async function openEditPanel(institute) {
+    setExpandedId(null)
+    setEditingId(institute.id)
+
+    const { data } = await supabase
+      .from('institutes')
+      .select('name, brand_name, logo_url')
+      .eq('id', institute.id)
+      .maybeSingle()
+
+    setEditForm({
+      name: data?.name ?? institute.name ?? '',
+      brand_name: data?.brand_name ?? '',
+      logo_url: data?.logo_url ?? '',
+    })
+  }
+
+  function closeEditPanel() {
+    setEditingId(null)
+    setEditForm({ name: '', brand_name: '', logo_url: '' })
+  }
+
+  async function handleLogoSelect(instituteId, file) {
+    if (!file) return
+
+    const allowed = ['image/jpeg', 'image/png', 'image/webp']
+    if (!allowed.includes(file.type)) {
+      showToast('Please upload a JPG, PNG, or WebP image')
+      return
+    }
+
+    setLogoUploading(true)
+    try {
+      const { error } = await supabase.storage
+        .from('institute-logos')
+        .upload(`${instituteId}/logo`, file, { upsert: true })
+
+      if (error) throw error
+
+      const { data: urlData } = supabase.storage
+        .from('institute-logos')
+        .getPublicUrl(`${instituteId}/logo`)
+
+      setEditForm((prev) => ({ ...prev, logo_url: urlData.publicUrl }))
+      showToast('Logo uploaded')
+    } catch {
+      showToast('Logo upload failed')
+    } finally {
+      setLogoUploading(false)
+    }
+  }
+
+  async function handleSaveEdit(institute) {
+    setSavingEdit(true)
+    try {
+      const { error } = await supabase
+        .from('institutes')
+        .update({
+          name: editForm.name.trim(),
+          brand_name: editForm.brand_name.trim() || null,
+          logo_url: editForm.logo_url || null,
+        })
+        .eq('id', institute.id)
+
+      if (error) throw error
+
+      setInstitutes((prev) =>
+        prev.map((inst) =>
+          inst.id === institute.id
+            ? {
+                ...inst,
+                name: editForm.name.trim(),
+                brand_name: editForm.brand_name.trim() || null,
+                logo_url: editForm.logo_url || null,
+              }
+            : inst
+        )
+      )
+      closeEditPanel()
+      showToast(`${editForm.name.trim()} updated`)
+    } catch {
+      showToast('Failed to save changes')
+    } finally {
+      setSavingEdit(false)
     }
   }
 
@@ -252,8 +346,10 @@ export default function SuperAdminDashboard() {
             {filteredInstitutes.map((institute) => {
               const isActive = institute.is_active !== false
               const isExpanded = expandedId === institute.id
+              const isEditing = editingId === institute.id
               const details = detailsById[institute.id]
               const isBusy = actionLoadingId === institute.id
+                || ((savingEdit || logoUploading) && editingId === institute.id)
 
               return (
                 <div
@@ -302,6 +398,14 @@ export default function SuperAdminDashboard() {
                         </button>
                         <button
                           type="button"
+                          onClick={() => (isEditing ? closeEditPanel() : openEditPanel(institute))}
+                          disabled={isBusy}
+                          className="text-sm font-medium text-slate-700 border border-slate-300 bg-white rounded-lg px-3 py-1.5 hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                        >
+                          {isEditing ? 'Cancel Edit' : 'Edit'}
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => handleToggleStatus(institute)}
                           disabled={isBusy}
                           className={`text-sm font-medium rounded-lg px-3 py-1.5 disabled:opacity-60 transition-colors ${
@@ -322,6 +426,83 @@ export default function SuperAdminDashboard() {
                         </button>
                       </div>
                     </div>
+
+                    {isEditing && (
+                      <div className="mt-5 pt-5 border-t border-slate-200 space-y-4">
+                        <h4 className="text-sm font-semibold text-slate-900">Edit Institute</h4>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Institute Name
+                          </label>
+                          <input
+                            type="text"
+                            value={editForm.name}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Brand Name
+                          </label>
+                          <input
+                            type="text"
+                            value={editForm.brand_name}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, brand_name: e.target.value }))}
+                            placeholder="Short display name e.g. Sri Chaitanya"
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-slate-700 mb-1">
+                            Logo
+                          </label>
+                          {editForm.logo_url && (
+                            <img
+                              src={editForm.logo_url}
+                              alt="Institute logo"
+                              className="w-12 h-12 rounded-lg object-cover border border-slate-200 mb-2"
+                            />
+                          )}
+                          <input
+                            type="file"
+                            accept={LOGO_ACCEPT}
+                            disabled={logoUploading}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0]
+                              if (file) handleLogoSelect(institute.id, file)
+                              e.target.value = ''
+                            }}
+                            className="block w-full text-sm text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                          />
+                          {logoUploading && (
+                            <p className="text-xs text-slate-500 mt-1">Uploading logo…</p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleSaveEdit(institute)}
+                            disabled={savingEdit || !editForm.name.trim()}
+                            className="text-sm font-medium text-white bg-blue-600 rounded-lg px-4 py-2 hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                          >
+                            {savingEdit ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={closeEditPanel}
+                            disabled={savingEdit}
+                            className="text-sm font-medium text-slate-700 border border-slate-300 rounded-lg px-4 py-2 hover:bg-slate-50 disabled:opacity-60 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {isExpanded && (
                       <div className="mt-5 pt-5 border-t border-slate-200">
