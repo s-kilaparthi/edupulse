@@ -122,6 +122,8 @@ export default function Schedule() {
   const [editSubjectId, setEditSubjectId] = useState('')
   const [editTeacherId, setEditTeacherId] = useState('')
   const [editDays, setEditDays] = useState([])
+  const [teacherConflict, setTeacherConflict] = useState(null)
+  const [checkingTeacherConflict, setCheckingTeacherConflict] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
@@ -292,6 +294,69 @@ export default function Schedule() {
   useEffect(() => {
     fetchSlots()
   }, [fetchSlots])
+
+  useEffect(() => {
+    if (!editingSlot || !editTeacherId || !instituteId || !selectedClassId || editDays.length === 0) {
+      setTeacherConflict(null)
+      setCheckingTeacherConflict(false)
+      return
+    }
+
+    let cancelled = false
+
+    async function runConflictCheck() {
+      setCheckingTeacherConflict(true)
+
+      for (const day of editDays) {
+        const { data, error: conflictError } = await supabase
+          .from('schedule_slots')
+          .select('id, class_id, start_time, classes(name)')
+          .eq('teacher_id', editTeacherId)
+          .eq('day_of_week', day)
+          .eq('period_number', editingSlot.period)
+          .eq('institute_id', instituteId)
+          .neq('class_id', selectedClassId)
+          .limit(1)
+
+        if (cancelled) return
+
+        if (conflictError) {
+          console.error('Teacher conflict check error:', conflictError)
+          continue
+        }
+
+        const conflict = data?.[0]
+        if (conflict) {
+          const teacherName = teachers.find((t) => t.id === editTeacherId)?.name ?? 'This teacher'
+          const dayLabel = day.charAt(0).toUpperCase() + day.slice(1)
+          const periodRow = getPeriodRow(editingSlot.period)
+          const time = conflict.start_time?.slice(0, 5) ?? periodRow?.start ?? ''
+          setTeacherConflict(
+            `⚠️ ${teacherName} is already assigned to ${conflict.classes?.name ?? 'another class'} on ${dayLabel} Period ${editingSlot.period} at ${time}. Please select a different teacher.`
+          )
+          setCheckingTeacherConflict(false)
+          return
+        }
+      }
+
+      setTeacherConflict(null)
+      setCheckingTeacherConflict(false)
+    }
+
+    runConflictCheck()
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    editTeacherId,
+    editDays,
+    editingSlot,
+    instituteId,
+    selectedClassId,
+    teachers,
+    scheduleSettings,
+  ])
 
   function getSlot(day, periodNumber) {
     return scheduleSlots.find(
@@ -558,6 +623,7 @@ export default function Schedule() {
     setEditSubjectId(slot?.subject_id ?? '')
     setEditTeacherId(slot?.teacher_id ?? '')
     setEditDays([day])
+    setTeacherConflict(null)
     setError(null)
   }
 
@@ -566,12 +632,57 @@ export default function Schedule() {
     setEditSubjectId('')
     setEditTeacherId('')
     setEditDays([])
+    setTeacherConflict(null)
+  }
+
+  async function findTeacherScheduleConflict(teacherId, days, periodNumber) {
+    if (!teacherId || !instituteId || !selectedClassId || !days?.length || !periodNumber) {
+      return null
+    }
+
+    for (const day of days) {
+      const { data, error: conflictError } = await supabase
+        .from('schedule_slots')
+        .select('id, class_id, start_time, classes(name)')
+        .eq('teacher_id', teacherId)
+        .eq('day_of_week', day)
+        .eq('period_number', periodNumber)
+        .eq('institute_id', instituteId)
+        .neq('class_id', selectedClassId)
+        .limit(1)
+
+      if (conflictError) {
+        console.error('Teacher conflict check error:', conflictError)
+        continue
+      }
+
+      const conflict = data?.[0]
+      if (conflict) {
+        const teacherName = teachers.find((t) => t.id === teacherId)?.name ?? 'This teacher'
+        const dayLabel = day.charAt(0).toUpperCase() + day.slice(1)
+        const periodRow = getPeriodRow(periodNumber)
+        const time = conflict.start_time?.slice(0, 5) ?? periodRow?.start ?? ''
+        return `⚠️ ${teacherName} is already assigned to ${conflict.classes?.name ?? 'another class'} on ${dayLabel} Period ${periodNumber} at ${time}. Please select a different teacher.`
+      }
+    }
+
+    return null
   }
 
   async function handleSaveSlot(subjectId, teacherId) {
     if (!editingSlot || editDays.length === 0) return
     if (!subjectId || !teacherId) {
       setError('Please select both a subject and a teacher.')
+      return
+    }
+
+    const conflictMessage = await findTeacherScheduleConflict(
+      teacherId,
+      editDays,
+      editingSlot.period
+    )
+    if (conflictMessage) {
+      setTeacherConflict(conflictMessage)
       return
     }
 
@@ -1291,13 +1402,25 @@ export default function Schedule() {
                         </option>
                       ))}
                     </select>
+                    {teacherConflict && (
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-2">
+                        {teacherConflict}
+                      </p>
+                    )}
                   </div>
 
                   <div className="flex gap-2 mt-2">
                     <button
                       type="button"
                       onClick={() => handleSaveSlot(editSubjectId, editTeacherId)}
-                      disabled={saving || !editSubjectId || !editTeacherId || editDays.length === 0}
+                      disabled={
+                        saving
+                        || !editSubjectId
+                        || !editTeacherId
+                        || editDays.length === 0
+                        || !!teacherConflict
+                        || checkingTeacherConflict
+                      }
                       className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium disabled:opacity-40"
                     >
                       {saving ? 'Saving…' : 'Save'}
