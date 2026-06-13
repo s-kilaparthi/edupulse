@@ -1,6 +1,25 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+
+function extractGroupClasses(group) {
+  const members = group?.class_group_members ?? []
+  return members
+    .map((m) => {
+      const cls = m.classes
+      if (!cls) return null
+      return { id: m.class_id ?? cls.id, name: cls.name }
+    })
+    .filter(Boolean)
+    .sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''))
+}
+
+function filterClassesByGroup(allClasses, groupId, classGroups) {
+  if (!groupId) return allClasses
+  const group = classGroups.find((g) => g.id === groupId)
+  const groupClassIds = new Set(extractGroupClasses(group).map((c) => c.id))
+  return allClasses.filter((c) => groupClassIds.has(c.id))
+}
 
 export default function Students() {
   const { session } = useOutletContext()
@@ -34,8 +53,25 @@ export default function Students() {
   const [teacherSearch, setTeacherSearch] = useState('')
   const [adminSearch, setAdminSearch] = useState('')
   const [adminFilterClassId, setAdminFilterClassId] = useState('')
+  const [adminSelectedGroupId, setAdminSelectedGroupId] = useState('')
   const [allClasses, setAllClasses] = useState([])
+  const [classGroups, setClassGroups] = useState([])
   const [instituteId, setInstituteId] = useState(null)
+
+  const displayClasses = useMemo(
+    () => filterClassesByGroup(allClasses, adminSelectedGroupId, classGroups),
+    [allClasses, adminSelectedGroupId, classGroups]
+  )
+
+  const selectedGroup = useMemo(
+    () => classGroups.find((g) => g.id === adminSelectedGroupId) ?? null,
+    [classGroups, adminSelectedGroupId]
+  )
+
+  const groupClassIds = useMemo(
+    () => new Set(displayClasses.map((c) => c.id)),
+    [displayClasses]
+  )
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -54,15 +90,29 @@ export default function Students() {
 
   useEffect(() => {
     if (userRole !== 'admin' || !instituteId) return
-    supabase
-      .from('classes')
-      .select('id, name')
-      .eq('institute_id', instituteId)
-      .order('name')
-      .then(({ data }) => {
-        if (data) setAllClasses(data)
-      })
+    Promise.all([
+      supabase
+        .from('classes')
+        .select('id, name')
+        .eq('institute_id', instituteId)
+        .order('name'),
+      supabase
+        .from('class_groups')
+        .select('id, name, class_group_members(class_id, classes(id, name))')
+        .eq('institute_id', instituteId)
+        .order('name'),
+    ]).then(([classesRes, groupsRes]) => {
+      if (classesRes.data) setAllClasses(classesRes.data)
+      if (groupsRes.data) setClassGroups(groupsRes.data)
+    })
   }, [userRole, instituteId])
+
+  useEffect(() => {
+    if (!isAdmin || !adminSelectedGroupId) return
+    if (adminFilterClassId && !groupClassIds.has(adminFilterClassId)) {
+      setAdminFilterClassId('')
+    }
+  }, [isAdmin, adminSelectedGroupId, adminFilterClassId, groupClassIds])
 
   async function fetchStudents() {
     setError(null)
@@ -273,12 +323,17 @@ export default function Students() {
           !adminSearch ||
           String(s.roll_number).includes(adminSearch) ||
           s.name?.toLowerCase().includes(adminSearch.toLowerCase())
+        if (adminSelectedGroupId && (!s.class_id || !groupClassIds.has(s.class_id))) {
+          return false
+        }
         const matchClass = !adminFilterClassId || s.class_id === adminFilterClassId
         return matchSearch && matchClass
       })
     : displayedStudents
 
   const listStudents = isAdmin ? adminDisplayedStudents : displayedStudents
+
+  const showGroupSummary = isAdmin && adminSelectedGroupId && !adminFilterClassId && selectedGroup
 
   return (
     <>
@@ -376,6 +431,25 @@ export default function Students() {
 
       {isAdmin && (
         <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm mb-4">
+          {classGroups.length > 0 && (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">Group</label>
+              <select
+                value={adminSelectedGroupId}
+                onChange={(e) => {
+                  setAdminSelectedGroupId(e.target.value)
+                  setAdminFilterClassId('')
+                }}
+                className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+              >
+                <option value="">All Groups</option>
+                {classGroups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <input
             type="text"
             value={adminSearch}
@@ -384,7 +458,7 @@ export default function Students() {
             className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
           />
 
-          {allClasses.length > 0 && (
+          {displayClasses.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-3">
               <button
                 type="button"
@@ -397,7 +471,7 @@ export default function Students() {
               >
                 All Classes
               </button>
-              {allClasses.map((c) => (
+              {displayClasses.map((c) => (
                 <button
                   key={c.id}
                   type="button"
@@ -472,8 +546,16 @@ export default function Students() {
         )}
 
         <p className="text-sm text-gray-600 dark:text-[#A8A8A8] mb-4">
-          Total students:{' '}
-          <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{listStudents.length}</span>
+          {showGroupSummary ? (
+            <span className="font-medium text-gray-800 dark:text-[#FFFFFF]">
+              {selectedGroup.name} · {listStudents.length} Students · {displayClasses.length} Sections
+            </span>
+          ) : (
+            <>
+              Total students:{' '}
+              <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{listStudents.length}</span>
+            </>
+          )}
         </p>
 
         {loading ? (
