@@ -36,6 +36,15 @@ function formatPeriodLabel(start, end) {
   return `${formatDisplayTime(start)} – ${formatDisplayTime(end)}`
 }
 
+function PeriodTimeDisplay({ start, end }) {
+  return (
+    <>
+      <span className="block text-xs text-gray-500 dark:text-gray-400">{formatDisplayTime(start)}</span>
+      <span className="block text-xs text-gray-400 dark:text-gray-500">{formatDisplayTime(end)}</span>
+    </>
+  )
+}
+
 function normalizeSettings(row) {
   if (!row) return { ...DEFAULT_SCHEDULE_SETTINGS, breaks: [] }
   return {
@@ -576,12 +585,12 @@ export default function Schedule() {
                         row.isBreak ? 'bg-gray-50 dark:bg-[#262626]' : ''
                       }`}
                     >
-                      <td className={`sticky left-0 z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-xs font-medium text-gray-600 dark:text-[#A8A8A8] px-3 py-3 align-top break-words ${
+                      <td className={`sticky left-0 z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] px-3 py-3 align-top break-words ${
                         row.isBreak ? 'bg-gray-50 dark:bg-[#262626]' : 'bg-white dark:bg-[#1C1C1C]'
                       }`}>
-                        {row.isBreak
-                          ? `${formatDisplayTime(row.start)} – ${formatDisplayTime(row.end)}`
-                          : row.label}
+                        {row.start && row.end ? (
+                          <PeriodTimeDisplay start={row.start} end={row.end} />
+                        ) : null}
                       </td>
                       {row.isBreak ? (
                         <td
@@ -589,11 +598,6 @@ export default function Schedule() {
                           className="text-center text-sm text-gray-500 dark:text-[#A8A8A8] py-3 break-words"
                         >
                           {row.label}
-                          {row.start && row.end ? (
-                            <span className="block text-xs text-gray-400 dark:text-[#A8A8A8] mt-0.5">
-                              {formatDisplayTime(row.start)} – {formatDisplayTime(row.end)}
-                            </span>
-                          ) : null}
                         </td>
                       ) : (
                         DAYS.map((day) => {
@@ -690,6 +694,7 @@ export default function Schedule() {
                       type="number"
                       min={1}
                       value={settingsDraft.period_duration}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => setSettingsDraft((prev) => ({
                         ...prev,
                         period_duration: Number(e.target.value) || 60,
@@ -707,6 +712,7 @@ export default function Schedule() {
                       min={4}
                       max={12}
                       value={settingsDraft.periods_per_day}
+                      onFocus={(e) => e.target.select()}
                       onChange={(e) => {
                         const value = Math.min(12, Math.max(4, Number(e.target.value) || 8))
                         setSettingsDraft((prev) => ({
@@ -767,6 +773,7 @@ export default function Schedule() {
                               min={1}
                               max={settingsDraft.periods_per_day - 1}
                               value={breakAfterPeriod}
+                              onFocus={(e) => e.target.select()}
                               onChange={(e) => setBreakAfterPeriod(e.target.value)}
                               className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                             />
@@ -788,6 +795,7 @@ export default function Schedule() {
                             type="number"
                             min={1}
                             value={breakDuration}
+                            onFocus={(e) => e.target.select()}
                             onChange={(e) => setBreakDuration(e.target.value)}
                             className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                           />
