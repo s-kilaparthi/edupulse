@@ -1,22 +1,77 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-const PERIODS = [
-  { number: 1, start: '09:00', end: '10:00', label: '9-10 AM' },
-  { number: 2, start: '10:00', end: '11:00', label: '10-11 AM' },
-  { number: 3, start: '11:00', end: '12:00', label: '11-12 PM' },
-  { number: 4, start: '12:00', end: '13:00', label: '12-1 PM LUNCH' },
-  { number: 5, start: '13:00', end: '14:00', label: '1-2 PM' },
-  { number: 6, start: '14:00', end: '15:00', label: '2-3 PM' },
-  { number: 7, start: '15:00', end: '16:00', label: '3-4 PM' },
-  { number: 8, start: '16:00', end: '17:00', label: '4-5 PM' },
-]
 
-const LUNCH_PERIOD = 4
+const DEFAULT_SCHEDULE_SETTINGS = {
+  start_time: '09:00',
+  period_duration: 60,
+  periods_per_day: 8,
+  breaks: [],
+}
+
+function parseTime(timeStr) {
+  const [hours, minutes] = (timeStr ?? '09:00').split(':').map(Number)
+  return hours * 60 + (minutes || 0)
+}
+
+function formatTime(totalMinutes) {
+  const hours = Math.floor(totalMinutes / 60) % 24
+  const minutes = totalMinutes % 60
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+function formatDisplayTime(timeStr) {
+  const [h, m] = timeStr.split(':').map(Number)
+  const ampm = h >= 12 ? 'PM' : 'AM'
+  const hour12 = h % 12 || 12
+  if (m) return `${hour12}:${String(m).padStart(2, '0')} ${ampm}`
+  return `${hour12} ${ampm}`
+}
+
+function formatPeriodLabel(start, end) {
+  return `${formatDisplayTime(start)} – ${formatDisplayTime(end)}`
+}
+
+function normalizeSettings(row) {
+  if (!row) return { ...DEFAULT_SCHEDULE_SETTINGS, breaks: [] }
+  return {
+    start_time: (row.start_time ?? '09:00').slice(0, 5),
+    period_duration: row.period_duration ?? 60,
+    periods_per_day: row.periods_per_day ?? 8,
+    breaks: Array.isArray(row.breaks) ? [...row.breaks].sort((a, b) => a.after_period - b.after_period) : [],
+  }
+}
+
+function calculatePeriodTimes(settings) {
+  const { start_time, period_duration, periods_per_day, breaks } = settings
+  const times = []
+  let current = parseTime(start_time)
+
+  for (let period = 1; period <= periods_per_day; period++) {
+    const start = formatTime(current)
+    current += period_duration
+    const end = formatTime(current)
+    times.push({ period, start, end, label: formatPeriodLabel(start, end) })
+
+    const breakAfter = breaks.find((b) => b.after_period === period)
+    if (breakAfter) {
+      times.push({
+        period: null,
+        label: breakAfter.label,
+        start: end,
+        end: formatTime(current + breakAfter.duration),
+        isBreak: true,
+      })
+      current += breakAfter.duration
+    }
+  }
+
+  return times
+}
 
 export default function Schedule() {
   const { session } = useOutletContext()
@@ -29,6 +84,14 @@ export default function Schedule() {
   const [teachers, setTeachers] = useState([])
   const [selectedClassId, setSelectedClassId] = useState('')
   const [scheduleSlots, setScheduleSlots] = useState([])
+  const [scheduleSettings, setScheduleSettings] = useState(DEFAULT_SCHEDULE_SETTINGS)
+  const [settingsDraft, setSettingsDraft] = useState(DEFAULT_SCHEDULE_SETTINGS)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showAddBreakForm, setShowAddBreakForm] = useState(false)
+  const [breakAfterPeriod, setBreakAfterPeriod] = useState('')
+  const [breakLabel, setBreakLabel] = useState('')
+  const [breakDuration, setBreakDuration] = useState('')
+  const [savingSettings, setSavingSettings] = useState(false)
   const [editingSlot, setEditingSlot] = useState(null)
   const [editSubjectId, setEditSubjectId] = useState('')
   const [editTeacherId, setEditTeacherId] = useState('')
@@ -44,6 +107,11 @@ export default function Schedule() {
   const isStudent = userRole === 'student'
   const isParent = userRole === 'parent'
   const isStudentView = isStudent || isParent
+
+  const periodTimes = useMemo(
+    () => calculatePeriodTimes(scheduleSettings),
+    [scheduleSettings]
+  )
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -67,6 +135,22 @@ export default function Schedule() {
         }
       })
   }, [session])
+
+  useEffect(() => {
+    if (!instituteId) return
+
+    async function loadSettings() {
+      const { data } = await supabase
+        .from('schedule_settings')
+        .select('start_time, period_duration, periods_per_day, breaks')
+        .eq('institute_id', instituteId)
+        .maybeSingle()
+
+      setScheduleSettings(normalizeSettings(data))
+    }
+
+    loadSettings()
+  }, [instituteId])
 
   useEffect(() => {
     if (!session?.user?.id || !userRole || !instituteId) return
@@ -170,6 +254,110 @@ export default function Schedule() {
     )
   }
 
+  function getPeriodRow(periodNumber) {
+    return periodTimes.find((p) => p.period === periodNumber && !p.isBreak)
+  }
+
+  function openSettingsPanel() {
+    setSettingsDraft({
+      ...scheduleSettings,
+      breaks: [...scheduleSettings.breaks],
+    })
+    setShowAddBreakForm(false)
+    setBreakAfterPeriod('')
+    setBreakLabel('')
+    setBreakDuration('')
+    setShowSettings(true)
+  }
+
+  function closeSettingsPanel() {
+    setShowSettings(false)
+    setShowAddBreakForm(false)
+  }
+
+  function handleAddBreak() {
+    const afterPeriod = parseInt(breakAfterPeriod, 10)
+    const duration = parseInt(breakDuration, 10)
+    const label = breakLabel.trim()
+
+    if (!afterPeriod || !label || !duration) {
+      setError('Please fill in all break fields.')
+      return
+    }
+
+    if (afterPeriod < 1 || afterPeriod >= settingsDraft.periods_per_day) {
+      setError(`Break must be after period 1 to ${settingsDraft.periods_per_day - 1}.`)
+      return
+    }
+
+    setSettingsDraft((prev) => ({
+      ...prev,
+      breaks: [
+        ...prev.breaks.filter((b) => b.after_period !== afterPeriod),
+        { after_period: afterPeriod, label, duration },
+      ].sort((a, b) => a.after_period - b.after_period),
+    }))
+    setShowAddBreakForm(false)
+    setBreakAfterPeriod('')
+    setBreakLabel('')
+    setBreakDuration('')
+    setError(null)
+  }
+
+  function handleDeleteBreak(afterPeriod) {
+    setSettingsDraft((prev) => ({
+      ...prev,
+      breaks: prev.breaks.filter((b) => b.after_period !== afterPeriod),
+    }))
+  }
+
+  async function syncInstituteSlotTimes(settings) {
+    if (!instituteId) return
+
+    const times = calculatePeriodTimes(settings)
+    for (const row of times.filter((t) => !t.isBreak && t.period)) {
+      const { error: updateError } = await supabase
+        .from('schedule_slots')
+        .update({ start_time: row.start, end_time: row.end })
+        .eq('institute_id', instituteId)
+        .eq('period_number', row.period)
+
+      if (updateError) throw new Error(updateError.message)
+    }
+  }
+
+  async function handleSaveSettings() {
+    if (!instituteId) return
+
+    setSavingSettings(true)
+    setError(null)
+
+    try {
+      const payload = {
+        institute_id: instituteId,
+        start_time: settingsDraft.start_time,
+        period_duration: Number(settingsDraft.period_duration),
+        periods_per_day: Number(settingsDraft.periods_per_day),
+        breaks: [...settingsDraft.breaks].sort((a, b) => a.after_period - b.after_period),
+      }
+
+      const { error: upsertError } = await supabase
+        .from('schedule_settings')
+        .upsert(payload, { onConflict: 'institute_id' })
+
+      if (upsertError) throw new Error(upsertError.message)
+
+      setScheduleSettings(normalizeSettings(payload))
+      await syncInstituteSlotTimes(payload)
+      await fetchSlots()
+      closeSettingsPanel()
+    } catch (err) {
+      setError(err.message)
+    }
+
+    setSavingSettings(false)
+  }
+
   function openEdit(day, periodNumber, slot) {
     setEditingSlot({
       day,
@@ -200,7 +388,7 @@ export default function Schedule() {
     setError(null)
 
     try {
-      const period = PERIODS.find((p) => p.number === editingSlot.period)
+      const period = getPeriodRow(editingSlot.period)
 
       for (const day of editDays) {
         const existing = getSlot(day, editingSlot.period)
@@ -208,7 +396,12 @@ export default function Schedule() {
         if (existing) {
           const { error: updateError } = await supabase
             .from('schedule_slots')
-            .update({ subject_id: subjectId, teacher_id: teacherId })
+            .update({
+              subject_id: subjectId,
+              teacher_id: teacherId,
+              start_time: period?.start,
+              end_time: period?.end,
+            })
             .eq('id', existing.id)
           if (updateError) throw new Error(updateError.message)
         } else {
@@ -269,9 +462,22 @@ export default function Schedule() {
       )
     : []
 
+  const editingPeriodRow = editingSlot ? getPeriodRow(editingSlot.period) : null
+
   return (
     <div className="overflow-hidden w-full">
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mb-6">Schedule</h1>
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">Schedule</h1>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={openSettingsPanel}
+            className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] rounded-lg px-3 py-1.5 hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors shrink-0"
+          >
+            ⚙️ Settings
+          </button>
+        )}
+      </div>
 
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-6">
@@ -363,28 +569,35 @@ export default function Schedule() {
                   </tr>
                 </thead>
                 <tbody>
-                  {PERIODS.map((period) => (
+                  {periodTimes.map((row, index) => (
                     <tr
-                      key={period.number}
+                      key={row.isBreak ? `break-${index}` : `period-${row.period}`}
                       className={`border-b border-gray-200 dark:border-gray-700 ${
-                        period.number === LUNCH_PERIOD ? 'bg-gray-50 dark:bg-[#262626]' : ''
+                        row.isBreak ? 'bg-gray-50 dark:bg-[#262626]' : ''
                       }`}
                     >
                       <td className={`sticky left-0 z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-xs font-medium text-gray-600 dark:text-[#A8A8A8] px-3 py-3 align-top break-words ${
-                        period.number === LUNCH_PERIOD ? 'bg-gray-50 dark:bg-[#262626]' : 'bg-white dark:bg-[#1C1C1C]'
+                        row.isBreak ? 'bg-gray-50 dark:bg-[#262626]' : 'bg-white dark:bg-[#1C1C1C]'
                       }`}>
-                        {period.label}
+                        {row.isBreak
+                          ? `${formatDisplayTime(row.start)} – ${formatDisplayTime(row.end)}`
+                          : row.label}
                       </td>
-                      {period.number === LUNCH_PERIOD ? (
+                      {row.isBreak ? (
                         <td
                           colSpan={DAYS.length}
-                          className="text-center text-sm text-gray-400 dark:text-[#A8A8A8] py-3 break-words"
+                          className="text-center text-sm text-gray-500 dark:text-[#A8A8A8] py-3 break-words"
                         >
-                          🍽️ Lunch Break
+                          {row.label}
+                          {row.start && row.end ? (
+                            <span className="block text-xs text-gray-400 dark:text-[#A8A8A8] mt-0.5">
+                              {formatDisplayTime(row.start)} – {formatDisplayTime(row.end)}
+                            </span>
+                          ) : null}
                         </td>
                       ) : (
                         DAYS.map((day) => {
-                          const slot = getSlot(day, period.number)
+                          const slot = getSlot(day, row.period)
                           const isMyPeriod = slot && slot.teacher_id === userId
                           const hideOtherTeacherSlot = isTeacher && showMyPeriodsOnly && slot && !isMyPeriod
 
@@ -403,7 +616,7 @@ export default function Schedule() {
                                   {isAdmin && (
                                     <button
                                       type="button"
-                                      onClick={() => openEdit(day, period.number, slot)}
+                                      onClick={() => openEdit(day, row.period, slot)}
                                       className="text-gray-400 dark:text-[#A8A8A8] hover:text-red-500 text-xs mt-1 break-words"
                                     >
                                       Edit
@@ -413,7 +626,7 @@ export default function Schedule() {
                               ) : isAdmin ? (
                                 <button
                                   type="button"
-                                  onClick={() => openEdit(day, period.number, null)}
+                                  onClick={() => openEdit(day, row.period, null)}
                                   className="w-full min-h-12 text-gray-300 hover:bg-gray-50 dark:hover:bg-[#262626] hover:text-gray-500 dark:text-[#A8A8A8] text-xs rounded-lg border border-dashed border-gray-200 dark:border-gray-600 transition-colors break-words"
                                 >
                                   + Add
@@ -437,6 +650,172 @@ export default function Schedule() {
             </>
           )}
 
+          {showSettings && (
+            <div
+              className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) closeSettingsPanel()
+              }}
+            >
+              <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-xl p-6 w-full max-w-lg mx-4 md:mx-0 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-semibold text-gray-900 dark:text-[#FFFFFF]">Schedule Settings</h3>
+                  <button
+                    type="button"
+                    onClick={closeSettingsPanel}
+                    className="text-gray-400 dark:text-[#A8A8A8] hover:text-gray-600 dark:text-[#A8A8A8] text-lg"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">
+                      Start Time
+                    </label>
+                    <input
+                      type="time"
+                      value={settingsDraft.start_time}
+                      onChange={(e) => setSettingsDraft((prev) => ({ ...prev, start_time: e.target.value }))}
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">
+                      Period Duration (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      value={settingsDraft.period_duration}
+                      onChange={(e) => setSettingsDraft((prev) => ({
+                        ...prev,
+                        period_duration: Number(e.target.value) || 60,
+                      }))}
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">
+                      Periods per Day
+                    </label>
+                    <input
+                      type="number"
+                      min={4}
+                      max={12}
+                      value={settingsDraft.periods_per_day}
+                      onChange={(e) => {
+                        const value = Math.min(12, Math.max(4, Number(e.target.value) || 8))
+                        setSettingsDraft((prev) => ({
+                          ...prev,
+                          periods_per_day: value,
+                          breaks: prev.breaks.filter((b) => b.after_period < value),
+                        }))
+                      }}
+                      className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8]">
+                        Breaks
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setShowAddBreakForm((prev) => !prev)}
+                        className="text-xs font-medium text-blue-600 hover:text-blue-700"
+                      >
+                        {showAddBreakForm ? 'Cancel' : 'Add Break'}
+                      </button>
+                    </div>
+
+                    {settingsDraft.breaks.length === 0 ? (
+                      <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No breaks configured.</p>
+                    ) : (
+                      <ul className="space-y-2 mb-3">
+                        {settingsDraft.breaks.map((brk) => (
+                          <li
+                            key={brk.after_period}
+                            className="flex items-center justify-between gap-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] px-3 py-2 text-sm text-gray-700 dark:text-[#A8A8A8]"
+                          >
+                            <span>
+                              After Period {brk.after_period} · {brk.label} · {brk.duration} mins
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteBreak(brk.after_period)}
+                              className="text-xs text-red-500 hover:text-red-700 font-medium shrink-0"
+                            >
+                              Delete
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+
+                    {showAddBreakForm && (
+                      <div className="rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] p-3 space-y-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div>
+                            <label className="block text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">After Period</label>
+                            <input
+                              type="number"
+                              min={1}
+                              max={settingsDraft.periods_per_day - 1}
+                              value={breakAfterPeriod}
+                              onChange={(e) => setBreakAfterPeriod(e.target.value)}
+                              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">Label</label>
+                            <input
+                              type="text"
+                              value={breakLabel}
+                              onChange={(e) => setBreakLabel(e.target.value)}
+                              placeholder="e.g. Lunch Break, Short Break"
+                              className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">Duration (minutes)</label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={breakDuration}
+                            onChange={(e) => setBreakDuration(e.target.value)}
+                            className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleAddBreak}
+                          className="text-sm font-medium bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleSaveSettings}
+                    disabled={savingSettings}
+                    className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium disabled:opacity-40"
+                  >
+                    {savingSettings ? 'Saving…' : 'Save Settings'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {editingSlot && (
             <div
               className="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center p-4"
@@ -448,7 +827,7 @@ export default function Schedule() {
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900 dark:text-[#FFFFFF]">
                     {DAY_LABELS[DAYS.indexOf(editingSlot.day)]} ·{' '}
-                    {PERIODS.find((p) => p.number === editingSlot.period)?.label}
+                    {editingPeriodRow?.label ?? `Period ${editingSlot.period}`}
                   </h3>
                   <button
                     type="button"
