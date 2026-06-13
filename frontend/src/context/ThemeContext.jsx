@@ -30,10 +30,10 @@ export function ThemeProvider({ session, children }) {
       .from('users')
       .select('theme')
       .eq('id', session.user.id)
-      .single()
-      .then(({ data }) => {
+      .maybeSingle()
+      .then(({ data, error }) => {
         if (cancelled) return
-        const nextTheme = data?.theme === 'dark' ? 'dark' : 'light'
+        const nextTheme = !error && data?.theme === 'dark' ? 'dark' : 'light'
         setTheme(nextTheme)
         applyThemeToDocument(nextTheme)
         setThemeLoaded(true)

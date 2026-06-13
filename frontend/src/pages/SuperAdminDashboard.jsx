@@ -37,6 +37,10 @@ export default function SuperAdminDashboard() {
     setTimeout(() => setToast(null), 3000)
   }, [])
 
+  useEffect(() => {
+    document.documentElement.classList.remove('dark')
+  }, [])
+
   const loadStats = useCallback(async () => {
     setLoadingStats(true)
     try {
