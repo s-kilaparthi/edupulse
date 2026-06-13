@@ -67,6 +67,197 @@ def _role_counts_by_institute(supabase_admin):
             counts[institute_id]['total_students'] += 1
     return counts
 
+
+def _truncate_announcement_body(body, max_len=100):
+    if not body:
+        return ''
+    if len(body) <= max_len:
+        return body
+    return body[:max_len] + '...'
+
+
+def _get_class_ids_for_groups(supabase_admin, group_ids):
+    if not group_ids:
+        return []
+    result = (
+        supabase_admin
+        .from_('class_group_members')
+        .select('class_id')
+        .in_('group_id', group_ids)
+        .execute()
+    )
+    return list({row['class_id'] for row in (result.data or []) if row.get('class_id')})
+
+
+def _resolve_announcement_target_users(supabase_admin, institute_id, target_type, target_ids):
+    ids = target_ids or []
+    user_ids = set()
+    student_users = []
+
+    def add_student(user):
+        if not user or not user.get('id'):
+            return
+        user_ids.add(user['id'])
+        student_users.append(user)
+
+    def add_user_id(uid):
+        if uid:
+            user_ids.add(uid)
+
+    if target_type == 'everyone':
+        result = (
+            supabase_admin
+            .from_('users')
+            .select('id, role, roll_number')
+            .eq('institute_id', institute_id)
+            .in_('role', ['admin', 'teacher', 'student'])
+            .execute()
+        )
+        for user in result.data or []:
+            user_ids.add(user['id'])
+            if user.get('role') == 'student':
+                student_users.append(user)
+    elif target_type == 'all_students':
+        result = (
+            supabase_admin
+            .from_('users')
+            .select('id, roll_number')
+            .eq('institute_id', institute_id)
+            .eq('role', 'student')
+            .execute()
+        )
+        for user in result.data or []:
+            add_student(user)
+    elif target_type == 'all_teachers':
+        result = (
+            supabase_admin
+            .from_('users')
+            .select('id')
+            .eq('institute_id', institute_id)
+            .eq('role', 'teacher')
+            .execute()
+        )
+        for user in result.data or []:
+            add_user_id(user['id'])
+    elif target_type == 'class_students':
+        if ids:
+            result = (
+                supabase_admin
+                .from_('users')
+                .select('id, roll_number')
+                .eq('institute_id', institute_id)
+                .eq('role', 'student')
+                .in_('class_id', ids)
+                .execute()
+            )
+            for user in result.data or []:
+                add_student(user)
+    elif target_type == 'class_teachers':
+        if ids:
+            result = (
+                supabase_admin
+                .from_('class_teachers')
+                .select('teacher_id')
+                .in_('class_id', ids)
+                .execute()
+            )
+            for row in result.data or []:
+                add_user_id(row.get('teacher_id'))
+    elif target_type == 'specific_student':
+        if ids:
+            result = (
+                supabase_admin
+                .from_('users')
+                .select('id, roll_number')
+                .in_('id', ids)
+                .eq('role', 'student')
+                .execute()
+            )
+            for user in result.data or []:
+                add_student(user)
+    elif target_type == 'specific_teacher':
+        for uid in ids:
+            add_user_id(uid)
+    elif target_type == 'group_students':
+        class_ids = _get_class_ids_for_groups(supabase_admin, ids)
+        if class_ids:
+            result = (
+                supabase_admin
+                .from_('users')
+                .select('id, roll_number')
+                .eq('institute_id', institute_id)
+                .eq('role', 'student')
+                .in_('class_id', class_ids)
+                .execute()
+            )
+            for user in result.data or []:
+                add_student(user)
+    elif target_type == 'group_teachers':
+        class_ids = _get_class_ids_for_groups(supabase_admin, ids)
+        if class_ids:
+            result = (
+                supabase_admin
+                .from_('class_teachers')
+                .select('teacher_id')
+                .in_('class_id', class_ids)
+                .execute()
+            )
+            for row in result.data or []:
+                add_user_id(row.get('teacher_id'))
+    elif target_type == 'entire_group':
+        class_ids = _get_class_ids_for_groups(supabase_admin, ids)
+        if class_ids:
+            students_result = (
+                supabase_admin
+                .from_('users')
+                .select('id, roll_number')
+                .eq('institute_id', institute_id)
+                .eq('role', 'student')
+                .in_('class_id', class_ids)
+                .execute()
+            )
+            teachers_result = (
+                supabase_admin
+                .from_('class_teachers')
+                .select('teacher_id')
+                .in_('class_id', class_ids)
+                .execute()
+            )
+            for user in students_result.data or []:
+                add_student(user)
+            for row in teachers_result.data or []:
+                add_user_id(row.get('teacher_id'))
+
+    return list(user_ids), student_users
+
+
+async def verify_institute_admin_or_teacher(request: Request, institute_id: str) -> str:
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    token = auth_header.split(' ')[1]
+    supabase_admin = _supabase_admin()
+    user = supabase_admin.auth.get_user(token)
+    if not user or not user.user:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    user_id = user.user.id
+    result = (
+        supabase_admin
+        .from_('users')
+        .select('role, institute_id')
+        .eq('id', user_id)
+        .execute()
+    )
+    if not result.data:
+        raise HTTPException(status_code=403, detail="User profile not found")
+    profile = result.data[0]
+    if profile.get('institute_id') != institute_id:
+        raise HTTPException(status_code=403, detail="Not authorized for this institute")
+    if profile.get('role') not in ('admin', 'teacher'):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    return user_id
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -757,6 +948,77 @@ async def superadmin_stats(request: Request):
     except Exception as e:
         import traceback
         print("Superadmin stats error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/send-announcement-notifications")
+async def send_announcement_notifications(request: Request):
+    try:
+        body = await request.json()
+        institute_id = body.get('institute_id')
+        title = body.get('title')
+        announcement_body = body.get('body')
+        target_type = body.get('target_type')
+        target_ids = body.get('target_ids') or []
+
+        if not all([institute_id, title, announcement_body, target_type]):
+            raise HTTPException(status_code=400, detail="Missing required fields")
+
+        await verify_institute_admin_or_teacher(request, institute_id)
+        supabase_admin = _supabase_admin()
+
+        user_ids, student_users = _resolve_announcement_target_users(
+            supabase_admin,
+            institute_id,
+            target_type,
+            target_ids,
+        )
+
+        if not user_ids and not student_users:
+            return {'success': True, 'count': 0}
+
+        notif_base = {
+            'title': f'New Announcement — {title}',
+            'body': _truncate_announcement_body(announcement_body),
+            'type': 'announcement',
+            'is_read': False,
+        }
+
+        notif_rows = [{'user_id': uid, **notif_base} for uid in user_ids]
+
+        if student_users:
+            parents_result = (
+                supabase_admin
+                .from_('users')
+                .select('id, roll_number')
+                .eq('role', 'parent')
+                .eq('institute_id', institute_id)
+                .execute()
+            )
+            parent_by_roll = {}
+            for parent in parents_result.data or []:
+                roll_number = parent.get('roll_number')
+                if roll_number is not None and roll_number != '':
+                    parent_by_roll[str(roll_number)] = parent['id']
+
+            for student in student_users:
+                roll_number = student.get('roll_number')
+                if roll_number is None or roll_number == '':
+                    continue
+                parent_id = parent_by_roll.get(str(roll_number))
+                if parent_id:
+                    notif_rows.append({'user_id': parent_id, **notif_base})
+
+        if not notif_rows:
+            return {'success': True, 'count': 0}
+
+        supabase_admin.from_('notifications').insert(notif_rows).execute()
+        return {'success': True, 'count': len(notif_rows)}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Send announcement notifications error:", traceback.format_exc())
         raise HTTPException(status_code=500, detail=str(e))
 
 

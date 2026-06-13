@@ -5,206 +5,23 @@ import { fetchLinkedStudent } from '../utils/linkedStudent'
 
 const GROUP_TARGET_TYPES = ['group_students', 'group_teachers', 'entire_group']
 
-function truncateAnnouncementBody(body, maxLen = 100) {
-  if (!body) return ''
-  if (body.length <= maxLen) return body
-  return `${body.slice(0, maxLen)}...`
-}
-
-async function getClassIdsForGroups(groupIds) {
-  if (!groupIds?.length) return []
-  const { data } = await supabase
-    .from('class_group_members')
-    .select('class_id')
-    .in('group_id', groupIds)
-  return [...new Set((data ?? []).map((row) => row.class_id))]
-}
-
-async function resolveAnnouncementTargetUsers(instituteId, targetType, targetIds) {
-  const ids = targetIds ?? []
-  const userIds = new Set()
-  const studentUsers = []
-
-  const addStudent = (user) => {
-    if (!user?.id) return
-    userIds.add(user.id)
-    studentUsers.push(user)
-  }
-
-  const addUserId = (id) => {
-    if (id) userIds.add(id)
-  }
-
-  switch (targetType) {
-    case 'everyone': {
-      const { data } = await supabase
-        .from('users')
-        .select('id, role, roll_number')
-        .eq('institute_id', instituteId)
-        .in('role', ['admin', 'teacher', 'student'])
-      for (const user of data ?? []) {
-        userIds.add(user.id)
-        if (user.role === 'student') studentUsers.push(user)
-      }
-      break
-    }
-    case 'all_students': {
-      const { data } = await supabase
-        .from('users')
-        .select('id, roll_number')
-        .eq('institute_id', instituteId)
-        .eq('role', 'student')
-      for (const user of data ?? []) addStudent(user)
-      break
-    }
-    case 'all_teachers': {
-      const { data } = await supabase
-        .from('users')
-        .select('id')
-        .eq('institute_id', instituteId)
-        .eq('role', 'teacher')
-      for (const user of data ?? []) addUserId(user.id)
-      break
-    }
-    case 'class_students': {
-      if (!ids.length) break
-      const { data } = await supabase
-        .from('users')
-        .select('id, roll_number')
-        .eq('institute_id', instituteId)
-        .eq('role', 'student')
-        .in('class_id', ids)
-      for (const user of data ?? []) addStudent(user)
-      break
-    }
-    case 'class_teachers': {
-      if (!ids.length) break
-      const { data } = await supabase
-        .from('class_teachers')
-        .select('teacher_id')
-        .in('class_id', ids)
-      for (const row of data ?? []) addUserId(row.teacher_id)
-      break
-    }
-    case 'specific_student': {
-      if (!ids.length) break
-      const { data } = await supabase
-        .from('users')
-        .select('id, roll_number')
-        .in('id', ids)
-        .eq('role', 'student')
-      for (const user of data ?? []) addStudent(user)
-      break
-    }
-    case 'specific_teacher': {
-      for (const id of ids) addUserId(id)
-      break
-    }
-    case 'group_students': {
-      const classIds = await getClassIdsForGroups(ids)
-      if (!classIds.length) break
-      const { data } = await supabase
-        .from('users')
-        .select('id, roll_number')
-        .eq('institute_id', instituteId)
-        .eq('role', 'student')
-        .in('class_id', classIds)
-      for (const user of data ?? []) addStudent(user)
-      break
-    }
-    case 'group_teachers': {
-      const classIds = await getClassIdsForGroups(ids)
-      if (!classIds.length) break
-      const { data } = await supabase
-        .from('class_teachers')
-        .select('teacher_id')
-        .in('class_id', classIds)
-      for (const row of data ?? []) addUserId(row.teacher_id)
-      break
-    }
-    case 'entire_group': {
-      const classIds = await getClassIdsForGroups(ids)
-      if (!classIds.length) break
-      const [studentsRes, teachersRes] = await Promise.all([
-        supabase
-          .from('users')
-          .select('id, roll_number')
-          .eq('institute_id', instituteId)
-          .eq('role', 'student')
-          .in('class_id', classIds),
-        supabase
-          .from('class_teachers')
-          .select('teacher_id')
-          .in('class_id', classIds),
-      ])
-      for (const user of studentsRes.data ?? []) addStudent(user)
-      for (const row of teachersRes.data ?? []) addUserId(row.teacher_id)
-      break
-    }
-    default:
-      break
-  }
-
-  return { userIds: [...userIds], studentUsers }
-}
-
-async function sendAnnouncementNotifications({
-  instituteId,
-  title,
-  body,
-  targetType,
-  targetIds,
-}) {
-  const { userIds, studentUsers } = await resolveAnnouncementTargetUsers(
-    instituteId,
-    targetType,
-    targetIds
-  )
-
-  if (userIds.length === 0 && studentUsers.length === 0) return
-
-  const notifBase = {
-    title: `New Announcement — ${title}`,
-    body: truncateAnnouncementBody(body),
-    type: 'announcement',
-    is_read: false,
-  }
-
-  const notifRows = userIds.map((userId) => ({
-    user_id: userId,
-    ...notifBase,
-  }))
-
-  if (studentUsers.length > 0) {
-    const { data: parents } = await supabase
-      .from('users')
-      .select('id, roll_number')
-      .eq('role', 'parent')
-      .eq('institute_id', instituteId)
-
-    const parentByRoll = new Map()
-    for (const parent of parents ?? []) {
-      if (parent.roll_number != null && parent.roll_number !== '') {
-        parentByRoll.set(String(parent.roll_number), parent.id)
-      }
-    }
-
-    for (const student of studentUsers) {
-      if (student.roll_number == null || student.roll_number === '') continue
-      const parentId = parentByRoll.get(String(student.roll_number))
-      if (parentId) {
-        notifRows.push({
-          user_id: parentId,
-          ...notifBase,
-        })
-      }
-    }
-  }
-
-  if (notifRows.length === 0) return
-
-  const { error: notifError } = await supabase.from('notifications').insert(notifRows)
-  if (notifError) console.error('Announcement notification error:', notifError)
+async function sendAnnouncementNotifications({ instituteId, title, body, targetType, targetIds }) {
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return
+  await fetch(`${import.meta.env.VITE_API_URL}/send-announcement-notifications`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
+    },
+    body: JSON.stringify({
+      institute_id: instituteId,
+      title,
+      body,
+      target_type: targetType,
+      target_ids: targetIds,
+    }),
+  })
 }
 
 function getTargetLabel(announcement) {
