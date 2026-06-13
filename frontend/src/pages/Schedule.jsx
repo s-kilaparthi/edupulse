@@ -712,17 +712,48 @@ export default function Schedule() {
             .eq('id', existing.id)
           if (updateError) throw new Error(updateError.message)
         } else {
-          const { error: insertError } = await supabase.from('schedule_slots').insert({
-            class_id: selectedClassId,
-            day_of_week: day,
-            period_number: editingSlot.period,
-            start_time: period?.start,
-            end_time: period?.end,
-            subject_id: subjectId,
-            teacher_id: teacherId,
-            institute_id: instituteId,
-          })
-          if (insertError) throw new Error(insertError.message)
+          const { data: existingRow, error: lookupError } = await supabase
+            .from('schedule_slots')
+            .select('id')
+            .eq('class_id', selectedClassId)
+            .eq('day_of_week', day)
+            .eq('period_number', editingSlot.period)
+            .maybeSingle()
+
+          if (lookupError) throw new Error(lookupError.message)
+
+          if (existingRow) {
+            const { error: updateError } = await supabase
+              .from('schedule_slots')
+              .update({
+                subject_id: subjectId,
+                teacher_id: teacherId,
+                start_time: period?.start,
+                end_time: period?.end,
+              })
+              .eq('id', existingRow.id)
+            if (updateError) throw new Error(updateError.message)
+          } else {
+            const { error: insertError } = await supabase.from('schedule_slots').insert({
+              class_id: selectedClassId,
+              day_of_week: day,
+              period_number: editingSlot.period,
+              start_time: period?.start,
+              end_time: period?.end,
+              subject_id: subjectId,
+              teacher_id: teacherId,
+              institute_id: instituteId,
+            })
+            if (insertError) {
+              if (insertError.code === '23505') {
+                const dayLabel = day.charAt(0).toUpperCase() + day.slice(1)
+                throw new Error(
+                  `A slot already exists for this class on ${dayLabel} Period ${editingSlot.period}. Please edit the existing slot instead.`
+                )
+              }
+              throw new Error(insertError.message)
+            }
+          }
         }
 
         if (isAdmin && teacherId) {
