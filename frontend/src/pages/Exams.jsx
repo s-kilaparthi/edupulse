@@ -69,7 +69,7 @@ export default function Exams() {
 
   // Create exam form
   const [examName, setExamName] = useState('')
-  const [examType, setExamType] = useState('mcq')
+  const [examType, setExamType] = useState('written')
   const [examDate, setExamDate] = useState('')
   const [totalQuestions, setTotalQuestions] = useState('')
   const [totalMarks, setTotalMarks] = useState('')
@@ -1248,8 +1248,8 @@ export default function Exams() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Format</label>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { value: 'mcq', label: 'MCQ' },
                     { value: 'written', label: 'Written' },
+                    { value: 'mcq', label: 'MCQ' },
                   ].map((opt) => (
                     <label
                       key={opt.value}
@@ -1512,8 +1512,8 @@ export default function Exams() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">Format</label>
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { value: 'mcq', label: 'MCQ' },
                     { value: 'written', label: 'Written' },
+                    { value: 'mcq', label: 'MCQ' },
                   ].map((opt) => (
                     <label
                       key={opt.value}

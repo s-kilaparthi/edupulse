@@ -1334,6 +1334,35 @@ export default function Dashboard() {
 
             <TodoListSection userId={session?.user?.id} />
 
+            {adminHasGroups && (
+              <>
+                <AdminSectionTitle title="Group Overview" barColor="bg-amber-500" />
+                {adminGroupOverview.length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {adminGroupOverview.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => navigate('/results', { state: { tab: 'reports', groupId: group.id } })}
+                        className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border-2 border-gray-200 dark:border-gray-700 text-left hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 transition-all"
+                      >
+                        <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{group.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-1">
+                          {group.sectionCount} Sections · {group.studentCount} Students
+                        </p>
+                        <p className="text-xs text-gray-600 dark:text-[#A8A8A8] mt-1">
+                          Attendance: {group.attendancePct}% this week
+                        </p>
+                        <p className={`text-sm font-bold mt-1 ${getScorePctColor(group.scorePct)}`}>
+                          Avg Score: {group.scorePct}%
+                        </p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
             <AdminSectionTitle title="Today's Exams" barColor="bg-orange-500" />
             {adminTodayExams.length === 0 ? (
               <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No exams scheduled today</p>
@@ -1456,35 +1485,6 @@ export default function Dashboard() {
                 onClick={() => navigate('/attendance')}
               />
             </div>
-
-            {adminHasGroups && (
-              <>
-                <AdminSectionTitle title="Group Overview" barColor="bg-amber-500" />
-                {adminGroupOverview.length > 0 && (
-                  <div className="grid grid-cols-2 gap-3">
-                    {adminGroupOverview.map((group) => (
-                      <button
-                        key={group.id}
-                        type="button"
-                        onClick={() => navigate('/results', { state: { tab: 'reports', groupId: group.id } })}
-                        className="rounded-xl shadow-sm bg-white dark:bg-[#1C1C1C] p-3 border-2 border-gray-200 dark:border-gray-700 text-left hover:shadow-md hover:border-blue-200 dark:hover:border-blue-800 transition-all"
-                      >
-                        <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{group.name}</p>
-                        <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mt-1">
-                          {group.sectionCount} Sections · {group.studentCount} Students
-                        </p>
-                        <p className="text-xs text-gray-600 dark:text-[#A8A8A8] mt-1">
-                          Attendance: {group.attendancePct}% this week
-                        </p>
-                        <p className={`text-sm font-bold mt-1 ${getScorePctColor(group.scorePct)}`}>
-                          Avg Score: {group.scorePct}%
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            )}
 
             <AdminSectionTitle
               title={adminHasGroups ? 'Best & Worst Group' : 'Best & Worst Class'}

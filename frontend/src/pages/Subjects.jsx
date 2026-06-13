@@ -3,6 +3,13 @@ import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
 
+const GROUP_CHECKBOX_CLASS = (checked) =>
+  `flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 cursor-pointer text-sm transition-colors ${
+    checked
+      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-medium'
+      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
+  }`
+
 export default function Subjects() {
   const { session } = useOutletContext()
   const [userRole, setUserRole] = useState('teacher')
@@ -26,10 +33,13 @@ export default function Subjects() {
   const pdfRef = useRef(null)
 
   const [selectedClassId, setSelectedClassId] = useState('')
+  const [selectedGroupId, setSelectedGroupId] = useState('')
+  const [groups, setGroups] = useState([])
+  const [loadingGroups, setLoadingGroups] = useState(false)
   const [availableClasses, setAvailableClasses] = useState([])
   const [teacherAssignments, setTeacherAssignments] = useState([])
   const [classesLoaded, setClassesLoaded] = useState(false)
-  const [selectedClassIdsForSubject, setSelectedClassIdsForSubject] = useState([])
+  const [selectedGroupIdsForSubject, setSelectedGroupIdsForSubject] = useState([])
   const [manageClassesSubjectId, setManageClassesSubjectId] = useState(null)
   const [manageClassIds, setManageClassIds] = useState([])
   const [savingClassAssignments, setSavingClassAssignments] = useState(false)
@@ -110,6 +120,27 @@ export default function Subjects() {
 
     loadClasses()
   }, [userRole, instituteId, session])
+
+  useEffect(() => {
+    if (userRole !== 'admin' || !instituteId) {
+      setGroups([])
+      return
+    }
+
+    async function loadGroups() {
+      setLoadingGroups(true)
+      const { data } = await supabase
+        .from('class_groups')
+        .select('id, name, class_group_members(class_id)')
+        .eq('institute_id', instituteId)
+        .order('name')
+
+      setGroups(data ?? [])
+      setLoadingGroups(false)
+    }
+
+    loadGroups()
+  }, [userRole, instituteId])
 
   async function fetchSubjectNotes(subjectIds, classId) {
     if (!subjectIds?.length) return
@@ -318,9 +349,27 @@ export default function Subjects() {
 
     let query = supabase
       .from('subjects')
-      .select('id, name, teacher_id, topics(id, name, class_id), users(name), subject_classes(class_id, classes(name))')
+      .select('id, name, teacher_id, topics(id, name, class_id), users(name), subject_classes(class_id, classes(name)), group_subjects(group_id)')
       .order('name')
       .eq('institute_id', instituteId)
+
+    if (selectedGroupId) {
+      const { data: groupSubjectRows } = await supabase
+        .from('group_subjects')
+        .select('subject_id')
+        .eq('group_id', selectedGroupId)
+
+      const groupSubjectIds = [...new Set((groupSubjectRows ?? []).map((row) => row.subject_id))]
+
+      if (groupSubjectIds.length === 0) {
+        setSubjects([])
+        setSubjectNotes({})
+        setLoading(false)
+        return
+      }
+
+      query = query.in('id', groupSubjectIds)
+    }
 
     const { data, error: fetchError } = await query
     if (fetchError) {
@@ -349,9 +398,10 @@ export default function Subjects() {
       return
     }
     if (userRole === 'admin' && !instituteId) return
+    if (userRole === 'admin' && loadingGroups) return
     setLoading(true)
     fetchSubjects()
-  }, [userRole, instituteId, studentClassId, teacherAssignments, classesLoaded, selectedClassId])
+  }, [userRole, instituteId, studentClassId, teacherAssignments, classesLoaded, selectedClassId, selectedGroupId, loadingGroups])
 
   useEffect(() => {
     if (showAddTopic) {
@@ -391,9 +441,9 @@ export default function Subjects() {
 
   const displayedSubjects = isTeacher
     ? subjects.filter((s) => classSubjectIds.includes(s.id))
-    : selectedClassId
+    : isAdmin && selectedGroupId
       ? subjects.filter((s) =>
-          s.subject_classes?.some((sc) => sc.class_id === selectedClassId)
+          s.group_subjects?.some((gs) => gs.group_id === selectedGroupId)
         )
       : subjects
 
@@ -401,6 +451,11 @@ export default function Subjects() {
     e.preventDefault()
     const name = subjectName.trim()
     if (!name) return
+
+    if (selectedGroupIdsForSubject.length === 0) {
+      setError('Select at least one group')
+      return
+    }
 
     setSaving(true)
     setError(null)
@@ -423,8 +478,21 @@ export default function Subjects() {
 
       if (insertError) throw new Error(insertError.message)
 
-      if (selectedClassIdsForSubject.length > 0) {
-        const subjectClassRows = selectedClassIdsForSubject.map((classId) => ({
+      const groupSubjectRows = selectedGroupIdsForSubject.map((groupId) => ({
+        group_id: groupId,
+        subject_id: newSubject.id,
+      }))
+      const { error: gsError } = await supabase.from('group_subjects').insert(groupSubjectRows)
+      if (gsError) throw new Error(gsError.message)
+
+      const { data: members } = await supabase
+        .from('class_group_members')
+        .select('class_id')
+        .in('group_id', selectedGroupIdsForSubject)
+
+      const classIds = [...new Set((members ?? []).map((m) => m.class_id).filter(Boolean))]
+      if (classIds.length > 0) {
+        const subjectClassRows = classIds.map((classId) => ({
           subject_id: newSubject.id,
           class_id: classId,
         }))
@@ -433,7 +501,7 @@ export default function Subjects() {
       }
 
       setSubjectName('')
-      setSelectedClassIdsForSubject([])
+      setSelectedGroupIdsForSubject([])
       setLoading(true)
       await fetchSubjects()
     } catch (err) {
@@ -636,7 +704,7 @@ export default function Subjects() {
     <>
       <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mb-6">Subjects</h1>
 
-      {selectedClassId && (
+      {selectedClassId && isTeacher && (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mb-4">
           {availableClasses.find((c) => c.id === selectedClassId)?.name}
         </p>
@@ -659,51 +727,70 @@ export default function Subjects() {
               />
               <button
                 type="submit"
-                disabled={saving}
+                disabled={saving || loadingGroups}
                 className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors shrink-0"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
 
-            {availableClasses.length > 0 && (
+            {groups.length > 0 ? (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
-                  Assign to Classes (optional)
+                  Assign to Group(s) <span className="text-red-500">*</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {availableClasses.map((c) => (
+                  {groups.map((g) => (
                     <label
-                      key={c.id}
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
-                        selectedClassIdsForSubject.includes(c.id)
-                          ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                          : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
-                      }`}
+                      key={g.id}
+                      className={GROUP_CHECKBOX_CLASS(selectedGroupIdsForSubject.includes(g.id))}
                     >
                       <input
                         type="checkbox"
-                        checked={selectedClassIdsForSubject.includes(c.id)}
+                        checked={selectedGroupIdsForSubject.includes(g.id)}
                         onChange={() =>
-                          setSelectedClassIdsForSubject((prev) =>
-                            prev.includes(c.id)
-                              ? prev.filter((id) => id !== c.id)
-                              : [...prev, c.id]
+                          setSelectedGroupIdsForSubject((prev) =>
+                            prev.includes(g.id)
+                              ? prev.filter((id) => id !== g.id)
+                              : [...prev, g.id]
                           )
                         }
                         className="hidden"
                       />
-                      {c.name}
+                      {g.name}
                     </label>
                   ))}
                 </div>
               </div>
+            ) : (
+              <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">
+                No groups available. Create a group in Classes first.
+              </p>
             )}
           </div>
         </form>
       )}
 
-      {!isStudentView && availableClasses.length > 0 && (
+      {isAdmin && groups.length > 0 && (
+        <div className="mb-6">
+          <select
+            value={selectedGroupId}
+            onChange={(e) => {
+              setSelectedGroupId(e.target.value)
+              setShowAddTopic(null)
+              setManageClassesSubjectId(null)
+            }}
+            className="w-full sm:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+          >
+            <option value="">All Groups</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {isTeacher && availableClasses.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-6">
           {availableClasses.map((c) => (
             <button

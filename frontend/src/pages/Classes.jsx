@@ -56,6 +56,7 @@ export default function Classes() {
 
   const [classStudents, setClassStudents] = useState([])
   const [studentSearch, setStudentSearch] = useState('')
+  const [subjectSearch, setSubjectSearch] = useState('')
   const [searchResults, setSearchResults] = useState([])
   const [searchingStudents, setSearchingStudents] = useState(false)
   const [classTeachers, setClassTeachers] = useState([])
@@ -380,6 +381,7 @@ export default function Classes() {
     setSelectedStudentIds([])
     setSelectedStudents([])
     setStudentSearch('')
+    setSubjectSearch('')
     setSearchResults([])
     setAddTeacherId('')
     setAddSubjectId('')
@@ -883,40 +885,6 @@ export default function Classes() {
           </div>
         )}
 
-        {allSubjects.length > 0 && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
-              Assign Subjects
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {allSubjects.map((s) => (
-                <label
-                  key={s.id}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors ${
-                    selectedSubjectIdsForClass.includes(s.id)
-                      ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
-                      : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedSubjectIdsForClass.includes(s.id)}
-                    onChange={() =>
-                      setSelectedSubjectIdsForClass((prev) =>
-                        prev.includes(s.id)
-                          ? prev.filter((id) => id !== s.id)
-                          : [...prev, s.id]
-                      )
-                    }
-                    className="hidden"
-                  />
-                  {s.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
-
         <button
           type="submit"
           disabled={saving}
@@ -1342,13 +1310,28 @@ export default function Classes() {
                       const unassignedSubjects = allSubjects.filter(
                         (s) => !assignedSubjectIds.includes(s.id)
                       )
+                      const searchQuery = subjectSearch.trim().toLowerCase()
+                      const filteredAssignedSubjects = (cls.subject_classes ?? []).filter(
+                        (sc) => !searchQuery || (sc.subjects?.name ?? '').toLowerCase().includes(searchQuery)
+                      )
+                      const filteredUnassignedSubjects = unassignedSubjects.filter(
+                        (s) => !searchQuery || s.name.toLowerCase().includes(searchQuery)
+                      )
                       return (
                         <div className="flex flex-col gap-4">
+                          <input
+                            type="text"
+                            value={subjectSearch}
+                            onChange={(e) => setSubjectSearch(e.target.value)}
+                            placeholder="Search subjects..."
+                            className={`w-full ${INPUT_CLASS}`}
+                          />
+
                           {cls.subject_classes?.length === 0 ? (
                             <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No subjects assigned yet.</p>
                           ) : (
                             <ul className="divide-y divide-gray-200 dark:divide-gray-600 rounded-lg border border-gray-200 dark:border-gray-600">
-                              {cls.subject_classes.map((sc) => (
+                              {filteredAssignedSubjects.map((sc) => (
                                 <li
                                   key={sc.subject_id}
                                   className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#262626]"
@@ -1375,7 +1358,7 @@ export default function Classes() {
                               className={`flex-1 ${SELECT_CLASS}`}
                             >
                               <option value="">Add subject…</option>
-                              {unassignedSubjects.map((s) => (
+                              {filteredUnassignedSubjects.map((s) => (
                                 <option key={s.id} value={s.id}>{s.name}</option>
                               ))}
                             </select>

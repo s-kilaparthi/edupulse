@@ -270,7 +270,7 @@ export default function Schedule() {
     : []
 
   return (
-    <>
+    <div className="overflow-hidden w-full">
       <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF] mb-6">Schedule</h1>
 
       {error && (
@@ -344,18 +344,18 @@ export default function Schedule() {
               </div>
             )}
             <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm">
-              <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
-                <div className="min-w-[640px]">
+              <div className="overflow-x-auto w-full">
+                <div className="min-w-[600px]">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="sticky left-0 bg-white dark:bg-[#1C1C1C] z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] px-3 py-3">
+                    <th className="sticky left-0 bg-white dark:bg-[#1C1C1C] z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-left text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] px-3 py-3 break-words">
                       Period
                     </th>
                     {DAY_LABELS.map((label) => (
                       <th
                         key={label}
-                        className="text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] px-2 py-3"
+                        className="min-w-[100px] text-center text-xs font-semibold text-gray-500 dark:text-[#A8A8A8] px-2 py-3 break-words"
                       >
                         {label}
                       </th>
@@ -370,7 +370,7 @@ export default function Schedule() {
                         period.number === LUNCH_PERIOD ? 'bg-gray-50 dark:bg-[#262626]' : ''
                       }`}
                     >
-                      <td className={`sticky left-0 z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-xs font-medium text-gray-600 dark:text-[#A8A8A8] px-3 py-3 align-top whitespace-nowrap ${
+                      <td className={`sticky left-0 z-10 border-r border-gray-200 dark:border-gray-600 min-w-[80px] text-xs font-medium text-gray-600 dark:text-[#A8A8A8] px-3 py-3 align-top break-words ${
                         period.number === LUNCH_PERIOD ? 'bg-gray-50 dark:bg-[#262626]' : 'bg-white dark:bg-[#1C1C1C]'
                       }`}>
                         {period.label}
@@ -378,7 +378,7 @@ export default function Schedule() {
                       {period.number === LUNCH_PERIOD ? (
                         <td
                           colSpan={DAYS.length}
-                          className="text-center text-sm text-gray-400 dark:text-[#A8A8A8] py-3"
+                          className="text-center text-sm text-gray-400 dark:text-[#A8A8A8] py-3 break-words"
                         >
                           🍽️ Lunch Break
                         </td>
@@ -389,22 +389,22 @@ export default function Schedule() {
                           const hideOtherTeacherSlot = isTeacher && showMyPeriodsOnly && slot && !isMyPeriod
 
                           return (
-                            <td key={day} className="min-w-[90px] p-1.5 align-top">
+                            <td key={day} className="min-w-[100px] p-1.5 align-top break-words">
                               {hideOtherTeacherSlot || (isTeacher && showMyPeriodsOnly && !slot) ? (
-                                <span className="text-xs text-gray-300 block min-h-12 px-2 py-2">
+                                <span className="text-xs text-gray-300 block min-h-12 px-2 py-2 break-words">
                                   —
                                 </span>
                               ) : slot ? (
-                                <div className="p-1.5 bg-blue-50 rounded-lg text-xs min-h-12">
-                                  <p className="text-xs font-medium text-blue-800">
+                                <div className="p-1.5 bg-blue-50 rounded-lg text-xs min-h-12 break-words">
+                                  <p className="text-xs font-medium text-blue-800 break-words">
                                     {slot.subjects?.name}
                                   </p>
-                                  <p className="text-xs text-blue-600">{slot.users?.name}</p>
+                                  <p className="text-xs text-blue-600 break-words">{slot.users?.name}</p>
                                   {isAdmin && (
                                     <button
                                       type="button"
                                       onClick={() => openEdit(day, period.number, slot)}
-                                      className="text-gray-400 dark:text-[#A8A8A8] hover:text-red-500 text-xs mt-1"
+                                      className="text-gray-400 dark:text-[#A8A8A8] hover:text-red-500 text-xs mt-1 break-words"
                                     >
                                       Edit
                                     </button>
@@ -414,12 +414,12 @@ export default function Schedule() {
                                 <button
                                   type="button"
                                   onClick={() => openEdit(day, period.number, null)}
-                                  className="w-full min-h-12 text-gray-300 hover:bg-gray-50 dark:hover:bg-[#262626] hover:text-gray-500 dark:text-[#A8A8A8] text-xs rounded-lg border border-dashed border-gray-200 dark:border-gray-600 transition-colors"
+                                  className="w-full min-h-12 text-gray-300 hover:bg-gray-50 dark:hover:bg-[#262626] hover:text-gray-500 dark:text-[#A8A8A8] text-xs rounded-lg border border-dashed border-gray-200 dark:border-gray-600 transition-colors break-words"
                                 >
                                   + Add
                                 </button>
                               ) : (
-                                <span className="text-xs text-gray-300 block min-h-12 px-2 py-2">
+                                <span className="text-xs text-gray-300 block min-h-12 px-2 py-2 break-words">
                                   —
                                 </span>
                               )}
@@ -555,6 +555,6 @@ export default function Schedule() {
           )}
         </>
       )}
-    </>
+    </div>
   )
 }
