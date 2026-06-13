@@ -592,6 +592,40 @@ async def superadmin_get_institute(institute_id: str, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.put("/superadmin/institute/{institute_id}")
+async def superadmin_update_institute(institute_id: str, request: Request):
+    try:
+        await verify_superadmin(request)
+        supabase_admin = _supabase_admin()
+
+        body = await request.json()
+
+        institute_result = (
+            supabase_admin
+            .from_('institutes')
+            .select('id')
+            .eq('id', institute_id)
+            .limit(1)
+            .execute()
+        )
+        if not institute_result.data:
+            raise HTTPException(status_code=404, detail="Institute not found")
+
+        supabase_admin.from_('institutes').update({
+            'name': body.get('name'),
+            'brand_name': body.get('brand_name'),
+            'logo_url': body.get('logo_url'),
+        }).eq('id', institute_id).execute()
+
+        return {'success': True}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print("Superadmin update institute error:", traceback.format_exc())
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/superadmin/institute/{institute_id}/suspend")
 async def superadmin_suspend_institute(institute_id: str, request: Request):
     try:

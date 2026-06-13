@@ -190,16 +190,20 @@ export default function SuperAdminDashboard() {
   async function handleSaveEdit(institute) {
     setSavingEdit(true)
     try {
-      const { error } = await supabase
-        .from('institutes')
-        .update({
+      const { data: { session } } = await supabase.auth.getSession()
+      const response = await fetch(`${import.meta.env.VITE_API_URL}/superadmin/institute/${institute.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
           name: editForm.name.trim(),
           brand_name: editForm.brand_name.trim() || null,
           logo_url: editForm.logo_url || null,
-        })
-        .eq('id', institute.id)
-
-      if (error) throw error
+        }),
+      })
+      if (!response.ok) throw new Error('Update failed')
 
       setInstitutes((prev) =>
         prev.map((inst) =>
