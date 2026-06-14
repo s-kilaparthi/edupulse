@@ -34,8 +34,19 @@ function getDayName(dateStr) {
   return DAYS[new Date(dateStr + 'T00:00:00').getDay()]
 }
 
+function formatLocalDate(d) {
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function todayStr() {
-  return new Date().toISOString().split('T')[0]
+  const d = new Date()
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function isPastAttendanceReminderTime() {
@@ -51,11 +62,11 @@ function getGroupDateBounds(range) {
     const diff = day === 0 ? 6 : day - 1
     const monday = new Date(d)
     monday.setDate(d.getDate() - diff)
-    return { from: monday.toISOString().split('T')[0], to: today }
+    return { from: formatLocalDate(monday), to: today }
   }
   const d = new Date()
   const first = new Date(d.getFullYear(), d.getMonth(), 1)
-  return { from: first.toISOString().split('T')[0], to: today }
+  return { from: formatLocalDate(first), to: today }
 }
 
 function getAttendancePctColor(pct) {
@@ -297,7 +308,7 @@ export default function Attendance() {
   const [reportFromDate, setReportFromDate] = useState(() => {
     const d = new Date()
     d.setDate(d.getDate() - 30)
-    return d.toISOString().split('T')[0]
+    return formatLocalDate(d)
   })
   const [reportToDate, setReportToDate] = useState(todayStr())
   const [reportRows, setReportRows] = useState([])
