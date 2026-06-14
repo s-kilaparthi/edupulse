@@ -97,6 +97,14 @@ export default function Exams() {
   const [assignTeachersExamId, setAssignTeachersExamId] = useState(null)
   const [assigningTeacher, setAssigningTeacher] = useState(false)
   const [instituteTeachers, setInstituteTeachers] = useState([])
+  const [editingExamId, setEditingExamId] = useState(null)
+  const [editExamName, setEditExamName] = useState('')
+  const [editExamType, setEditExamType] = useState('written')
+  const [editExamTypeId, setEditExamTypeId] = useState('')
+  const [editExamDate, setEditExamDate] = useState('')
+  const [editTotalQuestions, setEditTotalQuestions] = useState('')
+  const [editTotalMarks, setEditTotalMarks] = useState('')
+  const [savingExamEdit, setSavingExamEdit] = useState(false)
 
   // Add questions panel
   const [activeExam, setActiveExam] = useState(null)
@@ -261,6 +269,79 @@ export default function Exams() {
     if (userRole === 'admin') return true
     if (exam.created_by === currentUserId) return true
     return false
+  }
+
+  function canEditExam(exam) {
+    if (!exam || !currentUserId) return false
+    if (userRole === 'admin') return true
+    if (exam.created_by === currentUserId) return true
+    return false
+  }
+
+  function openEditExam(exam) {
+    setEditingExamId(exam.id)
+    setEditExamName(exam.name ?? '')
+    setEditExamType(exam.exam_type ?? 'written')
+    setEditExamTypeId(exam.exam_type_id ?? '')
+    setEditExamDate(exam.exam_date?.slice(0, 10) ?? '')
+    setEditTotalQuestions(exam.total_questions != null ? String(exam.total_questions) : '')
+    setEditTotalMarks(exam.total_marks != null ? String(exam.total_marks) : '')
+    setActiveProfileExamId(null)
+    setExamProfile(null)
+    setError(null)
+  }
+
+  function closeEditExam() {
+    setEditingExamId(null)
+    setEditExamName('')
+    setEditExamType('written')
+    setEditExamTypeId('')
+    setEditExamDate('')
+    setEditTotalQuestions('')
+    setEditTotalMarks('')
+  }
+
+  async function handleSaveExamEdit(examId) {
+    const name = editExamName.trim()
+    const total = parseInt(editTotalQuestions, 10)
+
+    if (!name || !editExamDate || !total || total < 1 || !editExamTypeId) {
+      setError('Please fill in all exam fields.')
+      return
+    }
+    if (editExamType === 'written') {
+      const marks = parseInt(editTotalMarks, 10)
+      if (!marks || marks < 1) {
+        setError('Please enter total marks for written exams.')
+        return
+      }
+    }
+
+    setSavingExamEdit(true)
+    setError(null)
+
+    try {
+      const { error: updateError } = await supabase
+        .from('exams')
+        .update({
+          name,
+          exam_date: editExamDate,
+          total_questions: total,
+          total_marks: editExamType === 'written' ? parseInt(editTotalMarks, 10) : null,
+          exam_type: editExamType,
+          exam_type_id: editExamTypeId,
+        })
+        .eq('id', examId)
+
+      if (updateError) throw new Error(updateError.message)
+
+      closeEditExam()
+      await fetchExams()
+    } catch (err) {
+      setError(err.message)
+    }
+
+    setSavingExamEdit(false)
   }
 
   async function handleAddExamType() {
@@ -2029,6 +2110,15 @@ export default function Exams() {
                           )}
                         </>
                       )}
+                      {canEditExam(exam) && (
+                        <button
+                          type="button"
+                          onClick={() => openEditExam(exam)}
+                          className="text-xs text-blue-500 hover:text-blue-700 font-medium"
+                        >
+                          Edit
+                        </button>
+                      )}
                       {canDeleteExam(exam) && (
                         <button
                           type="button"
@@ -2054,6 +2144,131 @@ export default function Exams() {
                     </p>
                   </div>
                 </div>
+
+                {editingExamId === exam.id && (
+                  <div className="mt-1 bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">Edit Exam</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
+                          Exam name
+                        </label>
+                        <input
+                          type="text"
+                          value={editExamName}
+                          onChange={(e) => setEditExamName(e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
+                          Exam Type
+                        </label>
+                        <select
+                          value={editExamTypeId}
+                          onChange={(e) => setEditExamTypeId(e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                        >
+                          <option value="">Select exam type</option>
+                          {instituteExamTypes.map((t) => (
+                            <option key={t.id} value={t.id}>{t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
+                          Format
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            { value: 'written', label: 'Written' },
+                            { value: 'mcq', label: 'MCQ' },
+                          ].map((opt) => (
+                            <label
+                              key={opt.value}
+                              className={`flex flex-1 min-w-[120px] text-center justify-center items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer text-sm transition-colors ${
+                                editExamType === opt.value
+                                  ? 'border-blue-600 bg-blue-50 text-blue-700 font-medium'
+                                  : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8]'
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`editExamType-${exam.id}`}
+                                value={opt.value}
+                                checked={editExamType === opt.value}
+                                onChange={() => setEditExamType(opt.value)}
+                                className="hidden"
+                              />
+                              {opt.label}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+
+                      {editExamType === 'written' && (
+                        <div className="sm:col-span-2">
+                          <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
+                            Total Marks
+                          </label>
+                          <input
+                            type="number"
+                            min={1}
+                            value={editTotalMarks}
+                            onChange={(e) => setEditTotalMarks(e.target.value)}
+                            placeholder="Total marks (e.g. 100)"
+                            className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                          />
+                        </div>
+                      )}
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
+                          Exam date
+                        </label>
+                        <input
+                          type="date"
+                          value={editExamDate}
+                          onChange={(e) => setEditExamDate(e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-1">
+                          Total questions
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={editTotalQuestions}
+                          onChange={(e) => setEditTotalQuestions(e.target.value)}
+                          className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-2 flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSaveExamEdit(exam.id)}
+                          disabled={savingExamEdit}
+                          className="bg-blue-600 text-white font-medium px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-60 transition-colors"
+                        >
+                          {savingExamEdit ? 'Saving…' : 'Save'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={closeEditExam}
+                          className="text-gray-600 dark:text-[#A8A8A8] font-medium px-4 py-2 rounded-lg border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {activeProfileExamId === exam.id && (
                   <div className="mt-1 bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-5 shadow-sm">
