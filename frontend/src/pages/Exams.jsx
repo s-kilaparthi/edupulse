@@ -816,7 +816,7 @@ export default function Exams() {
 
       setExamName('')
       setSelectedExamTypeId('')
-      setExamType('mcq')
+      setExamType('written')
       setExamDate('')
       setTotalQuestions('')
       setTotalMarks('')
