@@ -104,6 +104,7 @@ export default function Exams() {
   const [editExamDate, setEditExamDate] = useState('')
   const [editTotalQuestions, setEditTotalQuestions] = useState('')
   const [editTotalMarks, setEditTotalMarks] = useState('')
+  const [editSubjectRanges, setEditSubjectRanges] = useState([])
   const [savingExamEdit, setSavingExamEdit] = useState(false)
 
   // Add questions panel
@@ -286,9 +287,44 @@ export default function Exams() {
     setEditExamDate(exam.exam_date?.slice(0, 10) ?? '')
     setEditTotalQuestions(exam.total_questions != null ? String(exam.total_questions) : '')
     setEditTotalMarks(exam.total_marks != null ? String(exam.total_marks) : '')
+    setEditSubjectRanges(
+      (exam.exam_subjects ?? []).map((row) => ({
+        subject_id: row.subject_id,
+        subject_name: row.subjects?.name ?? 'Subject',
+        question_from: row.question_from != null ? String(row.question_from) : '',
+        question_to: row.question_to != null ? String(row.question_to) : '',
+      }))
+    )
     setActiveProfileExamId(null)
     setExamProfile(null)
     setError(null)
+
+    supabase
+      .from('exam_subjects')
+      .select('subject_id, question_from, question_to, subjects(name)')
+      .eq('exam_id', exam.id)
+      .then(({ data, error: fetchError }) => {
+        if (fetchError) {
+          console.error('Failed to load exam subjects:', fetchError)
+          return
+        }
+        setEditSubjectRanges(
+          (data ?? []).map((row) => ({
+            subject_id: row.subject_id,
+            subject_name: row.subjects?.name ?? 'Subject',
+            question_from: row.question_from != null ? String(row.question_from) : '',
+            question_to: row.question_to != null ? String(row.question_to) : '',
+          }))
+        )
+      })
+  }
+
+  function updateEditSubjectRange(subjectId, field, value) {
+    setEditSubjectRanges((prev) =>
+      prev.map((row) =>
+        row.subject_id === subjectId ? { ...row, [field]: value } : row
+      )
+    )
   }
 
   function closeEditExam() {
@@ -299,6 +335,7 @@ export default function Exams() {
     setEditExamDate('')
     setEditTotalQuestions('')
     setEditTotalMarks('')
+    setEditSubjectRanges([])
   }
 
   async function handleSaveExamEdit(examId) {
@@ -314,6 +351,17 @@ export default function Exams() {
       if (!marks || marks < 1) {
         setError('Please enter total marks for written exams.')
         return
+      }
+    }
+
+    if (editSubjectRanges.length > 0) {
+      for (const row of editSubjectRanges) {
+        const from = parseInt(row.question_from, 10)
+        const to = parseInt(row.question_to, 10)
+        if (!from || !to || from < 1 || to < from || to > total) {
+          setError(`Invalid question range for ${row.subject_name}. Must be between 1 and ${total}, with start <= end.`)
+          return
+        }
       }
     }
 
@@ -334,6 +382,19 @@ export default function Exams() {
         .eq('id', examId)
 
       if (updateError) throw new Error(updateError.message)
+
+      for (const row of editSubjectRanges) {
+        const { error: subjectUpdateError } = await supabase
+          .from('exam_subjects')
+          .update({
+            question_from: parseInt(row.question_from, 10),
+            question_to: parseInt(row.question_to, 10),
+          })
+          .eq('exam_id', examId)
+          .eq('subject_id', row.subject_id)
+
+        if (subjectUpdateError) throw new Error(subjectUpdateError.message)
+      }
 
       closeEditExam()
       await fetchExams()
@@ -2247,6 +2308,54 @@ export default function Exams() {
                           onChange={(e) => setEditTotalQuestions(e.target.value)}
                           className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                         />
+                      </div>
+
+                      <div className="sm:col-span-2">
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
+                          Subject Question Ranges
+                        </h4>
+                        {editSubjectRanges.length === 0 ? (
+                          <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">
+                            No subjects assigned to this exam.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {editSubjectRanges.map((row) => (
+                              <div
+                                key={row.subject_id}
+                                className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] px-3 py-2"
+                              >
+                                <span className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF] min-w-[120px]">
+                                  {row.subject_name}
+                                </span>
+                                <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-[#A8A8A8]">
+                                  Q from
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={row.question_from}
+                                    onChange={(e) =>
+                                      updateEditSubjectRange(row.subject_id, 'question_from', e.target.value)
+                                    }
+                                    className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] dark:bg-[#1C1C1C]"
+                                  />
+                                </label>
+                                <label className="flex items-center gap-1 text-xs text-gray-600 dark:text-[#A8A8A8]">
+                                  Q to
+                                  <input
+                                    type="number"
+                                    min={1}
+                                    value={row.question_to}
+                                    onChange={(e) =>
+                                      updateEditSubjectRange(row.subject_id, 'question_to', e.target.value)
+                                    }
+                                    className="w-16 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-gray-900 dark:text-[#FFFFFF] dark:bg-[#1C1C1C]"
+                                  />
+                                </label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
 
                       <div className="sm:col-span-2 flex gap-2">

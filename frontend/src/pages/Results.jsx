@@ -5,8 +5,8 @@ import { supabase } from '../supabase'
 import { fetchTeacherClassesAndGroups } from '../utils/teacherGroups'
 
 function topicStatus(pct) {
-  if (pct >= 75) return 'strong'
-  if (pct >= 50) return 'average'
+  if (pct >= 80) return 'strong'
+  if (pct >= 60) return 'average'
   return 'weak'
 }
 
@@ -16,10 +16,16 @@ const statusBarClass = {
   weak: 'bg-red-500',
 }
 
+const statusLabel = {
+  strong: 'Strong',
+  average: 'Average',
+  weak: 'Needs Improvement',
+}
+
 const statusPillClass = {
-  strong: 'bg-green-100 text-green-700',
-  average: 'bg-yellow-100 text-yellow-700',
-  weak: 'bg-red-100 text-red-700',
+  strong: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300',
+  average: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300',
+  weak: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300',
 }
 
 function ExamTypeBadge({ examType }) {
@@ -132,7 +138,9 @@ function TopicPerformance({ subject }) {
                   <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{t.name}</p>
                   <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">{t.score} / {t.total} questions</p>
                 </div>
-                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusPillClass[status]}`}>{t.percentage}%</span>
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusPillClass[status]}`}>
+                  {statusLabel[status]} · {t.percentage}%
+                </span>
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-[#262626]">
                 <div className={`h-full rounded-full ${statusBarClass[status]}`} style={{ width: `${t.percentage}%` }} />
@@ -146,26 +154,41 @@ function TopicPerformance({ subject }) {
 }
 
 function TopicSummary({ subject }) {
-  const strong = subject.topics.filter((t) => t.percentage >= 60)
+  const strong = subject.topics.filter((t) => t.percentage >= 80)
+  const average = subject.topics.filter((t) => t.percentage >= 60 && t.percentage < 80)
   const weak = subject.topics.filter((t) => t.percentage < 60)
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div className="rounded-xl border-2 border-green-200 bg-green-50 dark:bg-green-900/20 p-5 shadow-sm">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-green-800 dark:text-green-300">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-green-700 dark:text-green-300">
           <ArrowUp className="h-4 w-4" />Strong Topics
         </h3>
         <ul className="mt-3 flex flex-col gap-2">
-          {strong.length === 0 && <li className="text-sm text-gray-500 dark:text-[#A8A8A8]">No topics above 60% yet.</li>}
+          {strong.length === 0 && <li className="text-sm text-gray-500 dark:text-[#A8A8A8]">No topics at 80% or above yet.</li>}
           {strong.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
               <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
-              <span className="font-semibold text-green-700 dark:text-green-400">{t.percentage}%</span>
+              <span className="font-semibold text-green-700 dark:text-green-300">{t.percentage}%</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <div className="rounded-xl border-2 border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 p-5 shadow-sm">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-yellow-700 dark:text-yellow-300">
+          <Minus className="h-4 w-4" />Average Topics
+        </h3>
+        <ul className="mt-3 flex flex-col gap-2">
+          {average.length === 0 && <li className="text-sm text-gray-500 dark:text-[#A8A8A8]">No topics in the 60–79% range.</li>}
+          {average.map((t) => (
+            <li key={t.name} className="flex items-center justify-between text-sm">
+              <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
+              <span className="font-semibold text-yellow-700 dark:text-yellow-300">{t.percentage}%</span>
             </li>
           ))}
         </ul>
       </div>
       <div className="rounded-xl border-2 border-red-200 bg-red-50 dark:bg-red-900/20 p-5 shadow-sm">
-        <h3 className="flex items-center gap-2 text-sm font-semibold text-red-800 dark:text-red-300">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-red-700 dark:text-red-300">
           <ArrowDown className="h-4 w-4" />Needs Improvement
         </h3>
         <ul className="mt-3 flex flex-col gap-2">
@@ -173,7 +196,7 @@ function TopicSummary({ subject }) {
           {weak.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
               <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
-              <span className="font-semibold text-red-600 dark:text-red-400">{t.percentage}%</span>
+              <span className="font-semibold text-red-700 dark:text-red-300">{t.percentage}%</span>
             </li>
           ))}
         </ul>
@@ -1173,6 +1196,7 @@ export default function Results() {
   const [expandedStudentId, setExpandedStudentId] = useState(null)
   const [linkedStudentId, setLinkedStudentId] = useState(null)
   const [linkedStudentClassId, setLinkedStudentClassId] = useState(null)
+  const [studentClassId, setStudentClassId] = useState(null)
   const [reportExamTypeId, setReportExamTypeId] = useState('')
   const [reportExamId, setReportExamId] = useState('')
   const [reportClassId, setReportClassId] = useState('')
@@ -1200,20 +1224,12 @@ export default function Results() {
   const exams = useMemo(() => {
     let list = allExams
 
-    if (userRole === 'parent') {
-      if (!linkedStudentClassId) return []
-      list = list.filter((e) => {
-        if (e.scope === 'all') return true
-        return (e.exam_classes ?? []).some((ec) => ec.class_id === linkedStudentClassId)
-      })
-    }
-
     if (selectedExamTypeId) {
       list = list.filter((e) => e.exam_type_id === selectedExamTypeId)
     }
 
     return list
-  }, [allExams, selectedExamTypeId, userRole, linkedStudentClassId])
+  }, [allExams, selectedExamTypeId])
 
   const isStudentView = userRole === 'student' && roleLoaded
   const isParentView = userRole === 'parent' && roleLoaded
@@ -1344,7 +1360,13 @@ export default function Results() {
 
           setLinkedStudentId(linkedStudent?.id ?? null)
           setLinkedStudentClassId(linkedStudent?.class_id ?? null)
+          setStudentClassId(null)
+        } else if (data?.role === 'student') {
+          setStudentClassId(data.class_id ?? null)
+          setLinkedStudentId(null)
+          setLinkedStudentClassId(null)
         } else {
+          setStudentClassId(null)
           setLinkedStudentId(null)
           setLinkedStudentClassId(null)
         }
@@ -1870,16 +1892,43 @@ export default function Results() {
   }, [examId, selectedExamTypeId, selectedClassId, fromStudentsNav, isTeacher])
 
   useEffect(() => {
-    supabase
-      .from('exams')
-      .select('id, name, exam_date, exam_type, exam_type_id, scope, total_questions, total_marks, created_by, exam_types(name), exam_subjects(subject_id, subjects(name)), exam_classes(class_id), exam_teachers(teacher_id)')
-      .order('created_at', { ascending: false })
-      .then(({ data }) => {
-        if (data) {
-          setAllExams(data)
-        }
-      })
-  }, [])
+    if (!roleLoaded) return
+
+    const examSelect =
+      'id, name, exam_date, exam_type, exam_type_id, scope, total_questions, total_marks, created_by, exam_types(name), exam_subjects(subject_id, subjects(name)), exam_classes(class_id), exam_teachers(teacher_id)'
+
+    if (userRole === 'student' || userRole === 'parent') {
+      const classId = userRole === 'parent' ? linkedStudentClassId : studentClassId
+      if (!classId) {
+        setAllExams([])
+        return
+      }
+
+      supabase
+        .from('exams')
+        .select(
+          'id, name, exam_date, exam_type, exam_type_id, scope, total_questions, total_marks, created_by, exam_types(name), exam_subjects(subject_id, subjects(name)), exam_classes!inner(class_id), exam_teachers(teacher_id)'
+        )
+        .eq('exam_classes.class_id', classId)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          setAllExams(data ?? [])
+        })
+      return
+    }
+
+    if (userRole === 'admin' || userRole === 'teacher') {
+      supabase
+        .from('exams')
+        .select(examSelect)
+        .order('created_at', { ascending: false })
+        .then(({ data }) => {
+          if (data) {
+            setAllExams(data)
+          }
+        })
+    }
+  }, [roleLoaded, userRole, studentClassId, linkedStudentClassId])
 
   useEffect(() => {
     if (isTeacherMainView && examId && !exams.some((e) => e.id === examId)) {
