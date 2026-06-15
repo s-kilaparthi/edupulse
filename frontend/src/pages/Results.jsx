@@ -18,8 +18,8 @@ const statusBarClass = {
 
 const statusLabel = {
   strong: 'Strong',
-  average: 'Average',
-  weak: 'Needs Improvement',
+  average: 'Mid',
+  weak: 'Low',
 }
 
 const statusPillClass = {
