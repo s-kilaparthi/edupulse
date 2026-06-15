@@ -783,9 +783,8 @@ async function computeExamTotalsForStudents(exam, examId, studentIds) {
   return { sumObtained, sumTotal, percentage }
 }
 
-function ClassHeatmap({ examId, exams, session, userRole }) {
+function ClassHeatmap({ examId, exams, session, userRole, groupId }) {
   const [classId, setClassId] = useState('')
-  const [groupId, setGroupId] = useState('')
   const [classes, setClasses] = useState([])
   const [classGroups, setClassGroups] = useState([])
   const [subjectId, setSubjectId] = useState('')
@@ -793,6 +792,8 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
   const [heatmapData, setHeatmapData] = useState([])
   const [classAverage, setClassAverage] = useState(null)
   const [allClassesSummary, setAllClassesSummary] = useState(null)
+  const [examClassIdsWithScores, setExamClassIdsWithScores] = useState(() => new Set())
+  const [examClassIdsLoaded, setExamClassIdsLoaded] = useState(false)
   const [loading, setLoading] = useState(false)
 
   const visibleClasses = useMemo(
@@ -818,7 +819,6 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
         setClasses([])
         setClassGroups([])
         setClassId('')
-        setGroupId('')
         return
       }
 
@@ -856,7 +856,27 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
 
   useEffect(() => {
     setClassId(visibleClasses.length === 1 ? visibleClasses[0].id : '')
-  }, [groupId])
+  }, [groupId, visibleClasses])
+
+  useEffect(() => {
+    if (!examId) {
+      setExamClassIdsWithScores(new Set())
+      setExamClassIdsLoaded(false)
+      return
+    }
+
+    setExamClassIdsLoaded(false)
+    supabase
+      .from('topic_scores')
+      .select('users!inner(class_id)')
+      .eq('exam_id', examId)
+      .then(({ data }) => {
+        setExamClassIdsWithScores(
+          new Set((data ?? []).map((row) => row.users?.class_id).filter(Boolean))
+        )
+        setExamClassIdsLoaded(true)
+      })
+  }, [examId])
 
   useEffect(() => {
     if (!examId) return
@@ -879,7 +899,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
   }, [examId])
 
   useEffect(() => {
-    if (!examId || !subjectId) return
+    if (!examId || !subjectId || !examClassIdsLoaded) return
     setLoading(true)
     supabase
       .from('topic_scores')
@@ -896,8 +916,10 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
           : null
 
         for (const row of data) {
-          if (classId && row.users?.class_id !== classId) continue
-          if (!classId && scopeClassIds && !scopeClassIds.has(row.users?.class_id)) continue
+          const studentClassId = row.users?.class_id
+          if (!studentClassId || !examClassIdsWithScores.has(studentClassId)) continue
+          if (classId && studentClassId !== classId) continue
+          if (!classId && scopeClassIds && !scopeClassIds.has(studentClassId)) continue
 
           const sid = row.student_id
           const tname = row.topics?.name ?? 'Unknown'
@@ -915,7 +937,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
         setHeatmapData({ topics, students })
         setLoading(false)
       })
-  }, [examId, subjectId, classId, groupId, visibleClasses])
+  }, [examId, subjectId, classId, groupId, visibleClasses, examClassIdsWithScores, examClassIdsLoaded])
 
   useEffect(() => {
     if (!classId || !examId) {
@@ -945,7 +967,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
   }, [classId, examId, exams])
 
   useEffect(() => {
-    if (classId || !examId || visibleClasses.length === 0) {
+    if (classId || !examId || visibleClasses.length === 0 || !examClassIdsLoaded) {
       setAllClassesSummary(null)
       return
     }
@@ -962,6 +984,8 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
       let instituteTotal = 0
 
       for (const cls of visibleClasses) {
+        if (!examClassIdsWithScores.has(cls.id)) continue
+
         const { data: classStudents } = await supabase
           .from('users')
           .select('id')
@@ -992,7 +1016,7 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
     }
 
     loadAllClassesSummary()
-  }, [classId, examId, exams, visibleClasses, groupId])
+  }, [classId, examId, exams, visibleClasses, groupId, examClassIdsWithScores, examClassIdsLoaded])
 
   function cellColor(pct) {
     if (pct === undefined) return 'bg-gray-100 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8]'
@@ -1004,21 +1028,6 @@ function ClassHeatmap({ examId, exams, session, userRole }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-6">
-        {classGroups.length > 0 && (
-          <div className="flex items-center gap-3">
-            <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Group</label>
-            <select
-              value={groupId}
-              onChange={(e) => setGroupId(e.target.value)}
-              className="rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-            >
-              <option value="">All Groups</option>
-              {classGroups.map((g) => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
-          </div>
-        )}
         <div className="flex items-center gap-3">
           <label className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8]">Class</label>
           <select
@@ -1210,6 +1219,7 @@ export default function Results() {
   const [reportSelectedClassIds, setReportSelectedClassIds] = useState([])
   const [reportViewMode, setReportViewMode] = useState('mixed')
   const [studentGroupId, setStudentGroupId] = useState('')
+  const [heatmapGroupId, setHeatmapGroupId] = useState('')
   const [teacherClasses, setTeacherClasses] = useState([])
   const [teacherClassGroups, setTeacherClassGroups] = useState([])
   const [reportSubjectId, setReportSubjectId] = useState('')
@@ -1230,6 +1240,23 @@ export default function Results() {
 
     return list
   }, [allExams, selectedExamTypeId])
+
+  const heatmapClassGroups = userRole === 'teacher' ? teacherClassGroups : classGroups
+
+  const heatmapExams = useMemo(() => {
+    let list = exams
+
+    if (heatmapGroupId) {
+      const group = heatmapClassGroups.find((g) => g.id === heatmapGroupId)
+      const groupClassIds = new Set(extractGroupClasses(group).map((c) => c.id))
+      if (!groupClassIds.size) return []
+      list = list.filter((exam) =>
+        (exam.exam_classes ?? []).some((ec) => groupClassIds.has(ec.class_id))
+      )
+    }
+
+    return list
+  }, [exams, heatmapGroupId, heatmapClassGroups])
 
   const isStudentView = userRole === 'student' && roleLoaded
   const isParentView = userRole === 'parent' && roleLoaded
@@ -1937,7 +1964,10 @@ export default function Results() {
     if (isCardExamView && examId && !exams.some((e) => e.id === examId)) {
       setExamId('')
     }
-  }, [exams, examId, isTeacherMainView, isCardExamView])
+    if (activeTab === 'heatmap' && examId && !heatmapExams.some((e) => e.id === examId)) {
+      setExamId('')
+    }
+  }, [exams, heatmapExams, examId, isTeacherMainView, isCardExamView, activeTab])
 
   useEffect(() => {
     if (!isTeacherMainView || examId || !session?.user?.id) {
@@ -2621,7 +2651,10 @@ export default function Results() {
             <div className="flex flex-wrap gap-2 items-center">
               <select
                 value={selectedExamTypeId}
-                onChange={(e) => setSelectedExamTypeId(e.target.value)}
+                onChange={(e) => {
+                  setSelectedExamTypeId(e.target.value)
+                  if (activeTab === 'heatmap') setExamId('')
+                }}
                 className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
                 <option value="">All Exam Types</option>
@@ -2629,13 +2662,28 @@ export default function Results() {
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
+              {activeTab === 'heatmap' && heatmapClassGroups.length > 0 && (
+                <select
+                  value={heatmapGroupId}
+                  onChange={(e) => {
+                    setHeatmapGroupId(e.target.value)
+                    setExamId('')
+                  }}
+                  className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="">All Groups</option>
+                  {heatmapClassGroups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              )}
               <select
                 value={examId}
                 onChange={(e) => setExamId(e.target.value)}
                 className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
                 <option value="">All Exams</option>
-                {exams.map((exam) => (
+                {(activeTab === 'heatmap' ? heatmapExams : exams).map((exam) => (
                   <option key={exam.id} value={exam.id}>{exam.name}</option>
                 ))}
               </select>
@@ -2725,7 +2773,13 @@ export default function Results() {
         )}
 
         {isTeacherMainView && activeTab === 'heatmap' && examId && (
-          <ClassHeatmap examId={examId} exams={exams} session={session} userRole={userRole} />
+          <ClassHeatmap
+            examId={examId}
+            exams={exams}
+            session={session}
+            userRole={userRole}
+            groupId={heatmapGroupId}
+          />
         )}
 
         {isReportsMainView && (
