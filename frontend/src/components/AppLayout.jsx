@@ -70,6 +70,8 @@ export default function AppLayout({ session }) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const [instituteBranding, setInstituteBranding] = useState(null)
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null)
+  const [showInstallBanner, setShowInstallBanner] = useState(false)
 
   const brandingTitle = getInstituteDisplayName(instituteBranding)
   const logoLetter = getLogoLetter(instituteBranding)
@@ -138,6 +140,35 @@ export default function AppLayout({ session }) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [showNotifDropdown])
+
+  useEffect(() => {
+    if (localStorage.getItem('pwa-install-dismissed') === 'true') return
+    if (window.matchMedia('(display-mode: standalone)').matches) return
+    if (!window.matchMedia('(max-width: 767px)').matches) return
+
+    function handleBeforeInstallPrompt(e) {
+      e.preventDefault()
+      setDeferredInstallPrompt(e)
+      setShowInstallBanner(true)
+    }
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+  }, [])
+
+  async function handleInstallApp() {
+    if (!deferredInstallPrompt) return
+    deferredInstallPrompt.prompt()
+    await deferredInstallPrompt.userChoice
+    setDeferredInstallPrompt(null)
+    setShowInstallBanner(false)
+  }
+
+  function handleDismissInstallBanner() {
+    localStorage.setItem('pwa-install-dismissed', 'true')
+    setShowInstallBanner(false)
+    setDeferredInstallPrompt(null)
+  }
 
   async function markAllRead() {
     if (!session?.user?.id) return
@@ -386,6 +417,31 @@ export default function AppLayout({ session }) {
           <Outlet context={{ session }} />
         </main>
       </div>
+
+      {showInstallBanner && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between gap-3 bg-blue-600 px-4 py-3 text-white shadow-lg md:hidden">
+          <p className="text-sm font-medium">Install WoodenScale for quick access</p>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleInstallApp}
+              className="rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-blue-600 hover:bg-blue-50"
+            >
+              Install
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissInstallBanner}
+              className="p-1 text-white/80 hover:text-white"
+              aria-label="Dismiss install banner"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
