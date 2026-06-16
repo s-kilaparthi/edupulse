@@ -246,15 +246,27 @@ export default function AppLayout({ session }) {
               <div className="fixed right-2 top-14 w-[calc(100vw-16px)] md:absolute md:right-0 md:top-full md:mt-1 md:w-80 bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-lg z-50 overflow-hidden">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <p className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Notifications</p>
-                  {unreadCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={markAllRead}
+                        className="text-xs text-blue-600 hover:text-blue-700"
+                      >
+                        Mark all read
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={markAllRead}
-                      className="text-xs text-blue-600 hover:text-blue-700"
+                      onClick={() => setShowNotifDropdown(false)}
+                      className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      aria-label="Close notifications"
                     >
-                      Mark all read
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
                     </button>
-                  )}
+                  </div>
                 </div>
 
                 {notifications.length === 0 && (
