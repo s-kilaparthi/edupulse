@@ -251,7 +251,7 @@ export default function Teachers() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       </div>
     )
@@ -343,7 +343,7 @@ export default function Teachers() {
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader size={80} />
+            <Loader size={40} />
           </div>
         ) : teachers.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No teachers yet. Add one above.</p>
@@ -435,7 +435,7 @@ export default function Teachers() {
                   <div className="mt-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
                     {loadingAssignments ? (
                       <div className="flex justify-center items-center h-32">
-                        <Loader size={60} />
+                        <Loader size={40} />
                       </div>
                     ) : (
                       <>

@@ -868,7 +868,7 @@ export default function Subjects() {
       {showSubjectList && (
         loading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader size={80} />
+            <Loader size={40} />
           </div>
         ) : displayedSubjects.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">

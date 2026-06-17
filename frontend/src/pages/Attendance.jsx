@@ -1177,7 +1177,7 @@ export default function Attendance() {
 
         {reportLoading && showGroupFeatures && (
           <div className="flex justify-center items-center h-32 mb-4">
-            <Loader size={60} />
+            <Loader size={40} />
           </div>
         )}
 
@@ -1324,7 +1324,7 @@ export default function Attendance() {
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader size={80} />
+            <Loader size={40} />
           </div>
         ) : selectedDateOff.isOff ? null : showClassSelector && !adminHasScope ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">
@@ -1425,7 +1425,7 @@ export default function Attendance() {
       {isStudentView && (
         loading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader size={80} />
+            <Loader size={40} />
           </div>
         ) : Object.keys(studentSummary).length === 0 ? (
           <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">

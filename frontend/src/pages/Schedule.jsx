@@ -868,7 +868,7 @@ export default function Schedule() {
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       ) : isStudentView && !studentClassId ? (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No class assigned to your account.</p>

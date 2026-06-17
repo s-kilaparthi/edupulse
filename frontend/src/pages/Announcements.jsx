@@ -1013,7 +1013,7 @@ export default function Announcements() {
 
       {loading && (
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       )}
 

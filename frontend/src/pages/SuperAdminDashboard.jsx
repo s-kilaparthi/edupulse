@@ -341,7 +341,7 @@ export default function SuperAdminDashboard() {
 
           {loadingInstitutes && (
             <div className="flex justify-center items-center h-64">
-              <Loader size={80} />
+              <Loader size={40} />
             </div>
           )}
 
@@ -515,7 +515,7 @@ export default function SuperAdminDashboard() {
                       <div className="mt-5 pt-5 border-t border-slate-200">
                         {loadingDetailsId === institute.id && (
                           <div className="flex justify-center items-center h-32">
-                            <Loader size={60} />
+                            <Loader size={40} />
                           </div>
                         )}
 

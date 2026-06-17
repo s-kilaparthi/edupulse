@@ -10,7 +10,7 @@ const DEFAULT_QUESTION_COUNT = 50
 function Spinner() {
   return (
     <div className="flex justify-center items-center h-32">
-      <Loader size={60} />
+      <Loader size={40} />
     </div>
   )
 }

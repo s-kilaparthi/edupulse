@@ -666,7 +666,7 @@ function StudentReportsPanel({
 
       {loadingReportRankings && (
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       )}
 
@@ -1106,7 +1106,7 @@ function ClassHeatmap({ examId, exams, session, userRole, groupId }) {
 
       {loading && (
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       )}
 
@@ -2538,7 +2538,7 @@ export default function Results() {
           <>
             {loadingSummaries && (
               <div className="flex justify-center items-center h-64">
-                <Loader size={80} />
+                <Loader size={40} />
               </div>
             )}
 
@@ -2592,7 +2592,7 @@ export default function Results() {
 
         {flowExamId && !blocked && loading && (
           <div className="flex justify-center items-center h-64">
-            <Loader size={80} />
+            <Loader size={40} />
           </div>
         )}
 
@@ -2854,7 +2854,7 @@ export default function Results() {
 
             {!examId && loadingTeacherOverview && (
               <div className="flex justify-center items-center h-64">
-                <Loader size={80} />
+                <Loader size={40} />
               </div>
             )}
 
@@ -2990,7 +2990,7 @@ export default function Results() {
 
                         {expandedStudentId === s.id && loading && (
                           <div className="flex justify-center items-center h-32 mx-4 mb-4">
-                            <Loader size={60} />
+                            <Loader size={40} />
                           </div>
                         )}
 

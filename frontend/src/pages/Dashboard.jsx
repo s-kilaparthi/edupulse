@@ -1162,7 +1162,7 @@ export default function Dashboard() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       </div>
     )

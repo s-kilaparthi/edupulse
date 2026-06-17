@@ -2058,7 +2058,7 @@ export default function Exams() {
         </div>
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader size={80} />
+            <Loader size={40} />
           </div>
         ) : filteredExams.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">
@@ -2408,7 +2408,7 @@ export default function Exams() {
 
                     {loadingProfile ? (
                       <div className="flex justify-center items-center h-32">
-                        <Loader size={60} />
+                        <Loader size={40} />
                       </div>
                     ) : !examProfile?.length ? (
                       <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No questions added yet.</p>

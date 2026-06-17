@@ -617,7 +617,7 @@ export default function Students() {
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader size={80} />
+            <Loader size={40} />
           </div>
         ) : listStudents.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">

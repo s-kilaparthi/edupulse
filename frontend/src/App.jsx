@@ -45,7 +45,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#000000]">
-        <Loader size={80} />
+        <Loader size={40} />
       </div>
     )
   }

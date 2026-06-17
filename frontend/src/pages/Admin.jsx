@@ -361,7 +361,7 @@ export default function Admin() {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       </div>
     )
@@ -541,7 +541,7 @@ export default function Admin() {
                         <td colSpan={4} className="px-4 py-4">
                           {loadingTopics === subject.id && (
                             <div className="flex justify-center items-center h-32">
-                              <Loader size={60} />
+                              <Loader size={40} />
                             </div>
                           )}
                           {loadingTopics !== subject.id && topics.length === 0 && (
@@ -640,7 +640,7 @@ export default function Admin() {
 
         {editingMarks && (
           <div className="flex justify-center items-center h-64">
-            <Loader size={80} />
+            <Loader size={40} />
           </div>
         )}
 

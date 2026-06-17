@@ -781,7 +781,7 @@ export default function Classes() {
   if (loadingRole) {
     return (
       <div className="flex justify-center items-center h-64">
-        <Loader size={80} />
+        <Loader size={40} />
       </div>
     )
   }
@@ -830,7 +830,7 @@ export default function Classes() {
 
         {loadingGroups ? (
           <div className="flex justify-center items-center h-32">
-            <Loader size={60} />
+            <Loader size={40} />
           </div>
         ) : groups.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No class groups yet. Create one above.</p>
@@ -1056,7 +1056,7 @@ export default function Classes() {
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       ) : classes.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No classes yet. Create one above.</p>

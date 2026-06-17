@@ -137,7 +137,7 @@ export default function Profile() {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="flex justify-center items-center h-64">
-          <Loader size={80} />
+          <Loader size={40} />
         </div>
       </div>
     )
