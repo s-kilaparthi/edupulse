@@ -142,8 +142,15 @@ export default function AppLayout({ session }) {
   }, [showNotifDropdown])
 
   useEffect(() => {
-    if (localStorage.getItem('pwa-install-dismissed') === 'true') return
+    if (localStorage.getItem('pwa-installed') === 'true') return
     if (window.matchMedia('(display-mode: standalone)').matches) return
+
+    const dismissedAt = localStorage.getItem('pwa-install-dismissed')
+    if (dismissedAt) {
+      const threeDays = 3 * 24 * 60 * 60 * 1000
+      if (Date.now() - Number(dismissedAt) < threeDays) return
+    }
+
     if (!window.matchMedia('(max-width: 767px)').matches) return
 
     function handleBeforeInstallPrompt(e) {
@@ -160,12 +167,13 @@ export default function AppLayout({ session }) {
     if (!deferredInstallPrompt) return
     deferredInstallPrompt.prompt()
     await deferredInstallPrompt.userChoice
+    localStorage.setItem('pwa-installed', 'true')
     setDeferredInstallPrompt(null)
     setShowInstallBanner(false)
   }
 
   function handleDismissInstallBanner() {
-    localStorage.setItem('pwa-install-dismissed', 'true')
+    localStorage.setItem('pwa-install-dismissed', String(Date.now()))
     setShowInstallBanner(false)
     setDeferredInstallPrompt(null)
   }
