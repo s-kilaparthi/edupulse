@@ -91,7 +91,20 @@
   }
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+@keyframes loadBar {
+  0% {
+    transform: scaleX(0.15);
+    transform-origin: left;
+    opacity: 0.4;
+  }
+  50% {
+    transform: scaleX(1);
+    transform-origin: left;
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(0.15);
+    transform-origin: left;
+    opacity: 0.4;
+  }
 }
