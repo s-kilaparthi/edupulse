@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
+import Loader from '../components/Loader'
 
 export default function Profile() {
   const { session } = useOutletContext()
@@ -135,7 +136,9 @@ export default function Profile() {
   if (loading) {
     return (
       <div className="max-w-2xl mx-auto">
-        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading profile…</p>
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
+        </div>
       </div>
     )
   }

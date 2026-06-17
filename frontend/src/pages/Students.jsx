@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Loader from '../components/Loader'
 import {
   filterClassesByGroup,
   fetchTeacherClassesAndGroups,
@@ -615,7 +616,9 @@ export default function Students() {
         </p>
 
         {loading ? (
-          <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">Loading students…</p>
+          <div className="flex justify-center items-center h-64">
+            <Loader size={80} />
+          </div>
         ) : listStudents.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">
             {isAdmin ? 'No students yet. Add one above.' : 'No students yet.'}

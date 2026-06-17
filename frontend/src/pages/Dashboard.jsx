@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
 import { checkDateHolidayStatus, fetchHolidayData, todayISO } from '../utils/holidays'
+import Loader from '../components/Loader'
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
@@ -1044,7 +1045,9 @@ export default function Dashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading dashboard…</p>
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
+        </div>
       </div>
     )
   }

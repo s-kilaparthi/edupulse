@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
+import Loader from '../components/Loader'
 
 const GROUP_CHECKBOX_CLASS = (checked) =>
   `flex items-center gap-2 px-3 py-1.5 rounded-lg border-2 cursor-pointer text-sm transition-colors ${
@@ -866,7 +867,9 @@ export default function Subjects() {
 
       {showSubjectList && (
         loading ? (
-          <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">Loading subjects…</p>
+          <div className="flex justify-center items-center h-64">
+            <Loader size={80} />
+          </div>
         ) : displayedSubjects.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">
             {isAdmin

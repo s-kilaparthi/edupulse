@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Loader from '../components/Loader'
 
 const STUDENT_FEATURES = [
   'Pay fees online via UPI, Net Banking, Card',
@@ -61,7 +62,9 @@ export default function FeePayment() {
 
   if (loading) {
     return (
-      <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading…</p>
+      <div className="flex justify-center items-center h-64">
+        <Loader size={80} />
+      </div>
     )
   }
 

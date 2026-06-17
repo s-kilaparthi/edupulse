@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from '../supabase'
+import Loader from '../components/Loader'
 
 const ANSWER_OPTIONS = ['A', 'B', 'C', 'D']
 
@@ -2056,7 +2057,9 @@ export default function Exams() {
           </select>
         </div>
         {loading ? (
-          <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">Loading exams…</p>
+          <div className="flex justify-center items-center h-64">
+            <Loader size={80} />
+          </div>
         ) : filteredExams.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">
             {exams.length === 0
@@ -2404,7 +2407,9 @@ export default function Exams() {
                     )}
 
                     {loadingProfile ? (
-                      <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading questions…</p>
+                      <div className="flex justify-center items-center h-32">
+                        <Loader size={60} />
+                      </div>
                     ) : !examProfile?.length ? (
                       <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No questions added yet.</p>
                     ) : (

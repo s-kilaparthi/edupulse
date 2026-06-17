@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Loader from '../components/Loader'
 
 const GROUP_ACCENT_COLORS = [
   'border-l-blue-500',
@@ -779,8 +780,8 @@ export default function Classes() {
 
   if (loadingRole) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading…</p>
+      <div className="flex justify-center items-center h-64">
+        <Loader size={80} />
       </div>
     )
   }
@@ -828,7 +829,9 @@ export default function Classes() {
         </form>
 
         {loadingGroups ? (
-          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading groups…</p>
+          <div className="flex justify-center items-center h-32">
+            <Loader size={60} />
+          </div>
         ) : groups.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No class groups yet. Create one above.</p>
         ) : (
@@ -1052,7 +1055,9 @@ export default function Classes() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading classes…</p>
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
+        </div>
       ) : classes.length === 0 ? (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No classes yet. Create one above.</p>
       ) : filteredClasses.length === 0 ? (
@@ -1458,7 +1463,9 @@ export default function Classes() {
                             )}
 
                             {loadingCopyPreview && (
-                              <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Loading…</p>
+                              <div className="flex justify-center items-center h-16">
+                                <Loader size={40} />
+                              </div>
                             )}
 
                             {copySourceClassId && !loadingCopyPreview && (

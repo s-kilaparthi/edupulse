@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useState } from 'react'
 import { useOutletContext, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Loader from '../components/Loader'
 
 const ADMIN_TABS = [
   { id: 'dashboard', label: 'Dashboard' },
@@ -359,7 +360,9 @@ export default function Admin() {
   if (loadingRole) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading…</p>
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
+        </div>
       </div>
     )
   }
@@ -537,7 +540,9 @@ export default function Admin() {
                       <tr className="bg-gray-50 dark:bg-[#262626]">
                         <td colSpan={4} className="px-4 py-4">
                           {loadingTopics === subject.id && (
-                            <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading topics…</p>
+                            <div className="flex justify-center items-center h-32">
+                              <Loader size={60} />
+                            </div>
                           )}
                           {loadingTopics !== subject.id && topics.length === 0 && (
                             <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No topic data yet.</p>
@@ -634,7 +639,9 @@ export default function Admin() {
         )}
 
         {editingMarks && (
-          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading answers…</p>
+          <div className="flex justify-center items-center h-64">
+            <Loader size={80} />
+          </div>
         )}
 
         {!editingMarks && editExamId && editStudentId && omrResults.length === 0 && (

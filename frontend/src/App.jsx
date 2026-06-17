@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { supabase } from './supabase'
 import { ThemeProvider } from './context/ThemeContext'
+import Loader from './components/Loader'
 import AppLayout from './components/AppLayout'
 import ProtectedRoute from './components/ProtectedRoute'
 import Login from './pages/Login'
@@ -26,18 +27,18 @@ import SuperAdminDashboard from './pages/SuperAdminDashboard'
 function SplashScreen({ fadingOut }) {
   return (
     <div
-      className={`fixed inset-0 z-[9999] flex min-h-screen flex-col items-center justify-center bg-white ${
-        fadingOut ? 'splash-fade-out' : 'splash-fade-in'
+      className={`fixed inset-0 z-[9999] flex min-h-screen flex-col items-center justify-center bg-white transition-opacity duration-500 ${
+        fadingOut ? 'splash-fade-out opacity-0' : 'splash-fade-in opacity-100'
       }`}
     >
       <img
-        src="/splash-screen.png"
+        src="/icon-512.png"
         alt="WoodenScale"
-        width={250}
-        height={250}
-        className="h-[250px] w-[250px] object-contain"
+        width={120}
+        height={120}
+        className="h-[120px] w-[120px] object-contain"
       />
-      <h1 className="mt-6 text-2xl font-bold text-blue-900">WoodenScale</h1>
+      <h1 className="mt-6 text-3xl font-bold text-[#1E3A8A]">WoodenScale</h1>
       <p className="mt-2 text-sm text-gray-500">Smart Class Management</p>
     </div>
   )
@@ -46,7 +47,7 @@ function SplashScreen({ fadingOut }) {
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [showSplash, setShowSplash] = useState(true)
+  const [showSplash, setShowSplash] = useState(() => sessionStorage.getItem('splash-shown') !== 'true')
   const [splashFadingOut, setSplashFadingOut] = useState(false)
 
   useEffect(() => {
@@ -61,8 +62,13 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    if (sessionStorage.getItem('splash-shown') === 'true') return
+
     const fadeOutTimer = setTimeout(() => setSplashFadingOut(true), 2000)
-    const hideTimer = setTimeout(() => setShowSplash(false), 2500)
+    const hideTimer = setTimeout(() => {
+      sessionStorage.setItem('splash-shown', 'true')
+      setShowSplash(false)
+    }, 2500)
     return () => {
       clearTimeout(fadeOutTimer)
       clearTimeout(hideTimer)
@@ -75,8 +81,8 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#000000] flex items-center justify-center">
-        <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">Loading…</p>
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-[#000000]">
+        <Loader size={80} />
       </div>
     )
   }

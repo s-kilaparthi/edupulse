@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Loader from '../components/Loader'
 
 const API_URL = import.meta.env.VITE_API_URL
 const ANSWERS = ['A', 'B', 'C', 'D']
@@ -8,9 +9,8 @@ const DEFAULT_QUESTION_COUNT = 50
 
 function Spinner() {
   return (
-    <div className="flex items-center justify-center gap-2 text-blue-600">
-      <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-      <span className="text-sm font-medium">Scanning OMR…</span>
+    <div className="flex justify-center items-center h-32">
+      <Loader size={60} />
     </div>
   )
 }

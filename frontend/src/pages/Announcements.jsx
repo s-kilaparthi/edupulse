@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
+import Loader from '../components/Loader'
 
 const GROUP_TARGET_TYPES = ['group_students', 'group_teachers', 'entire_group']
 
@@ -1011,7 +1012,9 @@ export default function Announcements() {
       )}
 
       {loading && (
-        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading announcements…</p>
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
+        </div>
       )}
 
       {!loading && displayedAnnouncements.length === 0 && (

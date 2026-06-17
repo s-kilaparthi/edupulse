@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
+import Loader from '../components/Loader'
 import {
   extractGroupClasses,
   filterClassesByGroup,
@@ -1175,7 +1176,9 @@ export default function Attendance() {
         )}
 
         {reportLoading && showGroupFeatures && (
-          <p className="text-sm text-gray-500 dark:text-[#A8A8A8] mb-4">Loading group attendance…</p>
+          <div className="flex justify-center items-center h-32 mb-4">
+            <Loader size={60} />
+          </div>
         )}
 
         {reportRows.length > 0 && (
@@ -1320,7 +1323,9 @@ export default function Attendance() {
         )}
 
         {loading ? (
-          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading slots…</p>
+          <div className="flex justify-center items-center h-64">
+            <Loader size={80} />
+          </div>
         ) : selectedDateOff.isOff ? null : showClassSelector && !adminHasScope ? (
           <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">
             Select a class, or choose a group with All Classes to view combined schedule.
@@ -1419,7 +1424,9 @@ export default function Attendance() {
 
       {isStudentView && (
         loading ? (
-          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading attendance…</p>
+          <div className="flex justify-center items-center h-64">
+            <Loader size={80} />
+          </div>
         ) : Object.keys(studentSummary).length === 0 ? (
           <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
             <p className="text-gray-500 dark:text-[#A8A8A8]">No attendance records yet.</p>

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { superadminFetch, verifySuperadminSession } from '../utils/superadminAuth'
+import Loader from '../components/Loader'
 
 const STAT_CARDS = [
   { key: 'total_institutes', label: 'Total Institutes', icon: '🏫', border: 'border-t-blue-500', badgeKey: 'new_institutes_this_month' },
@@ -339,7 +340,9 @@ export default function SuperAdminDashboard() {
           </div>
 
           {loadingInstitutes && (
-            <p className="text-sm text-slate-500">Loading institutes…</p>
+            <div className="flex justify-center items-center h-64">
+              <Loader size={80} />
+            </div>
           )}
 
           {!loadingInstitutes && filteredInstitutes.length === 0 && (
@@ -511,7 +514,9 @@ export default function SuperAdminDashboard() {
                     {isExpanded && (
                       <div className="mt-5 pt-5 border-t border-slate-200">
                         {loadingDetailsId === institute.id && (
-                          <p className="text-sm text-slate-500">Loading details…</p>
+                          <div className="flex justify-center items-center h-32">
+                            <Loader size={60} />
+                          </div>
                         )}
 
                         {details && loadingDetailsId !== institute.id && (

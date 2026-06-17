@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Loader from '../components/Loader'
 
 export default function Teachers() {
   const { session } = useOutletContext()
@@ -249,7 +250,9 @@ export default function Teachers() {
   if (loadingRole) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading…</p>
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
+        </div>
       </div>
     )
   }
@@ -339,7 +342,9 @@ export default function Teachers() {
         <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF] mb-4">All Teachers</h2>
 
         {loading ? (
-          <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">Loading teachers…</p>
+          <div className="flex justify-center items-center h-64">
+            <Loader size={80} />
+          </div>
         ) : teachers.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No teachers yet. Add one above.</p>
         ) : (
@@ -429,7 +434,9 @@ export default function Teachers() {
                 {expandedTeacherId === teacher.id && editingTeacherId !== teacher.id && (
                   <div className="mt-4 pt-4 border-t-2 border-gray-200 dark:border-gray-700">
                     {loadingAssignments ? (
-                      <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading assignments…</p>
+                      <div className="flex justify-center items-center h-32">
+                        <Loader size={60} />
+                      </div>
                     ) : (
                       <>
                         {assignments.length === 0 ? (

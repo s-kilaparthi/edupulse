@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext, useLocation } from 'react-router-dom'
 import { ArrowUp, ArrowDown, Minus, ChevronDown, ChevronRight } from 'lucide-react'
 import { supabase } from '../supabase'
 import { fetchTeacherClassesAndGroups } from '../utils/teacherGroups'
+import Loader from '../components/Loader'
 
 function topicStatus(pct) {
   if (pct >= 80) return 'strong'
@@ -664,9 +665,8 @@ function StudentReportsPanel({
       </div>
 
       {loadingReportRankings && (
-        <div className="flex items-center justify-center py-12">
-          <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-          <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading rankings…</span>
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
         </div>
       )}
 
@@ -1104,7 +1104,11 @@ function ClassHeatmap({ examId, exams, session, userRole, groupId }) {
         </div>
       )}
 
-      {loading && <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading heatmap…</p>}
+      {loading && (
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
+        </div>
+      )}
 
       {!loading && heatmapData.students?.length === 0 && (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No data found for this exam and subject.</p>
@@ -2533,9 +2537,8 @@ export default function Results() {
         {!flowExamId && !blocked && (
           <>
             {loadingSummaries && (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading exams…</span>
+              <div className="flex justify-center items-center h-64">
+                <Loader size={80} />
               </div>
             )}
 
@@ -2588,9 +2591,8 @@ export default function Results() {
         )}
 
         {flowExamId && !blocked && loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-            <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading results…</span>
+          <div className="flex justify-center items-center h-64">
+            <Loader size={80} />
           </div>
         )}
 
@@ -2851,9 +2853,8 @@ export default function Results() {
             </div>
 
             {!examId && loadingTeacherOverview && (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading results…</span>
+              <div className="flex justify-center items-center h-64">
+                <Loader size={80} />
               </div>
             )}
 
@@ -2988,9 +2989,8 @@ export default function Results() {
                         </button>
 
                         {expandedStudentId === s.id && loading && (
-                          <div className="flex items-center justify-center py-8 mx-4 mb-4">
-                            <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-                            <span className="ml-3 text-sm text-gray-500 dark:text-[#A8A8A8]">Loading results…</span>
+                          <div className="flex justify-center items-center h-32 mx-4 mb-4">
+                            <Loader size={60} />
                           </div>
                         )}
 

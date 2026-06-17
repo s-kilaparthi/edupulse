@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
+import Loader from '../components/Loader'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
 import {
   DEFAULT_WEEKLY_OFF,
@@ -866,7 +867,9 @@ export default function Schedule() {
       )}
 
       {loading ? (
-        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Loading schedule…</p>
+        <div className="flex justify-center items-center h-64">
+          <Loader size={80} />
+        </div>
       ) : isStudentView && !studentClassId ? (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">No class assigned to your account.</p>
       ) : (
