@@ -24,33 +24,14 @@ import FeePayment from './pages/FeePayment'
 import SuperAdminLogin from './pages/SuperAdminLogin'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
 
-function SplashScreen({ fadingOut }) {
-  return (
-    <div
-      className={`fixed inset-0 z-[9999] flex min-h-screen flex-col items-center justify-center bg-white transition-opacity duration-500 ${
-        fadingOut ? 'splash-fade-out opacity-0' : 'splash-fade-in opacity-100'
-      }`}
-    >
-      <img
-        src="/icon-512.png"
-        alt="WoodenScale"
-        width={120}
-        height={120}
-        className="h-[120px] w-[120px] object-contain"
-      />
-      <h1 className="mt-6 text-3xl font-bold text-[#1E3A8A]">WoodenScale</h1>
-      <p className="mt-2 text-sm text-gray-500">Smart Class Management</p>
-    </div>
-  )
-}
-
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [showSplash, setShowSplash] = useState(() => sessionStorage.getItem('splash-shown') !== 'true')
-  const [splashFadingOut, setSplashFadingOut] = useState(false)
 
   useEffect(() => {
+    sessionStorage.removeItem('splash-shown')
+    sessionStorage.removeItem('woodenscale_splash_shown')
+
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session)
       setLoading(false)
@@ -60,24 +41,6 @@ export default function App() {
     })
     return () => subscription.unsubscribe()
   }, [])
-
-  useEffect(() => {
-    if (sessionStorage.getItem('splash-shown') === 'true') return
-
-    const fadeOutTimer = setTimeout(() => setSplashFadingOut(true), 2000)
-    const hideTimer = setTimeout(() => {
-      sessionStorage.setItem('splash-shown', 'true')
-      setShowSplash(false)
-    }, 2500)
-    return () => {
-      clearTimeout(fadeOutTimer)
-      clearTimeout(hideTimer)
-    }
-  }, [])
-
-  if (showSplash) {
-    return <SplashScreen fadingOut={splashFadingOut} />
-  }
 
   if (loading) {
     return (
