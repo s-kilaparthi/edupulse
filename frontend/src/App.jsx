@@ -23,9 +23,31 @@ import FeePayment from './pages/FeePayment'
 import SuperAdminLogin from './pages/SuperAdminLogin'
 import SuperAdminDashboard from './pages/SuperAdminDashboard'
 
+function SplashScreen({ fadingOut }) {
+  return (
+    <div
+      className={`fixed inset-0 z-[9999] flex min-h-screen flex-col items-center justify-center bg-white ${
+        fadingOut ? 'splash-fade-out' : 'splash-fade-in'
+      }`}
+    >
+      <img
+        src="/splash-screen.png"
+        alt="WoodenScale"
+        width={250}
+        height={250}
+        className="h-[250px] w-[250px] object-contain"
+      />
+      <h1 className="mt-6 text-2xl font-bold text-blue-900">WoodenScale</h1>
+      <p className="mt-2 text-sm text-gray-500">Smart Class Management</p>
+    </div>
+  )
+}
+
 export default function App() {
   const [session, setSession] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [showSplash, setShowSplash] = useState(true)
+  const [splashFadingOut, setSplashFadingOut] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -37,6 +59,19 @@ export default function App() {
     })
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    const fadeOutTimer = setTimeout(() => setSplashFadingOut(true), 2000)
+    const hideTimer = setTimeout(() => setShowSplash(false), 2500)
+    return () => {
+      clearTimeout(fadeOutTimer)
+      clearTimeout(hideTimer)
+    }
+  }, [])
+
+  if (showSplash) {
+    return <SplashScreen fadingOut={splashFadingOut} />
+  }
 
   if (loading) {
     return (
