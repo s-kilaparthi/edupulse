@@ -42,10 +42,14 @@ export default function SuperAdminLogin() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-4">
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
-            <span className="text-white font-bold text-xl">E</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900">EduPulse</h1>
+          <img
+            src="/icon-512.png"
+            width="48"
+            height="48"
+            className="rounded-xl object-cover mx-auto mb-4"
+            alt="WoodenScale"
+          />
+          <h1 className="text-2xl font-bold text-slate-900">WoodenScale</h1>
           <p className="text-slate-500 text-sm mt-1">Super Admin Portal</p>
         </div>
 
