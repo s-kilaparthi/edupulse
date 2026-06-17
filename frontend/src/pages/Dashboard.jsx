@@ -4,6 +4,49 @@ import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
 import { checkDateHolidayStatus, fetchHolidayData, todayISO } from '../utils/holidays'
 import Loader from '../components/Loader'
+import { useTheme } from '../context/ThemeContext'
+
+function getInstituteSplashName(institute) {
+  if (institute?.brand_name?.trim()) return institute.brand_name.trim()
+  const words = (institute?.name ?? '').trim().split(/\s+/).filter(Boolean)
+  if (words.length >= 2) return `${words[0]} ${words[1]}`
+  if (words.length === 1) return words[0]
+  return 'Institute'
+}
+
+function getInstituteSplashLetter(institute) {
+  const source = institute?.brand_name?.trim() || institute?.name?.trim() || 'I'
+  return source.charAt(0).toUpperCase()
+}
+
+function InstituteSplash({ institute, fadingOut, isDark }) {
+  const displayName = getInstituteSplashName(institute)
+  const letter = getInstituteSplashLetter(institute)
+
+  return (
+    <div
+      className={`fixed inset-0 z-[9999] flex min-h-screen flex-col items-center justify-center transition-opacity duration-500 ${
+        isDark ? 'bg-[#000000]' : 'bg-white'
+      } ${fadingOut ? 'splash-fade-out opacity-0' : 'splash-fade-in opacity-100'}`}
+    >
+      {institute?.logo_url ? (
+        <img
+          src={institute.logo_url}
+          width={120}
+          height={120}
+          className="rounded-2xl object-cover mb-4"
+          alt={displayName}
+        />
+      ) : (
+        <div className="mb-4 flex h-[120px] w-[120px] items-center justify-center rounded-2xl bg-blue-600">
+          <span className="text-5xl font-bold text-white">{letter}</span>
+        </div>
+      )}
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">{displayName}</h1>
+      <p className="mt-2 text-sm text-gray-500 dark:text-[#A8A8A8]">Welcome back!</p>
+    </div>
+  )
+}
 
 const DAYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
 
@@ -514,6 +557,57 @@ export default function Dashboard() {
   })
   const [teacherClassCards, setTeacherClassCards] = useState([])
   const [loading, setLoading] = useState(true)
+  const { theme } = useTheme()
+  const [showInstituteSplash, setShowInstituteSplash] = useState(
+    () => sessionStorage.getItem('institute_splash_shown') !== 'true'
+  )
+  const [instituteSplashFadingOut, setInstituteSplashFadingOut] = useState(false)
+  const [instituteSplashData, setInstituteSplashData] = useState(null)
+  const [instituteSplashReady, setInstituteSplashReady] = useState(false)
+
+  useEffect(() => {
+    if (!showInstituteSplash || !session?.user?.id) return
+
+    async function loadInstituteSplash() {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('institute_id, role')
+        .eq('id', session.user.id)
+        .single()
+
+      if (userData?.role === 'superadmin' || !userData?.institute_id) {
+        sessionStorage.setItem('institute_splash_shown', 'true')
+        setShowInstituteSplash(false)
+        return
+      }
+
+      const { data: institute } = await supabase
+        .from('institutes')
+        .select('name, brand_name, logo_url')
+        .eq('id', userData.institute_id)
+        .single()
+
+      setInstituteSplashData(institute)
+      setInstituteSplashReady(true)
+    }
+
+    loadInstituteSplash()
+  }, [session, showInstituteSplash])
+
+  useEffect(() => {
+    if (!showInstituteSplash || !instituteSplashReady) return
+
+    const fadeOutTimer = setTimeout(() => setInstituteSplashFadingOut(true), 2000)
+    const hideTimer = setTimeout(() => {
+      sessionStorage.setItem('institute_splash_shown', 'true')
+      setShowInstituteSplash(false)
+    }, 2500)
+
+    return () => {
+      clearTimeout(fadeOutTimer)
+      clearTimeout(hideTimer)
+    }
+  }, [showInstituteSplash, instituteSplashReady])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -1041,6 +1135,28 @@ export default function Dashboard() {
 
     loadDashboard()
   }, [session, userLoaded, instituteId, userRole])
+
+  if (showInstituteSplash) {
+    if (!instituteSplashReady) {
+      return (
+        <div
+          className={`fixed inset-0 z-[9999] flex min-h-screen items-center justify-center ${
+            theme === 'dark' ? 'bg-[#000000]' : 'bg-white'
+          }`}
+        >
+          <Loader size={40} />
+        </div>
+      )
+    }
+
+    return (
+      <InstituteSplash
+        institute={instituteSplashData}
+        fadingOut={instituteSplashFadingOut}
+        isDark={theme === 'dark'}
+      />
+    )
+  }
 
   if (loading) {
     return (
