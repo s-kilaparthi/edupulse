@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220" width="400" height="220">
+  <!-- White background -->
+  <rect width="400" height="220" fill="white"/>
+  
+  <!-- Green line - long -->
+  <line x1="40" y1="70" x2="360" y2="70" 
+        stroke="#22C55E" stroke-width="24" stroke-linecap="round"/>
+  
+  <!-- Yellow line - medium -->
+  <line x1="40" y1="130" x2="240" y2="130" 
+        stroke="#FACC15" stroke-width="24" stroke-linecap="round"/>
+  
+  <!-- Red line - short -->
+  <line x1="40" y1="190" x2="140" y2="190" 
+        stroke="#EF4444" stroke-width="24" stroke-linecap="round"/>
+</svg>
