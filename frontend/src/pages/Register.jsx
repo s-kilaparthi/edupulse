@@ -65,10 +65,14 @@ export default function Register() {
     <div className="min-h-screen bg-gray-50 dark:bg-[#000000] flex items-center justify-center px-4 py-8">
       <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 shadow-sm p-8 w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 bg-blue-600 rounded-xl mx-auto mb-4 flex items-center justify-center">
-            <span className="text-white font-bold text-xl">E</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">EduPulse</h1>
+          <img
+            src="/icon-512.png"
+            width="48"
+            height="48"
+            className="rounded-xl object-cover mx-auto mb-4"
+            alt="WoodenScale"
+          />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-[#FFFFFF]">WoodenScale</h1>
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm mt-1">Register your coaching institute</p>
         </div>
 
