@@ -45,16 +45,18 @@ const adminNav = [
 ]
 
 function getInstituteDisplayName(institute) {
-  if (!institute) return 'EduPulse'
+  if (!institute) return ''
   if (institute.brand_name?.trim()) return institute.brand_name.trim()
   const words = (institute.name ?? '').trim().split(/\s+/).filter(Boolean)
   if (words.length >= 2) return `${words[0]} ${words[1]}`
   if (words.length === 1) return words[0]
-  return 'EduPulse'
+  return ''
 }
 
 function getLogoLetter(institute) {
-  const source = institute?.brand_name?.trim() || institute?.name?.trim() || 'EduPulse'
+  if (!institute) return null
+  const source = institute?.brand_name?.trim() || institute?.name?.trim() || ''
+  if (!source) return null
   return source.charAt(0).toUpperCase()
 }
 
@@ -70,6 +72,7 @@ export default function AppLayout({ session }) {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifDropdown, setShowNotifDropdown] = useState(false)
   const [instituteBranding, setInstituteBranding] = useState(null)
+  const [brandingLoaded, setBrandingLoaded] = useState(false)
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null)
   const [showInstallBanner, setShowInstallBanner] = useState(false)
 
@@ -79,9 +82,12 @@ export default function AppLayout({ session }) {
   useEffect(() => {
     if (!session?.user?.id) {
       setInstituteBranding(null)
+      setBrandingLoaded(false)
       document.title = 'EduPulse'
       return
     }
+
+    setBrandingLoaded(false)
 
     supabase
       .from('users')
@@ -93,6 +99,7 @@ export default function AppLayout({ session }) {
           localStorage.setItem('blocked_message',
             'Your account has been temporarily blocked. Please contact your institute admin or help desk for assistance.')
           await supabase.auth.signOut()
+          setBrandingLoaded(true)
           return
         }
         if (data) {
@@ -102,6 +109,7 @@ export default function AppLayout({ session }) {
         } else {
           setInstituteBranding(null)
         }
+        setBrandingLoaded(true)
       })
   }, [session])
 
@@ -237,18 +245,35 @@ export default function AppLayout({ session }) {
             )}
           </button>
           <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            {instituteBranding?.logo_url ? (
-              <img
-                src={instituteBranding.logo_url}
-                alt={brandingTitle}
-                className="w-10 h-10 rounded-xl object-cover"
-              />
+            {!brandingLoaded ? (
+              <>
+                <img
+                  src="/icon-512.png"
+                  width="32"
+                  height="32"
+                  className="rounded-lg object-cover"
+                  alt="WoodenScale"
+                />
+                <span className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">WoodenScale</span>
+              </>
             ) : (
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                <span className="text-white font-bold text-sm">{logoLetter}</span>
-              </div>
+              <>
+                {instituteBranding?.logo_url ? (
+                  <img
+                    src={instituteBranding.logo_url}
+                    alt={brandingTitle}
+                    className="w-10 h-10 rounded-xl object-cover"
+                  />
+                ) : logoLetter ? (
+                  <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <span className="text-white font-bold text-sm">{logoLetter}</span>
+                  </div>
+                ) : (
+                  <div className="w-10 h-10 bg-gray-200 dark:bg-gray-700 rounded-xl" />
+                )}
+                <span className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">{brandingTitle}</span>
+              </>
             )}
-            <span className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">{brandingTitle}</span>
           </Link>
         </div>
         <div className="flex items-center gap-3">
