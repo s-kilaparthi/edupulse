@@ -1949,17 +1949,45 @@ export default function Results() {
     }
 
     if (userRole === 'admin' || userRole === 'teacher') {
-      supabase
-        .from('exams')
-        .select(examSelect)
-        .order('created_at', { ascending: false })
-        .then(({ data }) => {
-          if (data) {
-            setAllExams(data)
+      async function fetchAdminTeacherExams() {
+        if (selectedStudentId) {
+          const { data: studentData } = await supabase
+            .from('users')
+            .select('class_id')
+            .eq('id', selectedStudentId)
+            .single()
+
+          const studentClassId = studentData?.class_id
+          if (!studentClassId) {
+            setAllExams([])
+            return
           }
-        })
+
+          const { data } = await supabase
+            .from('exams')
+            .select(
+              'id, name, exam_date, exam_type, exam_type_id, scope, total_questions, total_marks, created_by, exam_types(name), exam_subjects(subject_id, subjects(name)), exam_classes!inner(class_id), exam_teachers(teacher_id)'
+            )
+            .eq('exam_classes.class_id', studentClassId)
+            .order('created_at', { ascending: false })
+
+          setAllExams(data ?? [])
+          return
+        }
+
+        const { data } = await supabase
+          .from('exams')
+          .select(examSelect)
+          .order('created_at', { ascending: false })
+
+        if (data) {
+          setAllExams(data)
+        }
+      }
+
+      fetchAdminTeacherExams()
     }
-  }, [roleLoaded, userRole, studentClassId, linkedStudentClassId])
+  }, [roleLoaded, userRole, studentClassId, linkedStudentClassId, selectedStudentId])
 
   useEffect(() => {
     if (isTeacherMainView && examId && !exams.some((e) => e.id === examId)) {
