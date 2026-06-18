@@ -1968,10 +1968,13 @@ export default function Results() {
             .select(
               'id, name, exam_date, exam_type, exam_type_id, scope, total_questions, total_marks, created_by, exam_types(name), exam_subjects(subject_id, subjects(name)), exam_classes!inner(class_id), exam_teachers(teacher_id)'
             )
-            .eq('exam_classes.class_id', studentClassId)
+            .filter('exam_classes.class_id', 'eq', studentClassId)
             .order('created_at', { ascending: false })
 
-          setAllExams(data ?? [])
+          const filtered = (data ?? []).filter((exam) =>
+            exam.exam_classes?.some((ec) => ec.class_id === studentClassId)
+          )
+          setAllExams(filtered)
           return
         }
 
