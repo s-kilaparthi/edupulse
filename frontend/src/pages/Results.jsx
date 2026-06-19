@@ -290,6 +290,12 @@ function heatmapPctClass(pct) {
   return 'text-red-600 dark:text-red-400'
 }
 
+function performancePctClass(pct) {
+  if (pct >= 80) return 'text-green-600 dark:text-green-400'
+  if (pct >= 60) return 'text-yellow-600 dark:text-yellow-400'
+  return 'text-red-600 dark:text-red-400'
+}
+
 function reportsRankBadgeClass(rank) {
   if (rank === 1) return 'bg-yellow-100 text-yellow-800'
   if (rank === 2) return 'bg-gray-200 text-gray-700 dark:bg-[#363636] dark:text-[#A8A8A8]'
@@ -1204,9 +1210,13 @@ export default function Results() {
   const [selectedClassId, setSelectedClassId] = useState('')
   const [studentSearch, setStudentSearch] = useState('')
   const [studentRankings, setStudentRankings] = useState([])
-  const [teacherOverviewRows, setTeacherOverviewRows] = useState([])
-  const [loadingTeacherOverview, setLoadingTeacherOverview] = useState(false)
   const [expandedStudentId, setExpandedStudentId] = useState(null)
+  const [expandedStudentExamId, setExpandedStudentExamId] = useState(null)
+  const [performanceStudents, setPerformanceStudents] = useState([])
+  const [loadingPerformanceStudents, setLoadingPerformanceStudents] = useState(false)
+  const [loadingStudentRankings, setLoadingStudentRankings] = useState(false)
+  const [studentExamCards, setStudentExamCards] = useState([])
+  const [loadingStudentExamCards, setLoadingStudentExamCards] = useState(false)
   const [linkedStudentId, setLinkedStudentId] = useState(null)
   const [linkedStudentClassId, setLinkedStudentClassId] = useState(null)
   const [studentClassId, setStudentClassId] = useState(null)
@@ -1261,6 +1271,23 @@ export default function Results() {
 
     return list
   }, [exams, heatmapGroupId, heatmapClassGroups])
+
+  const studentClassGroups = userRole === 'teacher' ? teacherClassGroups : classGroups
+
+  const studentPerformanceExams = useMemo(() => {
+    let list = exams
+
+    if (studentGroupId) {
+      const group = studentClassGroups.find((g) => g.id === studentGroupId)
+      const groupClassIds = new Set(extractGroupClasses(group).map((c) => c.id))
+      if (!groupClassIds.size) return []
+      list = list.filter((exam) =>
+        (exam.exam_classes ?? []).some((ec) => groupClassIds.has(ec.class_id))
+      )
+    }
+
+    return list
+  }, [exams, studentGroupId, studentClassGroups])
 
   const isStudentView = userRole === 'student' && roleLoaded
   const isParentView = userRole === 'parent' && roleLoaded
@@ -1348,7 +1375,11 @@ export default function Results() {
     return Math.round(reportRankings.reduce((sum, s) => sum + s.percentage, 0) / reportRankings.length)
   }, [reportGroupId, reportRankings])
 
-  const cardExamId = isReportsStudentView ? reportViewExamId : examId
+  const cardExamId = isReportsStudentView
+    ? reportViewExamId
+    : (isTeacherMainView && activeTab === 'student' && expandedStudentId && (examId || expandedStudentExamId))
+      ? (examId || expandedStudentExamId)
+      : examId
   const cardExamTypeId = isReportsStudentView ? reportExamTypeId : selectedExamTypeId
   const cardExams = isReportsStudentView ? reportExams : exams
   const cardStudentId = isReportsStudentView
@@ -1414,10 +1445,12 @@ export default function Results() {
   useEffect(() => {
     if (!examId || !isTeacher || !session?.user?.id) {
       setStudentRankings([])
+      setLoadingStudentRankings(false)
       return
     }
 
     async function fetchRankings() {
+      setLoadingStudentRankings(true)
       const { data: examClassData } = await supabase
         .from('exam_classes')
         .select('class_id, classes(id, name)')
@@ -1454,6 +1487,7 @@ export default function Results() {
 
       if (allStudents.length === 0) {
         setStudentRankings([])
+        setLoadingStudentRankings(false)
         return
       }
 
@@ -1513,6 +1547,7 @@ export default function Results() {
       })
 
       setStudentRankings(rankings)
+      setLoadingStudentRankings(false)
     }
 
     fetchRankings()
@@ -1615,6 +1650,7 @@ export default function Results() {
     if (selectedClassId && !studentFilteredClasses.some((c) => c.id === selectedClassId)) {
       setSelectedClassId('')
       setExpandedStudentId(null)
+      setExpandedStudentExamId(null)
       setSelectedStudentId('')
     }
   }, [studentGroupId, studentFilteredClasses, selectedClassId])
@@ -1918,6 +1954,7 @@ export default function Results() {
     }
     if (!isTeacher) return
     setExpandedStudentId(null)
+    setExpandedStudentExamId(null)
     setSelectedStudentId('')
     setStudentSearch('')
   }, [examId, selectedExamTypeId, selectedClassId, fromStudentsNav, isTeacher])
@@ -2002,16 +2039,19 @@ export default function Results() {
     if (activeTab === 'heatmap' && examId && !heatmapExams.some((e) => e.id === examId)) {
       setExamId('')
     }
-  }, [exams, heatmapExams, examId, isTeacherMainView, isCardExamView, activeTab])
+    if (activeTab === 'student' && examId && !studentPerformanceExams.some((e) => e.id === examId)) {
+      setExamId('')
+    }
+  }, [exams, heatmapExams, studentPerformanceExams, examId, isTeacherMainView, isCardExamView, activeTab])
 
   useEffect(() => {
-    if (!isTeacherMainView || examId || !session?.user?.id) {
-      setTeacherOverviewRows([])
+    if (!isTeacherMainView || activeTab !== 'student' || !session?.user?.id) {
+      setPerformanceStudents([])
       return
     }
 
-    async function loadTeacherOverview() {
-      setLoadingTeacherOverview(true)
+    async function loadPerformanceStudents() {
+      setLoadingPerformanceStudents(true)
 
       const { data: userData } = await supabase
         .from('users')
@@ -2020,8 +2060,8 @@ export default function Results() {
         .single()
 
       if (!userData?.institute_id) {
-        setTeacherOverviewRows([])
-        setLoadingTeacherOverview(false)
+        setPerformanceStudents([])
+        setLoadingPerformanceStudents(false)
         return
       }
 
@@ -2046,111 +2086,93 @@ export default function Results() {
       }
 
       const { data: students } = await studentQuery
-      const examList = exams
+      setPerformanceStudents(students ?? [])
+      setLoadingPerformanceStudents(false)
+    }
 
-      if (!students?.length || !examList.length) {
-        setTeacherOverviewRows([])
-        setLoadingTeacherOverview(false)
+    loadPerformanceStudents()
+  }, [isTeacherMainView, activeTab, selectedClassId, studentGroupId, classGroups, classes, session, userRole, teacherClasses, teacherClassGroups])
+
+  useEffect(() => {
+    if (!isTeacherMainView || activeTab !== 'student' || !expandedStudentId || examId) {
+      setStudentExamCards([])
+      return
+    }
+
+    async function loadStudentExamCards() {
+      setLoadingStudentExamCards(true)
+      const studentId = expandedStudentId
+
+      const [{ data: topicRows }, { data: writtenRows }, { data: mcqRows }] = await Promise.all([
+        supabase.from('topic_scores').select('exam_id').eq('student_id', studentId),
+        supabase.from('omr_results').select('exam_id, marks_obtained, total_marks').eq('student_id', studentId).is('question_id', null),
+        supabase.from('omr_results').select('exam_id, is_correct, question_id').eq('student_id', studentId).not('question_id', 'is', null),
+      ])
+
+      const examIdSet = new Set()
+      for (const row of topicRows ?? []) examIdSet.add(row.exam_id)
+      for (const row of writtenRows ?? []) examIdSet.add(row.exam_id)
+      for (const row of mcqRows ?? []) {
+        if (row.question_id != null) examIdSet.add(row.exam_id)
+      }
+
+      const examIds = [...examIdSet]
+      if (!examIds.length) {
+        setStudentExamCards([])
+        setLoadingStudentExamCards(false)
         return
       }
 
-      const examIds = examList.map((e) => e.id)
-      const studentIds = students.map((s) => s.id)
-
-      const { data: writtenSummaries } = await supabase
-        .from('omr_results')
-        .select('exam_id, student_id, marks_obtained, total_marks')
-        .in('exam_id', examIds)
-        .in('student_id', studentIds)
-        .is('question_id', null)
-
-      const { data: mcqResults } = await supabase
-        .from('omr_results')
-        .select('exam_id, student_id, is_correct, question_id')
-        .in('exam_id', examIds)
-        .in('student_id', studentIds)
-        .not('question_id', 'is', null)
-
       const writtenMap = {}
-      for (const row of writtenSummaries ?? []) {
-        writtenMap[`${row.exam_id}-${row.student_id}`] = row
+      for (const row of writtenRows ?? []) {
+        writtenMap[row.exam_id] = row
       }
 
       const mcqMap = {}
       const mcqAttended = new Set()
-      for (const row of mcqResults ?? []) {
+      for (const row of mcqRows ?? []) {
         if (row.question_id == null) continue
-        const key = `${row.exam_id}-${row.student_id}`
-        if (!mcqMap[key]) mcqMap[key] = 0
-        if (row.is_correct) mcqMap[key] += 1
-        mcqAttended.add(key)
+        if (!mcqMap[row.exam_id]) mcqMap[row.exam_id] = 0
+        if (row.is_correct) mcqMap[row.exam_id] += 1
+        mcqAttended.add(row.exam_id)
       }
 
-      const rows = []
-      for (const exam of examList) {
-        for (const student of students) {
-          if (exam.scope !== 'all') {
-            const classIds = (exam.exam_classes ?? []).map((ec) => ec.class_id)
-            if (!classIds.includes(student.class_id)) continue
-          }
-
-          const key = `${exam.id}-${student.id}`
-          let score = 0
-          let total = 0
-          let attended = false
-          let notGraded = false
-
+      const cards = allExams
+        .filter((exam) => examIds.includes(exam.id))
+        .map((exam) => {
           if (exam.exam_type === 'written') {
-            const summary = writtenMap[key]
-            total = exam.total_marks ?? 0
+            const summary = writtenMap[exam.id]
             if (!summary) {
-              notGraded = true
-            } else {
-              attended = true
-              score = summary.marks_obtained ?? 0
-              total = summary.total_marks ?? total
+              return {
+                exam,
+                notGraded: true,
+                score: 0,
+                total: exam.total_marks ?? 0,
+                percentage: 0,
+                hasResult: topicRows?.some((r) => r.exam_id === exam.id) ?? false,
+              }
             }
-          } else {
-            total = exam.total_questions ?? 0
-            if (mcqAttended.has(key)) {
-              attended = true
-              score = mcqMap[key] ?? 0
-            }
+            const score = summary.marks_obtained ?? 0
+            const total = summary.total_marks ?? exam.total_marks ?? 0
+            const percentage = total > 0 ? Math.round((score / total) * 100) : 0
+            return { exam, notGraded: false, score, total, percentage, hasResult: true }
           }
 
-          const percentage = total > 0 && attended ? Math.round((score / total) * 100) : 0
+          const score = mcqMap[exam.id] ?? 0
+          const total = exam.total_questions ?? 0
+          const hasResult = mcqAttended.has(exam.id) || (topicRows?.some((r) => r.exam_id === exam.id) ?? false)
+          const percentage = total > 0 && hasResult ? Math.round((score / total) * 100) : 0
+          return { exam, notGraded: false, score, total, percentage, hasResult }
+        })
+        .filter((card) => card.hasResult)
+        .sort((a, b) => (b.exam.exam_date ?? '').localeCompare(a.exam.exam_date ?? ''))
 
-          rows.push({
-            studentId: student.id,
-            studentName: student.name,
-            rollNumber: student.roll_number,
-            className: student.classes?.name,
-            examId: exam.id,
-            examName: exam.name,
-            examDate: exam.exam_date,
-            examType: exam.exam_type,
-            instituteExamTypeName: exam.exam_types?.name,
-            score,
-            total,
-            percentage,
-            attended,
-            notGraded,
-          })
-        }
-      }
-
-      rows.sort((a, b) => {
-        const dateCmp = (b.examDate ?? '').localeCompare(a.examDate ?? '')
-        if (dateCmp !== 0) return dateCmp
-        return (a.studentName ?? '').localeCompare(b.studentName ?? '')
-      })
-
-      setTeacherOverviewRows(rows)
-      setLoadingTeacherOverview(false)
+      setStudentExamCards(cards)
+      setLoadingStudentExamCards(false)
     }
 
-    loadTeacherOverview()
-  }, [isTeacherMainView, examId, exams, selectedClassId, studentGroupId, classGroups, classes, session, userRole, teacherClasses, teacherClassGroups])
+    loadStudentExamCards()
+  }, [isTeacherMainView, activeTab, expandedStudentId, examId, allExams])
 
   useEffect(() => {
     if (!isCardExamView || cardExamId) {
@@ -2458,14 +2480,15 @@ export default function Results() {
     String(s.roll_number).includes(studentSearch)
   )
 
-  const searchedOverviewRows = teacherOverviewRows.filter((row) => {
-    const q = studentSearch.toLowerCase()
-    return (
-      row.studentName?.toLowerCase().includes(q) ||
-      String(row.rollNumber).includes(studentSearch) ||
-      row.examName?.toLowerCase().includes(q)
-    )
-  })
+  const searchedPerformanceStudents = performanceStudents.filter((s) =>
+    s.name?.toLowerCase().includes(studentSearch.toLowerCase()) ||
+    String(s.roll_number).includes(studentSearch)
+  )
+
+  const performanceListStudents = examId ? searchedRankings : searchedPerformanceStudents
+  const performanceListLoading = examId ? loadingStudentRankings : loadingPerformanceStudents
+
+  const inlinePerformanceExamId = examId || expandedStudentExamId
 
   const examTypeSummary = useMemo(() => {
     const activeTypeId = isAdminReportsStudentView ? reportExamTypeId : selectedExamTypeId
@@ -2686,7 +2709,7 @@ export default function Results() {
                 value={selectedExamTypeId}
                 onChange={(e) => {
                   setSelectedExamTypeId(e.target.value)
-                  if (activeTab === 'heatmap') setExamId('')
+                  if (activeTab === 'heatmap' || activeTab === 'student') setExamId('')
                 }}
                 className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
@@ -2710,52 +2733,63 @@ export default function Results() {
                   ))}
                 </select>
               )}
+              {activeTab === 'student' && studentClassGroups.length > 0 && (
+                <select
+                  value={studentGroupId}
+                  onChange={(e) => {
+                    setStudentGroupId(e.target.value)
+                    setSelectedClassId('')
+                    setExamId('')
+                    setExpandedStudentId(null)
+                    setExpandedStudentExamId(null)
+                    setSelectedStudentId('')
+                    setStudentSearch('')
+                  }}
+                  className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="">All Groups</option>
+                  {studentClassGroups.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              )}
               <select
                 value={examId}
-                onChange={(e) => setExamId(e.target.value)}
+                onChange={(e) => {
+                  setExamId(e.target.value)
+                  setExpandedStudentId(null)
+                  setExpandedStudentExamId(null)
+                  setSelectedStudentId('')
+                }}
                 className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] shadow-sm focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
               >
                 <option value="">All Exams</option>
-                {(activeTab === 'heatmap' ? heatmapExams : exams).map((exam) => (
+                {(activeTab === 'heatmap'
+                  ? heatmapExams
+                  : activeTab === 'student'
+                    ? studentPerformanceExams
+                    : exams
+                ).map((exam) => (
                   <option key={exam.id} value={exam.id}>{exam.name}</option>
                 ))}
               </select>
               {activeTab === 'student' && (
-                <>
-                  {(userRole === 'teacher' ? teacherClassGroups : classGroups).length > 0 && (
-                    <select
-                      value={studentGroupId}
-                      onChange={(e) => {
-                        setStudentGroupId(e.target.value)
-                        setSelectedClassId('')
-                        setExpandedStudentId(null)
-                        setSelectedStudentId('')
-                        setStudentSearch('')
-                      }}
-                      className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-                    >
-                      <option value="">All Groups</option>
-                      {(userRole === 'teacher' ? teacherClassGroups : classGroups).map((g) => (
-                        <option key={g.id} value={g.id}>{g.name}</option>
-                      ))}
-                    </select>
-                  )}
-                  <select
-                    value={selectedClassId}
-                    onChange={(e) => {
-                      setSelectedClassId(e.target.value)
-                      setExpandedStudentId(null)
-                      setSelectedStudentId('')
-                      setStudentSearch('')
-                    }}
-                    className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-                  >
-                    <option value="">All Classes</option>
-                    {studentFilteredClasses.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </>
+                <select
+                  value={selectedClassId}
+                  onChange={(e) => {
+                    setSelectedClassId(e.target.value)
+                    setExpandedStudentId(null)
+                    setExpandedStudentExamId(null)
+                    setSelectedStudentId('')
+                    setStudentSearch('')
+                  }}
+                  className="w-full md:w-auto rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm px-3 py-2 text-sm font-medium text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                >
+                  <option value="">All Classes</option>
+                  {studentFilteredClasses.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
               )}
             </div>
           )}
@@ -2883,114 +2917,96 @@ export default function Results() {
               />
             </div>
 
-            {!examId && loadingTeacherOverview && (
+            {performanceListLoading && (
               <div className="flex justify-center items-center h-64">
                 <Loader size={40} />
               </div>
             )}
 
-            {!examId && !loadingTeacherOverview && searchedOverviewRows.length === 0 && (
-              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
-                <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No results found.</p>
-              </div>
-            )}
-
-            {!examId && !loadingTeacherOverview && searchedOverviewRows.length > 0 && (
-              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm">
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
-                    All Results — {searchedOverviewRows.length} entries
-                  </h2>
-                </div>
-                <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {searchedOverviewRows.map((row) => (
-                    <div
-                      key={`${row.studentId}-${row.examId}`}
-                      className="flex items-center gap-3 px-4 py-3"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{row.studentName}</p>
-                        <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">
-                          Roll #{row.rollNumber}
-                          {row.className && ` · ${row.className}`}
-                        </p>
-                        <p className="text-sm text-gray-700 dark:text-[#A8A8A8] mt-1 truncate">{row.examName}</p>
-                        <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">{formatExamDate(row.examDate)}</p>
-                        <div className="flex flex-wrap gap-1.5 mt-1.5">
-                          <ExamTypeBadge examType={row.examType} />
-                          <InstituteExamTypeBadge name={row.instituteExamTypeName} />
-                        </div>
-                      </div>
-                      <div className="text-right shrink-0">
-                        {row.notGraded ? (
-                          <p className="text-sm font-medium text-gray-500 dark:text-[#A8A8A8]">Not graded</p>
-                        ) : !row.attended ? (
-                          <p className="text-sm font-medium text-gray-400 dark:text-[#A8A8A8]">Absent</p>
-                        ) : (
-                          <>
-                            <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">{row.score} / {row.total}</p>
-                            <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">{row.percentage}%</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {examId && displayedRankings.length === 0 && studentRankings.length > 0 && selectedClassId && (
+            {!performanceListLoading && examId && displayedRankings.length === 0 && studentRankings.length > 0 && selectedClassId && (
               <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
                 <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No students in this class</p>
               </div>
             )}
 
-            {examId && studentRankings.length === 0 && (
+            {!performanceListLoading && examId && studentRankings.length === 0 && (
               <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
                 <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No students found for this exam</p>
               </div>
             )}
 
-            {examId && displayedRankings.length > 0 && (
+            {!performanceListLoading && !examId && performanceStudents.length === 0 && (
+              <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-8 text-center shadow-sm">
+                <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No students found.</p>
+              </div>
+            )}
+
+            {!performanceListLoading && performanceListStudents.length > 0 && (
               <div className="rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm">
                 <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">
-                    Class Results — {displayedRankings.length} students
-                    {selectedExam && (
+                    {examId
+                      ? `Class Results — ${displayedRankings.length} students`
+                      : `Students — ${performanceListStudents.length}`}
+                    {examId && selectedExam && (
                       <span className="font-normal text-gray-500 dark:text-[#A8A8A8]"> · {selectedExam.name}</span>
                     )}
                   </h2>
                 </div>
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {searchedRankings.map((s) => {
-                    const index = displayedRankings.indexOf(s)
+                  {performanceListStudents.map((s) => {
+                    const index = examId ? displayedRankings.indexOf(s) : -1
+                    const isExpanded = expandedStudentId === s.id
+                    const showExamCards = isExpanded && !examId && !expandedStudentExamId
+                    const showTopics = isExpanded && inlinePerformanceExamId
+                    const inlineExam = allExams.find((e) => e.id === inlinePerformanceExamId)
+
                     return (
                       <div key={s.id}>
                         <button
                           type="button"
                           onClick={() => {
-                            setExpandedStudentId((prev) => (prev === s.id ? null : s.id))
+                            if (isExpanded) {
+                              setExpandedStudentId(null)
+                              setSelectedStudentId('')
+                              setExpandedStudentExamId(null)
+                              setResult(null)
+                              return
+                            }
+                            setExpandedStudentId(s.id)
                             setSelectedStudentId(s.id)
+                            setExpandedStudentExamId(examId || null)
+                            setResult(null)
                           }}
                           className={`w-full min-h-[56px] flex items-center gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-[#262626] transition-colors text-left ${
-                            expandedStudentId === s.id ? 'bg-blue-50' : ''
+                            isExpanded ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                           }`}
                         >
-                          <span
-                            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                              !s.attended
-                                ? 'bg-gray-100 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8]'
-                                : index === 0
-                                  ? 'bg-yellow-100 text-yellow-700'
-                                  : index === 1
-                                    ? 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8]'
-                                    : index === 2
-                                      ? 'bg-orange-100 text-orange-700'
-                                      : 'bg-gray-50 dark:bg-[#262626] text-gray-500 dark:text-[#A8A8A8]'
-                            }`}
-                          >
-                            {s.attended ? index + 1 : '—'}
-                          </span>
+                          {examId ? (
+                            <span
+                              className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                                !s.attended
+                                  ? 'bg-gray-100 dark:bg-[#262626] text-gray-400 dark:text-[#A8A8A8]'
+                                  : index === 0
+                                    ? 'bg-yellow-100 text-yellow-700'
+                                    : index === 1
+                                      ? 'bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8]'
+                                      : index === 2
+                                        ? 'bg-orange-100 text-orange-700'
+                                        : 'bg-gray-50 dark:bg-[#262626] text-gray-500 dark:text-[#A8A8A8]'
+                              }`}
+                            >
+                              {s.attended ? index + 1 : '—'}
+                            </span>
+                          ) : (
+                            <span className="w-7 h-7 rounded-full bg-gray-100 dark:bg-[#262626] flex items-center justify-center shrink-0">
+                              {isExpanded ? (
+                                <ChevronDown className="h-4 w-4 text-gray-500 dark:text-[#A8A8A8]" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 text-gray-500 dark:text-[#A8A8A8]" />
+                              )}
+                            </span>
+                          )}
 
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{s.name}</p>
@@ -3000,52 +3016,131 @@ export default function Results() {
                             </p>
                           </div>
 
-                          <div className="text-right shrink-0">
-                            {s.attended ? (
-                              <>
-                                <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">
-                                  {s.score} / {s.totalQ}
-                                </p>
-                                <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">
-                                  {s.totalQ > 0 ? Math.round((s.score / s.totalQ) * 100) : 0}%
-                                </p>
-                              </>
+                          {examId && (
+                            <div className="text-right shrink-0">
+                              {s.attended ? (
+                                <>
+                                  <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">
+                                    {s.score} / {s.totalQ}
+                                  </p>
+                                  <p className={`text-xs font-medium ${performancePctClass(s.totalQ > 0 ? Math.round((s.score / s.totalQ) * 100) : 0)}`}>
+                                    {s.totalQ > 0 ? Math.round((s.score / s.totalQ) * 100) : 0}%
+                                  </p>
+                                </>
+                              ) : (
+                                <div>
+                                  <p className="font-semibold text-gray-500 dark:text-[#A8A8A8] text-sm">0 / {s.totalQ}</p>
+                                  <p className="text-xs text-red-400">Absent</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {examId && (
+                            isExpanded ? (
+                              <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
                             ) : (
-                              <div>
-                                <p className="font-semibold text-gray-500 dark:text-[#A8A8A8] text-sm">0 / {s.totalQ}</p>
-                                <p className="text-xs text-red-400">Absent</p>
-                              </div>
-                            )}
-                          </div>
+                              <ChevronRight className="h-4 w-4 text-gray-400 shrink-0" />
+                            )
+                          )}
                         </button>
 
-                        {expandedStudentId === s.id && loading && (
+                        {showExamCards && loadingStudentExamCards && (
                           <div className="flex justify-center items-center h-32 mx-4 mb-4">
                             <Loader size={40} />
                           </div>
                         )}
 
-                        {expandedStudentId === s.id && !loading && !result && examId && (
+                        {showExamCards && !loadingStudentExamCards && studentExamCards.length === 0 && (
+                          <div className="mx-4 mb-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-6 text-center">
+                            <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No exam results found for this student yet.</p>
+                          </div>
+                        )}
+
+                        {showExamCards && !loadingStudentExamCards && studentExamCards.length > 0 && (
+                          <div className="mx-4 mb-4 flex flex-col gap-2">
+                            {studentExamCards.map((card) => (
+                              <button
+                                key={card.exam.id}
+                                type="button"
+                                onClick={() => {
+                                  setExpandedStudentExamId(card.exam.id)
+                                  setResult(null)
+                                }}
+                                className="w-full text-left rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-4 hover:border-blue-300 dark:hover:border-blue-600 transition-colors"
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{card.exam.name}</p>
+                                    <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-0.5">{formatExamDate(card.exam.exam_date)}</p>
+                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                      <ExamTypeBadge examType={card.exam.exam_type} />
+                                      <InstituteExamTypeBadge name={card.exam.exam_types?.name} />
+                                    </div>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    {card.notGraded ? (
+                                      <p className="text-sm font-medium text-gray-500 dark:text-[#A8A8A8]">Not graded</p>
+                                    ) : (
+                                      <>
+                                        <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm">
+                                          {card.score} / {card.total}
+                                        </p>
+                                        <p className={`text-xs font-medium ${performancePctClass(card.percentage)}`}>
+                                          {card.percentage}%
+                                        </p>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {showTopics && loading && (
+                          <div className="flex justify-center items-center h-32 mx-4 mb-4">
+                            <Loader size={40} />
+                          </div>
+                        )}
+
+                        {showTopics && !loading && !result && (
                           <div className="mx-4 mb-4 rounded-xl border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] shadow-sm p-6 text-center">
                             <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">No results found for this exam yet.</p>
                             <p className="text-gray-400 dark:text-[#A8A8A8] text-xs mt-1">Scan some OMR sheets first.</p>
                           </div>
                         )}
 
-                        {expandedStudentId === s.id && !loading && result && (
+                        {showTopics && !loading && result && (
                           <div className="mx-4 mb-4 border border-blue-100 dark:border-gray-600 rounded-xl overflow-hidden bg-white dark:bg-[#1C1C1C]">
-                            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 border-b border-blue-100 dark:border-gray-600">
-                              <p className="text-xs font-medium text-blue-700">
-                                {s.name}&apos;s Performance
-                              </p>
+                            <div className="flex items-center justify-between px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-gray-600">
+                              <div className="flex items-center gap-2 min-w-0">
+                                {!examId && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setExpandedStudentExamId(null)
+                                      setResult(null)
+                                    }}
+                                    className="text-blue-600 hover:text-blue-800 dark:text-blue-400 text-sm shrink-0"
+                                  >
+                                    ← Back
+                                  </button>
+                                )}
+                                <p className="text-xs font-medium text-blue-700 dark:text-blue-300 truncate">
+                                  {s.name}&apos;s Performance
+                                  {inlineExam && ` · ${inlineExam.name}`}
+                                </p>
+                              </div>
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
+                                onClick={() => {
                                   setExpandedStudentId(null)
                                   setSelectedStudentId('')
+                                  setExpandedStudentExamId(null)
+                                  setResult(null)
                                 }}
-                                className="text-blue-400 hover:text-blue-600 text-sm"
+                                className="text-blue-400 hover:text-blue-600 text-sm shrink-0"
                               >
                                 ✕ Close
                               </button>
@@ -3069,13 +3164,16 @@ export default function Results() {
                       </div>
                     )
                   })}
-                  {searchedRankings.length === 0 && (
-                    <p className="text-sm text-gray-400 dark:text-[#A8A8A8] text-center py-4">
-                      No students found matching &quot;{studentSearch}&quot;
-                    </p>
-                  )}
                 </div>
               </div>
+            )}
+
+            {!performanceListLoading && studentSearch && performanceListStudents.length === 0 && (
+              (examId ? displayedRankings.length > 0 : performanceStudents.length > 0) && (
+                <p className="text-sm text-gray-400 dark:text-[#A8A8A8] text-center py-4">
+                  No students found matching &quot;{studentSearch}&quot;
+                </p>
+              )
             )}
           </>
         )}
