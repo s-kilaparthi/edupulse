@@ -283,13 +283,27 @@ export default function Students() {
     }
   }
 
-  function handleStartEdit(student) {
+  async function handleStartEdit(student) {
     setEditingId(student.id)
     setEditName(student.name ?? '')
     setEditRoll(String(student.roll_number ?? ''))
     setEditEmail(student.email ?? '')
-    setEditParentName(student.parent_name ?? '')
-    setEditParentPhone(student.parent_phone ?? '')
+
+    if (instituteId) {
+      const { data: parentData } = await supabase
+        .from('users')
+        .select('parent_name, parent_phone')
+        .eq('roll_number', student.roll_number)
+        .eq('role', 'parent')
+        .eq('institute_id', instituteId)
+        .maybeSingle()
+
+      setEditParentName(parentData?.parent_name ?? '')
+      setEditParentPhone(parentData?.parent_phone ?? '')
+    } else {
+      setEditParentName('')
+      setEditParentPhone('')
+    }
   }
 
   function handleCancelEdit() {
@@ -319,17 +333,35 @@ export default function Students() {
         name,
         roll_number: roll,
         email,
-        parent_name: editParentName.trim() || null,
-        parent_phone: editParentPhone.trim() || null,
       })
       .eq('id', studentId)
 
-    setEditSaving(false)
-
     if (updateError) {
+      setEditSaving(false)
       setError(updateError.message)
       return
     }
+
+    if (instituteId) {
+      const { error: parentUpdateError } = await supabase
+        .from('users')
+        .update({
+          name: editParentName.trim() || null,
+          parent_name: editParentName.trim() || null,
+          parent_phone: editParentPhone.trim() || null,
+        })
+        .eq('roll_number', roll)
+        .eq('role', 'parent')
+        .eq('institute_id', instituteId)
+
+      if (parentUpdateError) {
+        setEditSaving(false)
+        setError(parentUpdateError.message)
+        return
+      }
+    }
+
+    setEditSaving(false)
 
     setEditingId(null)
     setLoading(true)
