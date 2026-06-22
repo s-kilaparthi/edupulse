@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
 import Loader from '../components/Loader'
@@ -13,6 +13,8 @@ const GROUP_CHECKBOX_CLASS = (checked) =>
 
 export default function Subjects() {
   const { session } = useOutletContext()
+  const location = useLocation()
+  const navigate = useNavigate()
   const [userRole, setUserRole] = useState('teacher')
   const [instituteId, setInstituteId] = useState(null)
   const [studentClassId, setStudentClassId] = useState(null)
@@ -53,6 +55,9 @@ export default function Subjects() {
   const [editingSubjectId, setEditingSubjectId] = useState(null)
   const [editSubjectName, setEditSubjectName] = useState('')
   const [savingSubjectEdit, setSavingSubjectEdit] = useState(false)
+  const [subjectSearch, setSubjectSearch] = useState('')
+  const [highlightedSubjectId, setHighlightedSubjectId] = useState(null)
+  const subjectCardRefs = useRef({})
   const [sharePopoverNoteId, setSharePopoverNoteId] = useState(null)
   const [sharedClassMap, setSharedClassMap] = useState({})
   const [sharingNoteId, setSharingNoteId] = useState(null)
@@ -450,6 +455,33 @@ export default function Subjects() {
           s.group_subjects?.some((gs) => gs.group_id === selectedGroupId)
         )
       : subjects
+
+  const visibleSubjects = useMemo(() => {
+    const query = subjectSearch.trim().toLowerCase()
+    if (!query) return displayedSubjects
+    return displayedSubjects.filter((s) => s.name.toLowerCase().includes(query))
+  }, [displayedSubjects, subjectSearch])
+
+  useEffect(() => {
+    const searchSubject = location.state?.searchSubject
+    if (!searchSubject || loading) return
+
+    setSubjectSearch(searchSubject)
+
+    const match =
+      displayedSubjects.find((s) => s.name.toLowerCase() === searchSubject.toLowerCase()) ??
+      subjects.find((s) => s.name.toLowerCase() === searchSubject.toLowerCase())
+
+    if (match) {
+      setHighlightedSubjectId(match.id)
+      window.setTimeout(() => {
+        subjectCardRefs.current[match.id]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+      window.setTimeout(() => setHighlightedSubjectId(null), 3000)
+    }
+
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.state?.searchSubject, loading, displayedSubjects, subjects, location.pathname, navigate])
 
   async function handleCreateSubject(e) {
     e.preventDefault()
@@ -865,27 +897,48 @@ export default function Subjects() {
         </div>
       )}
 
+      {showSubjectList && !loading && displayedSubjects.length > 0 && (
+        <div className="mb-4">
+          <input
+            type="search"
+            value={subjectSearch}
+            onChange={(e) => setSubjectSearch(e.target.value)}
+            placeholder="Search subjects..."
+            className="w-full sm:w-72 rounded-lg border-2 border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+          />
+        </div>
+      )}
+
       {showSubjectList && (
         loading ? (
           <div className="flex justify-center items-center h-64">
             <Loader size={40} />
           </div>
-        ) : displayedSubjects.length === 0 ? (
+        ) : visibleSubjects.length === 0 ? (
           <p className="text-gray-500 dark:text-[#A8A8A8] text-sm">
-            {isAdmin
-              ? 'No subjects yet. Create one above.'
-              : isTeacher
-                ? 'No subjects assigned to you in this class.'
-                : 'No subjects yet.'}
+            {subjectSearch.trim()
+              ? `No subjects found matching "${subjectSearch.trim()}".`
+              : isAdmin
+                ? 'No subjects yet. Create one above.'
+                : isTeacher
+                  ? 'No subjects assigned to you in this class.'
+                  : 'No subjects yet.'}
           </p>
         ) : (
           <ul className="space-y-3">
-            {displayedSubjects.map((subject) => {
+            {visibleSubjects.map((subject) => {
               const classTopics = getClassTopics(subject)
               return (
                 <li
                   key={subject.id}
-                  className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm"
+                  ref={(el) => {
+                    subjectCardRefs.current[subject.id] = el
+                  }}
+                  className={`bg-white dark:bg-[#1C1C1C] rounded-xl border-2 p-4 shadow-sm transition-colors ${
+                    highlightedSubjectId === subject.id
+                      ? 'border-blue-500 ring-2 ring-blue-300 dark:ring-blue-700'
+                      : 'border-gray-200 dark:border-gray-700'
+                  }`}
                 >
                   {isStudentView ? (
                     <>

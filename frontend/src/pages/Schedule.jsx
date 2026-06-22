@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Loader from '../components/Loader'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
@@ -97,6 +97,7 @@ function calculatePeriodTimes(settings) {
 
 export default function Schedule() {
   const { session } = useOutletContext()
+  const navigate = useNavigate()
 
   const [userRole, setUserRole] = useState('')
   const [instituteId, setInstituteId] = useState(null)
@@ -1017,10 +1018,28 @@ export default function Schedule() {
                                 </span>
                               ) : slot ? (
                                 <div className="p-1.5 bg-blue-50 rounded-lg text-xs min-h-12 break-words">
-                                  <p className="text-xs font-medium text-blue-800 break-words">
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (slot.subjects?.name) {
+                                        navigate('/subjects', { state: { searchSubject: slot.subjects.name } })
+                                      }
+                                    }}
+                                    className="text-xs text-blue-600 hover:underline cursor-pointer font-medium break-words text-left"
+                                  >
                                     {slot.subjects?.name}
-                                  </p>
-                                  <p className="text-xs text-blue-600 break-words">{slot.users?.name}</p>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (slot.teacher_id) {
+                                        navigate('/teachers', { state: { openTeacherId: slot.teacher_id } })
+                                      }
+                                    }}
+                                    className="text-xs text-gray-600 hover:text-blue-600 hover:underline cursor-pointer break-words block text-left"
+                                  >
+                                    {slot.users?.name}
+                                  </button>
                                   {isAdmin && (
                                     <button
                                       type="button"

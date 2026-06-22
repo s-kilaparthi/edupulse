@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import Loader from '../components/Loader'
 
 export default function Teachers() {
   const { session } = useOutletContext()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const teacherCardRefs = useRef({})
 
   const [userRole, setUserRole] = useState('')
   const [instituteId, setInstituteId] = useState(null)
@@ -94,6 +97,25 @@ export default function Teachers() {
     fetchTeachers()
     fetchOptions()
   }, [userRole, instituteId])
+
+  useEffect(() => {
+    const openTeacherId = location.state?.openTeacherId
+    if (!openTeacherId || loading) return
+
+    const teacher = teachers.find((t) => t.id === openTeacherId)
+    if (teacher) {
+      setExpandedTeacherId(openTeacherId)
+      setSelectedClassId('')
+      setSelectedSubjectId('')
+      setError(null)
+      fetchAssignments(openTeacherId)
+      window.setTimeout(() => {
+        teacherCardRefs.current[openTeacherId]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+    }
+
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.state?.openTeacherId, loading, teachers, location.pathname, navigate])
 
   async function fetchAssignments(teacherId) {
     setLoadingAssignments(true)
@@ -352,6 +374,9 @@ export default function Teachers() {
             {teachers.map((teacher) => (
               <li
                 key={teacher.id}
+                ref={(el) => {
+                  teacherCardRefs.current[teacher.id] = el
+                }}
                 className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 shadow-sm"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
