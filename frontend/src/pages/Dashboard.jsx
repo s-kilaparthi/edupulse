@@ -89,7 +89,8 @@ function formatTodayDate() {
 }
 
 function todayDateStr() {
-  return new Date().toISOString().split('T')[0]
+  const today = new Date()
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 }
 
 function getWeekDateBounds() {
@@ -851,7 +852,7 @@ export default function Dashboard() {
                 .select('id')
                 .eq('class_id', cls.classId)
                 .eq('date', today)
-                .eq('marked_by', session.user.id)
+                .eq('institute_id', instituteId)
                 .limit(1),
             ])
 
@@ -1419,7 +1420,11 @@ export default function Dashboard() {
                     ) : (
                       <button
                         type="button"
-                        onClick={() => navigate('/attendance')}
+                        onClick={() =>
+                          navigate('/attendance', {
+                            state: { autoSelectClassId: cls.classId, autoTab: 'mark' },
+                          })
+                        }
                         className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-orange-200 transition-colors"
                       >
                         ⚠️ Pending
@@ -1518,7 +1523,11 @@ export default function Dashboard() {
                       ) : (
                         <button
                           type="button"
-                          onClick={() => navigate('/attendance')}
+                          onClick={() =>
+                            navigate('/attendance', {
+                              state: { autoSelectClassId: cls.id, autoTab: 'mark' },
+                            })
+                          }
                           className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-orange-200 transition-colors"
                         >
                           ⚠️ Pending

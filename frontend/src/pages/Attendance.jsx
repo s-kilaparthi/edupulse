@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useOutletContext } from 'react-router-dom'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
 import Loader from '../components/Loader'
@@ -281,6 +281,9 @@ function SlotCard({
 
 export default function Attendance() {
   const { session } = useOutletContext()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const markSectionRef = useRef(null)
 
   const [userRole, setUserRole] = useState('')
   const [instituteId, setInstituteId] = useState(null)
@@ -378,6 +381,40 @@ export default function Attendance() {
     () => extractGroupClasses(teacherSelectedGroup),
     [teacherSelectedGroup]
   )
+
+  useEffect(() => {
+    const autoSelectClassId = location.state?.autoSelectClassId
+    const autoTab = location.state?.autoTab
+    if (!autoSelectClassId || autoTab !== 'mark' || loading) return
+
+    if (isAdmin) {
+      setAdminTab('mark')
+      setSelectedClassId(autoSelectClassId)
+      setSelectedGroupId('')
+      setActiveSlotId(null)
+    } else if (isTeacher) {
+      setTeacherTab('mark')
+      setSelectedAttendanceClassId(autoSelectClassId)
+      setActiveSlotId(null)
+    } else {
+      navigate(location.pathname, { replace: true, state: null })
+      return
+    }
+
+    window.setTimeout(() => {
+      markSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150)
+
+    navigate(location.pathname, { replace: true, state: null })
+  }, [
+    location.state?.autoSelectClassId,
+    location.state?.autoTab,
+    loading,
+    isAdmin,
+    isTeacher,
+    location.pathname,
+    navigate,
+  ])
 
   useEffect(() => {
     if (!session?.user?.id) return
@@ -1526,7 +1563,7 @@ export default function Attendance() {
           </div>
 
           {teacherTab === 'mark' && (
-            <>
+            <div ref={markSectionRef}>
               {userRole === 'teacher' && (
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-2">
@@ -1554,7 +1591,7 @@ export default function Attendance() {
                 </div>
               )}
               {renderMarkAttendance(false)}
-            </>
+            </div>
           )}
           {teacherTab === 'reports' && renderReportsTab(teacherReportClasses, { teacherView: true })}
           {teacherTab === 'student' && renderStudentReport(teacherReportClasses)}
@@ -1665,7 +1702,11 @@ export default function Attendance() {
             ))}
           </div>
 
-          {adminTab === 'mark' && renderMarkAttendance(true)}
+          {adminTab === 'mark' && (
+            <div ref={markSectionRef}>
+              {renderMarkAttendance(true)}
+            </div>
+          )}
 
           {adminTab === 'reports' && renderReportsTab(displayClasses)}
 
