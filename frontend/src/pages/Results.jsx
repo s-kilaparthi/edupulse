@@ -1308,17 +1308,6 @@ export default function Results() {
   const showExamTypeSummaryBanner = isLearnerView || isAdminStudentView || isReportsStudentView
   const isCardExamView = isLearnerView || isTeacherStudentView || isReportsStudentView
 
-  const reportExams = useMemo(() => {
-    let list = allExams
-    if (userRole === 'teacher' && session?.user?.id) {
-      list = list.filter((e) => isExamVisibleToTeacher(e, session.user.id))
-    }
-    if (reportExamTypeId) {
-      list = list.filter((e) => e.exam_type_id === reportExamTypeId)
-    }
-    return list
-  }, [allExams, reportExamTypeId, userRole, session])
-
   const reportsClassGroups = userRole === 'teacher' ? teacherClassGroups : classGroups
   const reportsClasses = userRole === 'teacher' ? teacherClasses : classes
 
@@ -1332,6 +1321,30 @@ export default function Results() {
     }
     return cls
   }, [reportGroupId, reportsClassGroups, userRole, teacherClasses])
+
+  const reportGroupClassIds = useMemo(
+    () => new Set(reportGroupClasses.map((c) => c.id)),
+    [reportGroupClasses]
+  )
+
+  const reportExams = useMemo(() => {
+    let list = allExams
+    if (userRole === 'teacher' && session?.user?.id) {
+      list = list.filter((e) => isExamVisibleToTeacher(e, session.user.id))
+    }
+
+    return list.filter((exam) => {
+      if (reportExamTypeId && exam.exam_type_id !== reportExamTypeId) return false
+
+      if (reportGroupId) {
+        const examClassIds = (exam.exam_classes ?? []).map((ec) => ec.class_id)
+        const hasClassInGroup = examClassIds.some((cid) => reportGroupClassIds.has(cid))
+        if (!hasClassInGroup) return false
+      }
+
+      return true
+    })
+  }, [allExams, reportExamTypeId, reportGroupId, reportGroupClassIds, userRole, session])
 
   const reportSubjects = useMemo(() => {
     const examList = reportExamId
