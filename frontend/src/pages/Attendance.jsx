@@ -284,6 +284,7 @@ export default function Attendance() {
   const location = useLocation()
   const navigate = useNavigate()
   const markSectionRef = useRef(null)
+  const autoSelectScrollRef = useRef(false)
 
   const [userRole, setUserRole] = useState('')
   const [instituteId, setInstituteId] = useState(null)
@@ -385,36 +386,41 @@ export default function Attendance() {
   useEffect(() => {
     const autoSelectClassId = location.state?.autoSelectClassId
     const autoTab = location.state?.autoTab
-    if (!autoSelectClassId || autoTab !== 'mark' || loading) return
+    if (!autoSelectClassId || autoTab !== 'mark' || !userRole || !instituteId) return
 
-    if (isAdmin) {
+    if (userRole === 'admin') {
       setAdminTab('mark')
       setSelectedClassId(autoSelectClassId)
       setSelectedGroupId('')
       setActiveSlotId(null)
-    } else if (isTeacher) {
+      autoSelectScrollRef.current = true
+    } else if (userRole === 'teacher') {
       setTeacherTab('mark')
       setSelectedAttendanceClassId(autoSelectClassId)
       setActiveSlotId(null)
+      autoSelectScrollRef.current = true
     } else {
       navigate(location.pathname, { replace: true, state: null })
       return
     }
 
-    window.setTimeout(() => {
-      markSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 150)
-
     navigate(location.pathname, { replace: true, state: null })
   }, [
     location.state?.autoSelectClassId,
     location.state?.autoTab,
-    loading,
-    isAdmin,
-    isTeacher,
+    userRole,
+    instituteId,
     location.pathname,
     navigate,
   ])
+
+  useEffect(() => {
+    if (!autoSelectScrollRef.current || loading) return
+    autoSelectScrollRef.current = false
+    window.setTimeout(() => {
+      markSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+  }, [loading, selectedClassId, selectedAttendanceClassId])
 
   useEffect(() => {
     if (!session?.user?.id) return

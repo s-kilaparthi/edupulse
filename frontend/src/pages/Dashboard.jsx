@@ -1414,9 +1414,17 @@ export default function Dashboard() {
                       )}
                     </div>
                     {cls.attendanceMarked ? (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          navigate('/attendance', {
+                            state: { autoSelectClassId: cls.classId, autoTab: 'mark' },
+                          })
+                        }
+                        className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-green-200 cursor-pointer transition-colors"
+                      >
                         ✅ Marked
-                      </span>
+                      </button>
                     ) : (
                       <button
                         type="button"
@@ -1425,7 +1433,7 @@ export default function Dashboard() {
                             state: { autoSelectClassId: cls.classId, autoTab: 'mark' },
                           })
                         }
-                        className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-orange-200 transition-colors"
+                        className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-orange-200 cursor-pointer transition-colors"
                       >
                         ⚠️ Pending
                       </button>
@@ -1517,9 +1525,17 @@ export default function Dashboard() {
                     <div className="flex items-start justify-between gap-2">
                       <p className="font-semibold text-gray-900 dark:text-[#FFFFFF] text-sm truncate">{cls.name}</p>
                       {cls.marked ? (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            navigate('/attendance', {
+                              state: { autoSelectClassId: cls.id, autoTab: 'mark' },
+                            })
+                          }
+                          className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-green-200 cursor-pointer transition-colors"
+                        >
                           ✅ Marked
-                        </span>
+                        </button>
                       ) : (
                         <button
                           type="button"
@@ -1528,7 +1544,7 @@ export default function Dashboard() {
                               state: { autoSelectClassId: cls.id, autoTab: 'mark' },
                             })
                           }
-                          className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-orange-200 transition-colors"
+                          className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full border border-current font-medium shrink-0 hover:bg-orange-200 cursor-pointer transition-colors"
                         >
                           ⚠️ Pending
                         </button>
