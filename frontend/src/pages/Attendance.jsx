@@ -314,6 +314,9 @@ export default function Attendance() {
   const [reportToDate, setReportToDate] = useState(todayStr())
   const [reportRows, setReportRows] = useState([])
   const [reportLoading, setReportLoading] = useState(false)
+  const [reportViewMode, setReportViewMode] = useState('all')
+  const [parentPhoneMap, setParentPhoneMap] = useState({})
+  const [loadingParentPhones, setLoadingParentPhones] = useState(false)
   const [reportClassId, setReportClassId] = useState('')
   const [reportStudentId, setReportStudentId] = useState('')
   const [reportStudents, setReportStudents] = useState([])
@@ -704,6 +707,8 @@ export default function Attendance() {
     const agg = {}
     for (const s of classStudents) {
       agg[s.id] = {
+        id: s.id,
+        class_id: s.class_id ?? null,
         name: s.name,
         roll_number: s.roll_number,
         present: 0,
@@ -863,7 +868,7 @@ export default function Attendance() {
     const [studentsRes, attendanceRes] = await Promise.all([
       supabase
         .from('users')
-        .select('id, name, roll_number')
+        .select('id, name, roll_number, class_id')
         .eq('role', 'student')
         .eq('class_id', selectedClassId)
         .order('roll_number'),
@@ -900,6 +905,53 @@ export default function Attendance() {
     if (teacherDisplayClasses.length === 0) return
     fetchTeacherGroupReports()
   }, [isTeacher, teacherTab, teacherSelectedGroupId, groupDateRange, selectedClassId, teacherDisplayClasses, instituteId])
+
+  const absentReportRows = useMemo(
+    () =>
+      reportRows
+        .filter((row) => row.absent > 0)
+        .sort((a, b) => b.absent - a.absent),
+    [reportRows]
+  )
+
+  useEffect(() => {
+    if (reportViewMode !== 'absent' || !instituteId || absentReportRows.length === 0) {
+      setParentPhoneMap({})
+      setLoadingParentPhones(false)
+      return
+    }
+
+    const rollNumbers = [
+      ...new Set(absentReportRows.map((row) => row.roll_number).filter(Boolean)),
+    ]
+    if (rollNumbers.length === 0) {
+      setParentPhoneMap({})
+      return
+    }
+
+    let cancelled = false
+    setLoadingParentPhones(true)
+
+    supabase
+      .from('users')
+      .select('roll_number, parent_phone')
+      .eq('role', 'parent')
+      .eq('institute_id', instituteId)
+      .in('roll_number', rollNumbers)
+      .then(({ data }) => {
+        if (cancelled) return
+        const map = {}
+        for (const row of data ?? []) {
+          if (row.roll_number) map[row.roll_number] = row.parent_phone ?? null
+        }
+        setParentPhoneMap(map)
+        setLoadingParentPhones(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [reportViewMode, instituteId, absentReportRows])
 
   function handleSlotToggle(slot) {
     if (selectedDateOff.isOff) return
@@ -1040,6 +1092,9 @@ export default function Attendance() {
     const activeDisplayClasses = teacherView ? teacherDisplayClasses : displayClasses
     const showGroupFeatures = activeGroupId && (teacherView || isAdmin)
     const summaryColors = groupSummary ? getAttendancePctColor(groupSummary.pct) : null
+    const classNameById = Object.fromEntries(
+      [...classes, ...teacherReportClasses, ...classList].map((c) => [c.id, c.name])
+    )
 
     return (
       <>
@@ -1182,6 +1237,33 @@ export default function Attendance() {
         )}
 
         {reportRows.length > 0 && (
+          <div className="flex gap-2 mb-4">
+            <button
+              type="button"
+              onClick={() => setReportViewMode('all')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                reportViewMode === 'all'
+                  ? 'bg-blue-600 text-white'
+                  : 'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
+              }`}
+            >
+              All Students
+            </button>
+            <button
+              type="button"
+              onClick={() => setReportViewMode('absent')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                reportViewMode === 'absent'
+                  ? 'bg-blue-600 text-white'
+                  : 'border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
+              }`}
+            >
+              Absent Only
+            </button>
+          </div>
+        )}
+
+        {reportRows.length > 0 && reportViewMode === 'all' && (
           <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700">
             <div className="overflow-x-auto">
             <table className="min-w-[500px] w-full text-sm">
@@ -1199,7 +1281,7 @@ export default function Attendance() {
                 {reportRows.map((row) => {
                   const rowColors = getAttendancePctColor(row.pct)
                   return (
-                  <tr key={row.name + row.roll_number} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#262626]">
+                  <tr key={row.id ?? row.name + row.roll_number} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#262626]">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900 dark:text-[#FFFFFF]">{row.name}</p>
                       <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">Roll #{row.roll_number}</p>
@@ -1217,6 +1299,63 @@ export default function Attendance() {
               </tbody>
             </table>
             </div>
+          </div>
+        )}
+
+        {reportRows.length > 0 && reportViewMode === 'absent' && (
+          <div>
+            <p className="text-sm font-medium text-gray-700 dark:text-[#A8A8A8] mb-3">
+              {absentReportRows.length} student{absentReportRows.length !== 1 ? 's' : ''} absent
+            </p>
+            {loadingParentPhones ? (
+              <div className="flex justify-center items-center h-32">
+                <Loader size={40} />
+              </div>
+            ) : absentReportRows.length === 0 ? (
+              <p className="text-sm text-gray-500 dark:text-[#A8A8A8] text-center py-8">
+                No absent students in the selected date range.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {absentReportRows.map((row) => {
+                  const className =
+                    classNameById[row.class_id] ?? classNameById[selectedClassId] ?? '—'
+                  const parentPhone = parentPhoneMap[row.roll_number]
+                  const absenceLabel = row.absent === 1 ? '1 time' : `${row.absent} times`
+
+                  return (
+                    <div
+                      key={row.id ?? row.name + row.roll_number}
+                      className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                    >
+                      <div>
+                        <p className="font-bold text-gray-900 dark:text-[#FFFFFF]">{row.name}</p>
+                        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">Roll #{row.roll_number}</p>
+                        <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">{className}</p>
+                        <p className="text-sm text-red-600 font-medium mt-1">
+                          Absent {absenceLabel}
+                        </p>
+                      </div>
+                      <div className="flex flex-col items-start sm:items-end gap-2 shrink-0">
+                        {parentPhone ? (
+                          <>
+                            <p className="text-sm text-gray-700 dark:text-[#A8A8A8]">{parentPhone}</p>
+                            <a
+                              href={`tel:${parentPhone}`}
+                              className="bg-green-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-600 transition-colors"
+                            >
+                              📞 Call Parent
+                            </a>
+                          </>
+                        ) : (
+                          <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No parent contact</p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
       </>
