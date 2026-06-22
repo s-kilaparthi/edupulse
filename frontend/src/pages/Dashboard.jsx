@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router-dom'
 import { supabase } from '../supabase'
 import { fetchLinkedStudent } from '../utils/linkedStudent'
@@ -557,6 +557,10 @@ export default function Dashboard() {
     totalCount: 0,
   })
   const [teacherClassCards, setTeacherClassCards] = useState([])
+  const [attendanceStatus, setAttendanceStatus] = useState({})
+  const [attendanceRefreshToast, setAttendanceRefreshToast] = useState(false)
+  const adminClassesRef = useRef([])
+  const teacherClassesRef = useRef([])
   const [loading, setLoading] = useState(true)
   const { theme } = useTheme()
   const [showInstituteSplash, setShowInstituteSplash] = useState(
@@ -565,6 +569,92 @@ export default function Dashboard() {
   const [instituteSplashFadingOut, setInstituteSplashFadingOut] = useState(false)
   const [instituteSplashData, setInstituteSplashData] = useState(null)
   const [instituteSplashReady, setInstituteSplashReady] = useState(false)
+
+  useEffect(() => {
+    adminClassesRef.current = adminAttendanceClasses
+  }, [adminAttendanceClasses])
+
+  useEffect(() => {
+    teacherClassesRef.current = teacherClassCards
+  }, [teacherClassCards])
+
+  const fetchAttendanceStatus = useCallback(async () => {
+    if (!instituteId) return
+
+    const today = todayDateStr()
+    const { data } = await supabase
+      .from('attendance')
+      .select('class_id')
+      .eq('date', today)
+      .eq('institute_id', instituteId)
+
+    const markedIds = new Set((data ?? []).map((a) => a.class_id))
+
+    if (userRole === 'admin') {
+      const prev = adminClassesRef.current
+      if (prev.length === 0) return
+
+      const statusMap = {}
+      const updated = prev.map((c) => {
+        const marked = markedIds.has(c.id)
+        statusMap[c.id] = marked
+        return { ...c, marked }
+      })
+
+      setAttendanceStatus(statusMap)
+      setAdminAttendanceClasses(updated)
+      setAdminStats((s) => ({
+        ...s,
+        attendanceMarked: updated.filter((c) => c.marked).length,
+      }))
+    } else if (userRole === 'teacher') {
+      const prev = teacherClassesRef.current
+      if (prev.length === 0) return
+
+      const statusMap = {}
+      const updated = prev.map((c) => {
+        const marked = markedIds.has(c.classId)
+        statusMap[c.classId] = marked
+        return { ...c, attendanceMarked: marked }
+      })
+
+      setAttendanceStatus(statusMap)
+      setTeacherClassCards(updated)
+    }
+  }, [instituteId, userRole])
+
+  async function handleRefreshAttendanceStatus() {
+    await fetchAttendanceStatus()
+    setAttendanceRefreshToast(true)
+    window.setTimeout(() => setAttendanceRefreshToast(false), 2000)
+  }
+
+  useEffect(() => {
+    if (!instituteId || loading) return
+    if (userRole !== 'admin' && userRole !== 'teacher') return
+
+    fetchAttendanceStatus()
+
+    const channel = supabase
+      .channel('attendance-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'attendance',
+          filter: `institute_id=eq.${instituteId}`,
+        },
+        () => {
+          fetchAttendanceStatus()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [instituteId, userRole, loading, fetchAttendanceStatus])
 
   useEffect(() => {
     if (!showInstituteSplash || !session?.user?.id) return
@@ -1512,7 +1602,25 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <AdminSectionTitle title="Today's Attendance" barColor="bg-green-500" />
+            <div className="flex items-center justify-between gap-2 mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-1 h-5 bg-green-500 rounded-full" />
+                <h2 className="font-bold text-gray-800 dark:text-[#FFFFFF] text-base">Today&apos;s Attendance</h2>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {attendanceRefreshToast && (
+                  <span className="text-xs text-green-600 dark:text-green-400 font-medium">Updated</span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleRefreshAttendanceStatus}
+                  className="text-sm p-1.5 rounded-lg border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8] hover:bg-gray-100 dark:hover:bg-[#262626] transition-colors"
+                  aria-label="Refresh attendance status"
+                >
+                  🔄
+                </button>
+              </div>
+            </div>
             {adminAttendanceClasses.length === 0 ? (
               <p className="text-sm text-gray-400 dark:text-[#A8A8A8]">No classes in this institute yet.</p>
             ) : (
