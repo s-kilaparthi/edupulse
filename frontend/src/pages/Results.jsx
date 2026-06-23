@@ -26,8 +26,8 @@ function TopicDisplayName({ name }) {
   const topicName = name.slice(arrowIdx + 3)
   return (
     <span>
-      <span className="text-gray-500 dark:text-[#A8A8A8]">{chapterName}</span>
-      <span className="text-gray-500 dark:text-[#A8A8A8]"> → </span>
+      <span className="text-gray-700 dark:text-[#FFFFFF]">{chapterName}</span>
+      <span className="text-gray-400 dark:text-[#A8A8A8]"> → </span>
       <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{topicName}</span>
     </span>
   )
