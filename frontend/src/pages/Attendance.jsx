@@ -307,7 +307,7 @@ export default function Attendance() {
   const [classes, setClasses] = useState([])
   const [classGroups, setClassGroups] = useState([])
   const [selectedGroupId, setSelectedGroupId] = useState('')
-  const [groupDateRange, setGroupDateRange] = useState('week')
+  const [groupDateRange, setGroupDateRange] = useState('today')
   const [groupSummary, setGroupSummary] = useState(null)
   const [sectionStats, setSectionStats] = useState([])
   const [selectedClassId, setSelectedClassId] = useState('')
