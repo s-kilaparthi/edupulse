@@ -23,12 +23,12 @@ function getTargetLabel(announcement) {
     case 'subject_teachers':
       return '📖 Subject Teachers'
     case 'specific_teacher':
-      return '👤 Specific Teacher'
+      return `👨‍🏫 Teachers: ${(announcement.target_ids ?? []).length} selected`
     case 'specific_student':
-      return '👤 Specific Student'
+      return `👤 Students: ${(announcement.target_ids ?? []).length} selected`
     case 'group_students':
-      return announcement.group_name
-        ? `👥 Group: ${announcement.group_name}`
+      return announcement.group_names?.length
+        ? `👥 Groups: ${announcement.group_names.join(', ')}`
         : '👥 Group Students'
     case 'group_teachers':
       return announcement.group_name
@@ -221,7 +221,8 @@ export default function Announcements() {
   const [teacherSpecificStudentRoll, setTeacherSpecificStudentRoll] = useState('')
   const [teacherSpecificStudent, setTeacherSpecificStudent] = useState(null)
   const [studentSearchForAnnouncement, setStudentSearchForAnnouncement] = useState('')
-  const [foundAnnouncementStudent, setFoundAnnouncementStudent] = useState(null)
+  const [studentSearchResults, setStudentSearchResults] = useState([])
+  const [selectedAnnouncementStudents, setSelectedAnnouncementStudents] = useState([])
   const [teacherAnnouncementTab, setTeacherAnnouncementTab] = useState('institute')
 
   useEffect(() => {
@@ -393,8 +394,8 @@ export default function Announcements() {
     const groupIds = [
       ...new Set(
         rows
-          .filter((a) => GROUP_TARGET_TYPES.includes(a.target_type) && a.target_ids?.[0])
-          .map((a) => a.target_ids[0])
+          .filter((a) => GROUP_TARGET_TYPES.includes(a.target_type))
+          .flatMap((a) => a.target_ids ?? [])
       ),
     ]
 
@@ -410,13 +411,18 @@ export default function Announcements() {
       }
     }
 
-    const enriched = rows.map((a) => ({
-      ...a,
-      users: creatorMap[a.created_by] ?? null,
-      group_name: GROUP_TARGET_TYPES.includes(a.target_type) && a.target_ids?.[0]
-        ? groupNameMap[a.target_ids[0]] ?? null
-        : null,
-    }))
+    const enriched = rows.map((a) => {
+      const groupNames = GROUP_TARGET_TYPES.includes(a.target_type)
+        ? (a.target_ids ?? []).map((id) => groupNameMap[id]).filter(Boolean)
+        : null
+
+      return {
+        ...a,
+        users: creatorMap[a.created_by] ?? null,
+        group_name: groupNames?.[0] ?? null,
+        group_names: groupNames,
+      }
+    })
 
     setAnnouncements(enriched)
     setLoading(false)
@@ -547,7 +553,8 @@ export default function Announcements() {
       setTeacherSpecificStudentRoll('')
       setTeacherSpecificStudent(null)
       setStudentSearchForAnnouncement('')
-      setFoundAnnouncementStudent(null)
+      setStudentSearchResults([])
+      setSelectedAnnouncementStudents([])
       setShowForm(false)
       await loadAnnouncements()
     } else {
@@ -913,7 +920,8 @@ export default function Announcements() {
                       setTargetIds([])
                       setTargetSubjectIds([])
                       setStudentSearchForAnnouncement('')
-                      setFoundAnnouncementStudent(null)
+                      setStudentSearchResults([])
+                      setSelectedAnnouncementStudents([])
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                       targetType === opt.value
@@ -986,7 +994,37 @@ export default function Announcements() {
                 </div>
               )}
 
-              {GROUP_TARGET_TYPES.includes(targetType) && (
+              {targetType === 'group_students' && (
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <p className="w-full text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">Select groups:</p>
+                  {classGroups.map((g) => (
+                    <label
+                      key={g.id}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
+                        targetIds.includes(g.id)
+                          ? 'bg-blue-50 border-blue-500 text-blue-700'
+                          : 'bg-white dark:bg-[#1C1C1C] border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={targetIds.includes(g.id)}
+                        onChange={() =>
+                          setTargetIds((prev) =>
+                            prev.includes(g.id)
+                              ? prev.filter((id) => id !== g.id)
+                              : [...prev, g.id]
+                          )
+                        }
+                        className="hidden"
+                      />
+                      {g.name}
+                    </label>
+                  ))}
+                </div>
+              )}
+
+              {(targetType === 'group_teachers' || targetType === 'entire_group') && (
                 <select
                   value={targetIds[0] ?? ''}
                   onChange={(e) => setTargetIds(e.target.value ? [e.target.value] : [])}
@@ -1000,48 +1038,117 @@ export default function Announcements() {
               )}
 
               {targetType === 'specific_teacher' && (
-                <select
-                  value={targetIds[0] ?? ''}
-                  onChange={(e) => setTargetIds([e.target.value])}
-                  className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-                >
-                  <option value="">Select teacher...</option>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <p className="w-full text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">Select teachers:</p>
                   {teachers.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
+                    <label
+                      key={t.id}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
+                        targetIds.includes(t.id)
+                          ? 'bg-blue-50 border-blue-500 text-blue-700'
+                          : 'bg-white dark:bg-[#1C1C1C] border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={targetIds.includes(t.id)}
+                        onChange={() =>
+                          setTargetIds((prev) =>
+                            prev.includes(t.id)
+                              ? prev.filter((id) => id !== t.id)
+                              : [...prev, t.id]
+                          )
+                        }
+                        className="hidden"
+                      />
+                      {t.name}
+                    </label>
                   ))}
-                </select>
+                </div>
               )}
 
               {targetType === 'specific_student' && (
                 <div>
+                  {selectedAnnouncementStudents.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {selectedAnnouncementStudents.map((student) => (
+                        <span
+                          key={student.id}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-blue-50 text-blue-700 text-xs border border-blue-200"
+                        >
+                          {student.name} (Roll #{student.roll_number})
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedAnnouncementStudents((prev) =>
+                                prev.filter((s) => s.id !== student.id)
+                              )
+                              setTargetIds((prev) => prev.filter((id) => id !== student.id))
+                            }}
+                            className="text-blue-500 hover:text-blue-800 font-bold leading-none"
+                            aria-label={`Remove ${student.name}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <input
                     type="text"
                     value={studentSearchForAnnouncement}
                     onChange={async (e) => {
-                      setStudentSearchForAnnouncement(e.target.value)
-                      if (e.target.value.trim().length >= 2) {
-                        const { data } = await supabase
-                          .from('users')
-                          .select('id, name, roll_number')
-                          .eq('role', 'student')
-                          .eq('institute_id', instituteId)
-                          .eq('roll_number', e.target.value.trim())
-                          .single()
-                        setFoundAnnouncementStudent(data)
-                        if (data) setTargetIds([data.id])
-                      } else {
-                        setFoundAnnouncementStudent(null)
-                        setTargetIds([])
+                      const query = e.target.value
+                      setStudentSearchForAnnouncement(query)
+                      const trimmed = query.trim()
+                      if (trimmed.length < 1) {
+                        setStudentSearchResults([])
+                        return
                       }
+                      const { data } = await supabase
+                        .from('users')
+                        .select('id, name, roll_number')
+                        .eq('role', 'student')
+                        .eq('institute_id', instituteId)
+                        .or(`name.ilike.%${trimmed}%,roll_number.ilike.%${trimmed}%`)
+                        .order('name')
+                        .limit(20)
+                      setStudentSearchResults(data ?? [])
                     }}
-                    placeholder="Enter student roll number..."
+                    placeholder="Search students by name or roll number..."
                     className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
                   />
-                  {foundAnnouncementStudent && (
-                    <p className="text-xs text-green-700 mt-1 font-medium">
-                      Found: {foundAnnouncementStudent.name}
-                      {' '}(Roll #{foundAnnouncementStudent.roll_number})
-                    </p>
+                  {studentSearchResults.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {studentSearchResults.map((student) => (
+                        <label
+                          key={student.id}
+                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border cursor-pointer text-xs transition-colors ${
+                            targetIds.includes(student.id)
+                              ? 'bg-blue-50 border-blue-500 text-blue-700'
+                              : 'bg-white dark:bg-[#1C1C1C] border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={targetIds.includes(student.id)}
+                            onChange={() => {
+                              if (targetIds.includes(student.id)) {
+                                setTargetIds((prev) => prev.filter((id) => id !== student.id))
+                                setSelectedAnnouncementStudents((prev) =>
+                                  prev.filter((s) => s.id !== student.id)
+                                )
+                              } else {
+                                setTargetIds((prev) => [...prev, student.id])
+                                setSelectedAnnouncementStudents((prev) => [...prev, student])
+                              }
+                            }}
+                            className="hidden"
+                          />
+                          {student.name} (Roll #{student.roll_number})
+                        </label>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
