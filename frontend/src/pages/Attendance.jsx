@@ -1513,15 +1513,17 @@ export default function Attendance() {
           </p>
         )}
 
-        {loading ? (
+        {showClassSelector && !adminHasScope ? (
+          <div className="text-center text-gray-500 dark:text-[#A8A8A8] py-16">
+            <p className="text-4xl mb-3">📋</p>
+            <p className="font-medium text-gray-700 dark:text-[#FFFFFF]">Select a Class to Mark Attendance</p>
+            <p className="text-sm mt-2">Choose a group and class from the filters above to get started</p>
+          </div>
+        ) : loading ? (
           <div className="flex justify-center items-center h-64">
             <Loader size={40} />
           </div>
-        ) : selectedDateOff.isOff ? null : showClassSelector && !adminHasScope ? (
-          <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">
-            Select a class, or choose a group with All Classes to view combined schedule.
-          </p>
-        ) : isTeacher && !selectedAttendanceClassId ? null : displayedSlots.length === 0 ? (
+        ) : selectedDateOff.isOff ? null : isTeacher && !selectedAttendanceClassId ? null : displayedSlots.length === 0 ? (
           <div className="bg-white dark:bg-[#1C1C1C] rounded-xl border-2 border-gray-200 dark:border-gray-700 p-8 text-center">
             <p className="text-gray-500 dark:text-[#A8A8A8]">No scheduled classes for this day.</p>
           </div>
