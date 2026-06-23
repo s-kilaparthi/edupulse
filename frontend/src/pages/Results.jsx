@@ -2115,6 +2115,8 @@ export default function Results() {
     async function loadStudentExamCards() {
       setLoadingStudentExamCards(true)
       const studentId = expandedStudentId
+      const student = performanceStudents.find((s) => s.id === studentId)
+      const studentClassId = student?.class_id
 
       const [{ data: topicRows }, { data: writtenRows }, { data: mcqRows }] = await Promise.all([
         supabase.from('topic_scores').select('exam_id').eq('student_id', studentId),
@@ -2152,6 +2154,11 @@ export default function Results() {
 
       const cards = allExams
         .filter((exam) => examIds.includes(exam.id))
+        .filter((exam) => !selectedExamTypeId || exam.exam_type_id === selectedExamTypeId)
+        .filter((exam) => {
+          if (!studentClassId) return true
+          return (exam.exam_classes ?? []).some((ec) => ec.class_id === studentClassId)
+        })
         .map((exam) => {
           if (exam.exam_type === 'written') {
             const summary = writtenMap[exam.id]
@@ -2185,7 +2192,7 @@ export default function Results() {
     }
 
     loadStudentExamCards()
-  }, [isTeacherMainView, activeTab, expandedStudentId, examId, allExams])
+  }, [isTeacherMainView, activeTab, expandedStudentId, examId, allExams, selectedExamTypeId, performanceStudents])
 
   useEffect(() => {
     if (!isCardExamView || cardExamId) {
