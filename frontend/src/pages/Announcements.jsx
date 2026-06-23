@@ -43,7 +43,7 @@ function getTargetLabel(announcement) {
   }
 }
 
-function studentCanSeeAnnouncement(announcement, studentClassId, studentId) {
+function studentCanSeeAnnouncement(announcement, studentClassId, studentId, studentGroupIds) {
   const { target_type, target_ids } = announcement
   const ids = target_ids ?? []
   if (target_type === 'everyone' || target_type === 'all_students') return true
@@ -52,6 +52,13 @@ function studentCanSeeAnnouncement(announcement, studentClassId, studentId) {
   }
   if (target_type === 'specific_student') {
     return ids.includes(studentId)
+  }
+  if (target_type === 'specific_class' && studentClassId) {
+    return ids.includes(studentClassId)
+  }
+  if (target_type === 'group_students' || target_type === 'entire_group') {
+    if (!studentGroupIds || studentGroupIds.length === 0) return true
+    return ids.some((gid) => studentGroupIds.includes(gid))
   }
   if (!target_type) return true
   return false
@@ -179,6 +186,7 @@ export default function Announcements() {
   const [instituteId, setInstituteId] = useState(null)
   const [studentClassId, setStudentClassId] = useState(null)
   const [linkedStudentId, setLinkedStudentId] = useState(null)
+  const [studentGroupIds, setStudentGroupIds] = useState([])
   const isAdmin = userRole === 'admin'
   const isTeacher = userRole === 'teacher' || userRole === 'admin'
   const isParent = userRole === 'parent'
@@ -239,6 +247,24 @@ export default function Announcements() {
         }
       })
   }, [session])
+
+  useEffect(() => {
+    if (!studentClassId || (userRole !== 'student' && userRole !== 'parent')) {
+      setStudentGroupIds([])
+      return
+    }
+
+    async function loadStudentGroupIds() {
+      const { data: groupMembers } = await supabase
+        .from('class_group_members')
+        .select('group_id')
+        .eq('class_id', studentClassId)
+
+      setStudentGroupIds((groupMembers ?? []).map((g) => g.group_id))
+    }
+
+    loadStudentGroupIds()
+  }, [studentClassId, userRole])
 
   useEffect(() => {
     if (!session?.user?.id || !instituteId) return
@@ -575,7 +601,12 @@ export default function Announcements() {
         : myAnnouncements
       : userRole === 'student' || userRole === 'parent'
         ? announcements.filter((a) =>
-            studentCanSeeAnnouncement(a, studentClassId, linkedStudentId ?? session?.user?.id)
+            studentCanSeeAnnouncement(
+              a,
+              studentClassId,
+              linkedStudentId ?? session?.user?.id,
+              studentGroupIds
+            )
           )
         : announcements
 
