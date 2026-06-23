@@ -908,19 +908,35 @@ export default function Scan() {
   }
 
   async function upsertWrittenExamSummary(studentId, marks) {
-    const { error } = await supabase
+    const { data: existingRow } = await supabase
       .from('omr_results')
-      .upsert(
-        {
+      .select('id')
+      .eq('exam_id', writtenExamId)
+      .eq('student_id', studentId)
+      .is('question_id', null)
+      .maybeSingle()
+
+    if (existingRow) {
+      const { error } = await supabase
+        .from('omr_results')
+        .update({
+          marks_obtained: marks,
+          total_marks: writtenTotalMarks,
+        })
+        .eq('id', existingRow.id)
+      if (error) throw error
+    } else {
+      const { error } = await supabase
+        .from('omr_results')
+        .insert({
           exam_id: writtenExamId,
           student_id: studentId,
           question_id: null,
           marks_obtained: marks,
           total_marks: writtenTotalMarks,
-        },
-        { onConflict: 'exam_id,student_id', ignoreDuplicates: false }
-      )
-    if (error) throw error
+        })
+      if (error) throw error
+    }
   }
 
   async function handleConfirmWrittenStudent(studentId) {
@@ -1080,32 +1096,44 @@ export default function Scan() {
         .upsert(omrRows, { onConflict: 'exam_id,student_id,question_id' })
       if (omrErr) throw omrErr
 
-      const topicRows = await Promise.all(
-        Object.entries(topicAgg).map(async ([topic_id, { score, total, subject_id }]) => {
-          const { data: topicData } = await supabase
-            .from('topics')
-            .select('chapter_id')
-            .eq('id', topic_id)
-            .single()
-          const chapter_id = topicData?.chapter_id ?? null
-          return {
-            exam_id: writtenExamId,
-            student_id: studentId,
-            topic_id,
-            chapter_id,
-            subject_id: subject_id ?? null,
-            score,
-            total,
-            percentage: total > 0 ? Math.round((score / total) * 100) : 0,
-          }
-        })
-      )
+      for (const [topic_id, { score, total, subject_id }] of Object.entries(topicAgg)) {
+        const { data: topicData } = await supabase
+          .from('topics')
+          .select('chapter_id')
+          .eq('id', topic_id)
+          .single()
+        const chapter_id = topicData?.chapter_id ?? null
+        const percentage = total > 0 ? Math.round((score / total) * 100) : 0
 
-      if (topicRows.length > 0) {
-        const { error: topicErr } = await supabase
+        const { data: existingScore } = await supabase
           .from('topic_scores')
-          .upsert(topicRows, { onConflict: 'exam_id,student_id,topic_id' })
-        if (topicErr) throw topicErr
+          .select('id')
+          .eq('exam_id', writtenExamId)
+          .eq('student_id', studentId)
+          .eq('topic_id', topic_id)
+          .maybeSingle()
+
+        if (existingScore) {
+          const { error: topicErr } = await supabase
+            .from('topic_scores')
+            .update({ score, total, percentage, chapter_id })
+            .eq('id', existingScore.id)
+          if (topicErr) throw topicErr
+        } else {
+          const { error: topicErr } = await supabase
+            .from('topic_scores')
+            .insert({
+              exam_id: writtenExamId,
+              student_id: studentId,
+              topic_id,
+              chapter_id,
+              subject_id: subject_id ?? null,
+              score,
+              total,
+              percentage,
+            })
+          if (topicErr) throw topicErr
+        }
       }
 
       setGradedStudentIds((prev) => new Set([...prev, studentId]))
