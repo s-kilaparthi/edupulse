@@ -12,7 +12,7 @@ function topicStatus(pct) {
 }
 
 function topicScoreDisplayName(row) {
-  const chapterName = row.topics?.chapters?.name ?? 'Unknown Chapter'
+  const chapterName = row.topics?.chapters?.name ?? row.chapters?.name ?? 'Unknown Chapter'
   const topicName = row.topics?.name ?? null
   return topicName ? `${chapterName} → ${topicName}` : chapterName
 }
@@ -931,7 +931,7 @@ function ClassHeatmap({ examId, exams, session, userRole, groupId }) {
     setLoading(true)
     supabase
       .from('topic_scores')
-      .select('student_id, topic_id, chapter_id, percentage, topics(name, chapters(name)), users(name, roll_number, class_id)')
+      .select('student_id, topic_id, chapter_id, percentage, topics(name, chapters(name)), chapters(name), users(name, roll_number, class_id)')
       .eq('exam_id', examId)
       .eq('subject_id', subjectId)
       .then(({ data }) => {
@@ -950,7 +950,9 @@ function ClassHeatmap({ examId, exams, session, userRole, groupId }) {
           if (!classId && scopeClassIds && !scopeClassIds.has(studentClassId)) continue
 
           const sid = row.student_id
-          const tname = topicScoreDisplayName(row)
+          const chapterName = row.topics?.chapters?.name ?? row.chapters?.name ?? 'Unknown'
+          const topicName = row.topics?.name ?? null
+          const tname = topicName ? `${chapterName} → ${topicName}` : chapterName
           const sname = row.users?.name ?? 'Unknown'
           const roll = row.users?.roll_number ?? ''
 
@@ -2324,7 +2326,7 @@ export default function Results() {
 
       let query = supabase
         .from('topic_scores')
-        .select('topic_id, chapter_id, subject_id, score, total, percentage, topics(name, chapters(name)), subjects(name)')
+        .select('topic_id, chapter_id, subject_id, score, total, percentage, topics(name, chapters(name)), chapters(name), subjects(name)')
         .eq('exam_id', cardExamId)
         .eq('student_id', resultStudentId)
 
@@ -2471,7 +2473,7 @@ export default function Results() {
     setLoadingTrend(true)
     const query = supabase
       .from('topic_scores')
-      .select('exam_id, topic_id, chapter_id, subject_id, score, total, percentage, topics(name, chapters(name)), subjects(name), exams(exam_date)')
+      .select('exam_id, topic_id, chapter_id, subject_id, score, total, percentage, topics(name, chapters(name)), chapters(name), subjects(name), exams(exam_date)')
       .in('exam_id', cardExams.map((e) => e.id))
       .eq('student_id', cardStudentId)
 
