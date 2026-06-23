@@ -971,17 +971,13 @@ export default function Exams() {
       .eq('exam_id', exam.id)
 
     if (existingQuestions && existingQuestions.length > 0) {
-      const allChapterIds = (data ?? []).map((c) => c.id)
       const map = {}
       existingQuestions.forEach((q) => {
-        const idx = allChapterIds.indexOf(q.chapter_id)
-        const color = TOPIC_COLORS[idx % TOPIC_COLORS.length]
         map[q.question_number] = {
           chapter_id: q.chapter_id,
           chapter_name: q.chapters?.name ?? '',
           topic_id: q.topic_id ?? null,
           topic_name: q.topics?.name ?? '',
-          color,
           correct_answer: q.correct_answer,
           question_text: q.question_text ?? '',
         }
@@ -2676,7 +2672,7 @@ export default function Exams() {
                                       isSelected
                                         ? 'border-blue-600 bg-blue-600 text-white scale-110'
                                         : assigned?.chapter_id
-                                        ? `${assigned.color} border-current`
+                                        ? `${getChapterColor(assigned.chapter_id)} border-current`
                                         : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] hover:border-gray-400'
                                     }`}
                                     title={assigned?.chapter_name ? formatQuestionMapLabel(num, assigned) : 'Unassigned'}
