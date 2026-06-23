@@ -31,12 +31,12 @@ function getTargetLabel(announcement) {
         ? `👥 Groups: ${announcement.group_names.join(', ')}`
         : '👥 Group Students'
     case 'group_teachers':
-      return announcement.group_name
-        ? `👨‍🏫 Group Teachers: ${announcement.group_name}`
+      return announcement.group_names?.length
+        ? `👨‍🏫 Group Teachers: ${announcement.group_names.join(', ')}`
         : '👨‍🏫 Group Teachers'
     case 'entire_group':
-      return announcement.group_name
-        ? `🏫 Entire Group: ${announcement.group_name}`
+      return announcement.group_names?.length
+        ? `🏫 Entire Groups: ${announcement.group_names.join(', ')}`
         : '🏫 Entire Group'
     default:
       return 'Institute-wide'
@@ -994,7 +994,7 @@ export default function Announcements() {
                 </div>
               )}
 
-              {targetType === 'group_students' && (
+              {(targetType === 'group_students' || targetType === 'group_teachers' || targetType === 'entire_group') && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   <p className="w-full text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">Select groups:</p>
                   {classGroups.map((g) => (
@@ -1022,19 +1022,6 @@ export default function Announcements() {
                     </label>
                   ))}
                 </div>
-              )}
-
-              {(targetType === 'group_teachers' || targetType === 'entire_group') && (
-                <select
-                  value={targetIds[0] ?? ''}
-                  onChange={(e) => setTargetIds(e.target.value ? [e.target.value] : [])}
-                  className="w-full rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#262626] px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
-                >
-                  <option value="">Select group...</option>
-                  {classGroups.map((g) => (
-                    <option key={g.id} value={g.id}>{g.name}</option>
-                  ))}
-                </select>
               )}
 
               {targetType === 'specific_teacher' && (
