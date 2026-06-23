@@ -631,15 +631,26 @@ export default function Scan() {
         }
       }
 
-      const topicRows = Object.entries(topicMap).map(([topic_id, { score, total, subject_id }]) => ({
-        exam_id: selectedExam.id,
-        student_id: studentId,
-        topic_id,
-        subject_id: subject_id ?? null,
-        score,
-        total,
-        percentage: total > 0 ? Math.round((score / total) * 100) : 0,
-      }))
+      const topicRows = await Promise.all(
+        Object.entries(topicMap).map(async ([topic_id, { score, total, subject_id }]) => {
+          const { data: topicData } = await supabase
+            .from('topics')
+            .select('chapter_id')
+            .eq('id', topic_id)
+            .single()
+          const chapter_id = topicData?.chapter_id ?? null
+          return {
+            exam_id: selectedExam.id,
+            student_id: studentId,
+            topic_id,
+            chapter_id,
+            subject_id: subject_id ?? null,
+            score,
+            total,
+            percentage: total > 0 ? Math.round((score / total) * 100) : 0,
+          }
+        })
+      )
 
       const { error: topicErr } = await supabase
         .from('topic_scores')
@@ -1069,15 +1080,26 @@ export default function Scan() {
         .upsert(omrRows, { onConflict: 'exam_id,student_id,question_id' })
       if (omrErr) throw omrErr
 
-      const topicRows = Object.entries(topicAgg).map(([topic_id, { score, total, subject_id }]) => ({
-        exam_id: writtenExamId,
-        student_id: studentId,
-        topic_id,
-        subject_id: subject_id ?? null,
-        score,
-        total,
-        percentage: total > 0 ? Math.round((score / total) * 100) : 0,
-      }))
+      const topicRows = await Promise.all(
+        Object.entries(topicAgg).map(async ([topic_id, { score, total, subject_id }]) => {
+          const { data: topicData } = await supabase
+            .from('topics')
+            .select('chapter_id')
+            .eq('id', topic_id)
+            .single()
+          const chapter_id = topicData?.chapter_id ?? null
+          return {
+            exam_id: writtenExamId,
+            student_id: studentId,
+            topic_id,
+            chapter_id,
+            subject_id: subject_id ?? null,
+            score,
+            total,
+            percentage: total > 0 ? Math.round((score / total) * 100) : 0,
+          }
+        })
+      )
 
       if (topicRows.length > 0) {
         const { error: topicErr } = await supabase
