@@ -11,6 +11,9 @@ const GROUP_CHECKBOX_CLASS = (checked) =>
       : 'border-gray-300 dark:border-gray-600 text-gray-700 dark:text-[#A8A8A8] hover:border-gray-400'
   }`
 
+const CHAPTER_TOPIC_SELECT =
+  'chapters(id, name, class_id, topics(id, name, chapter_id, subject_id, class_id))'
+
 export default function Subjects() {
   const { session } = useOutletContext()
   const location = useLocation()
@@ -61,6 +64,8 @@ export default function Subjects() {
   const [sharePopoverNoteId, setSharePopoverNoteId] = useState(null)
   const [sharedClassMap, setSharedClassMap] = useState({})
   const [sharingNoteId, setSharingNoteId] = useState(null)
+  const [chapterTopicInputs, setChapterTopicInputs] = useState({})
+  const [chapterTopicSaving, setChapterTopicSaving] = useState(null)
   const topicInputRef = useRef(null)
   const sharePopoverRef = useRef(null)
 
@@ -284,7 +289,7 @@ export default function Subjects() {
 
       const { data, error: fetchError } = await supabase
         .from('subjects')
-        .select('id, name, topics(id, name, class_id)')
+        .select(`id, name, ${CHAPTER_TOPIC_SELECT}`)
         .in('id', subjectIds)
         .order('name')
 
@@ -327,7 +332,7 @@ export default function Subjects() {
 
       const { data, error: fetchError } = await supabase
         .from('subjects')
-        .select('id, name, topics(id, name, class_id), subject_classes(class_id, classes(name))')
+        .select(`id, name, ${CHAPTER_TOPIC_SELECT}, subject_classes(class_id, classes(name))`)
         .in('id', subjectIds)
         .order('name')
 
@@ -358,7 +363,7 @@ export default function Subjects() {
 
     let query = supabase
       .from('subjects')
-      .select('id, name, teacher_id, topics(id, name, class_id), users(name), subject_classes(class_id, classes(name)), group_subjects(group_id)')
+      .select(`id, name, teacher_id, ${CHAPTER_TOPIC_SELECT}, users(name), subject_classes(class_id, classes(name)), group_subjects(group_id)`)
       .order('name')
       .eq('institute_id', instituteId)
 
@@ -431,14 +436,24 @@ export default function Subjects() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [sharePopoverNoteId])
 
-  function getClassTopics(subject) {
+  function getClassChapters(subject) {
     const classId = isStudentView ? studentClassId : selectedClassId
     if (!classId) {
-      if (isAdmin) return subject.topics ?? []
-      return subject.topics?.filter((t) => t.class_id === null) ?? []
+      if (isAdmin) return subject.chapters ?? []
+      return subject.chapters?.filter((c) => c.class_id === null) ?? []
     }
     return (
-      subject.topics?.filter(
+      subject.chapters?.filter(
+        (c) => c.class_id === classId || c.class_id === null
+      ) ?? []
+    )
+  }
+
+  function getChapterTopics(chapter) {
+    const classId = isStudentView ? studentClassId : selectedClassId
+    if (!classId) return chapter.topics ?? []
+    return (
+      chapter.topics?.filter(
         (t) => t.class_id === classId || t.class_id === null
       ) ?? []
     )
@@ -556,6 +571,7 @@ export default function Subjects() {
   function closeAddTopicPanel() {
     setShowAddTopic(null)
     setTopicInput('')
+    setChapterTopicInputs({})
   }
 
   function toggleManageClasses(subject) {
@@ -642,7 +658,7 @@ export default function Subjects() {
       order_index: i,
     }))
 
-    const { error } = await supabase.from('topics').insert(rows)
+    const { error } = await supabase.from('chapters').insert(rows)
 
     if (error) {
       setExtractError(error.message)
@@ -670,14 +686,14 @@ export default function Subjects() {
     setTopicSaving(true)
     setError(null)
 
-    const { data: newTopic, error: insertError } = await supabase
-      .from('topics')
+    const { data: newChapter, error: insertError } = await supabase
+      .from('chapters')
       .insert({
         name,
         subject_id: subjectId,
         class_id: selectedClassId || null,
       })
-      .select('id, name, class_id')
+      .select(`id, name, class_id, topics(id, name, chapter_id, subject_id, class_id)`)
       .single()
 
     setTopicSaving(false)
@@ -690,7 +706,7 @@ export default function Subjects() {
     setSubjects((prev) =>
       prev.map((s) =>
         s.id === subjectId
-          ? { ...s, topics: [...(s.topics ?? []), newTopic] }
+          ? { ...s, chapters: [...(s.chapters ?? []), newChapter] }
           : s
       )
     )
@@ -698,7 +714,71 @@ export default function Subjects() {
     topicInputRef.current?.focus()
   }
 
-  async function handleDeleteTopic(subjectId, topicId) {
+  async function handleDeleteTopic(subjectId, chapterId) {
+    setError(null)
+
+    const { error: deleteError } = await supabase
+      .from('chapters')
+      .delete()
+      .eq('id', chapterId)
+
+    if (deleteError) {
+      setError(deleteError.message)
+      return
+    }
+
+    setSubjects((prev) =>
+      prev.map((s) =>
+        s.id === subjectId
+          ? { ...s, chapters: (s.chapters ?? []).filter((c) => c.id !== chapterId) }
+          : s
+      )
+    )
+  }
+
+  async function handleAddChapterTopic(subjectId, chapterId) {
+    const name = (chapterTopicInputs[chapterId] ?? '').trim()
+    if (!name) return
+
+    const classId = isStudentView ? studentClassId : selectedClassId
+    setChapterTopicSaving(chapterId)
+    setError(null)
+
+    const { data: newTopic, error: insertError } = await supabase
+      .from('topics')
+      .insert({
+        name,
+        chapter_id: chapterId,
+        subject_id: subjectId,
+        class_id: classId || null,
+      })
+      .select('id, name, chapter_id, subject_id, class_id')
+      .single()
+
+    setChapterTopicSaving(null)
+
+    if (insertError) {
+      setError(insertError.message)
+      return
+    }
+
+    setSubjects((prev) =>
+      prev.map((s) => {
+        if (s.id !== subjectId) return s
+        return {
+          ...s,
+          chapters: (s.chapters ?? []).map((chapter) =>
+            chapter.id === chapterId
+              ? { ...chapter, topics: [...(chapter.topics ?? []), newTopic] }
+              : chapter
+          ),
+        }
+      })
+    )
+    setChapterTopicInputs((prev) => ({ ...prev, [chapterId]: '' }))
+  }
+
+  async function handleDeleteChapterTopic(subjectId, chapterId, topicId) {
     setError(null)
 
     const { error: deleteError } = await supabase
@@ -712,11 +792,17 @@ export default function Subjects() {
     }
 
     setSubjects((prev) =>
-      prev.map((s) =>
-        s.id === subjectId
-          ? { ...s, topics: (s.topics ?? []).filter((t) => t.id !== topicId) }
-          : s
-      )
+      prev.map((s) => {
+        if (s.id !== subjectId) return s
+        return {
+          ...s,
+          chapters: (s.chapters ?? []).map((chapter) =>
+            chapter.id === chapterId
+              ? { ...chapter, topics: (chapter.topics ?? []).filter((t) => t.id !== topicId) }
+              : chapter
+          ),
+        }
+      })
     )
   }
 
@@ -887,7 +973,7 @@ export default function Subjects() {
 
       {isTeacher && !selectedClassId && (
         <p className="text-sm text-gray-500 dark:text-[#A8A8A8]">
-          Select a class to view subjects and topics.
+          Select a class to view subjects and chapters.
         </p>
       )}
 
@@ -927,7 +1013,7 @@ export default function Subjects() {
         ) : (
           <ul className="space-y-3">
             {visibleSubjects.map((subject) => {
-              const classTopics = getClassTopics(subject)
+              const classChapters = getClassChapters(subject)
               return (
                 <li
                   key={subject.id}
@@ -949,14 +1035,14 @@ export default function Subjects() {
                         </p>
                       )}
 
-                      {classTopics.length > 0 && (
+                      {classChapters.length > 0 && (
                         <ul className="mt-3 flex flex-wrap gap-2">
-                          {classTopics.map((topic) => (
+                          {classChapters.map((chapter) => (
                             <li
-                              key={topic.id}
+                              key={chapter.id}
                               className="text-xs bg-gray-100 dark:bg-[#262626] text-gray-700 dark:text-[#A8A8A8] px-2 py-1 rounded-md"
                             >
-                              {topic.name}
+                              {chapter.name}
                             </li>
                           ))}
                         </ul>
@@ -1080,7 +1166,7 @@ export default function Subjects() {
                             onClick={() => openAddTopic(subject.id)}
                             className="text-xs text-green-600 hover:text-green-800 font-medium"
                           >
-                            + Add Topic
+                            + Add Chapter
                           </button>
                         </div>
                       </div>
@@ -1131,14 +1217,14 @@ export default function Subjects() {
                         </div>
                       )}
 
-                      {classTopics.length > 0 && (
+                      {classChapters.length > 0 && (
                         <ul className="mt-3 flex flex-wrap gap-2">
-                          {classTopics.map((topic) => (
+                          {classChapters.map((chapter) => (
                             <li
-                              key={topic.id}
+                              key={chapter.id}
                               className="text-xs bg-gray-100 dark:bg-[#262626] text-gray-700 dark:text-[#A8A8A8] px-2 py-1 rounded-md"
                             >
-                              {topic.name}
+                              {chapter.name}
                             </li>
                           ))}
                         </ul>
@@ -1337,7 +1423,7 @@ export default function Subjects() {
                       {suggestedTopics.length > 0 && extractedSubjectId === subject.id && (
                         <div className="mt-4 pt-4 border-t border-purple-100 bg-purple-50 rounded-lg p-4">
                           <p className="text-sm font-semibold text-purple-900 mb-3">
-                            Gemini extracted {suggestedTopics.length} topics — select which to add:
+                            Gemini extracted {suggestedTopics.length} chapters — select which to add:
                           </p>
                           <div className="flex flex-wrap gap-2 mb-4">
                             {suggestedTopics.map((topic) => (
@@ -1363,7 +1449,7 @@ export default function Subjects() {
                               disabled={savingTopics || selectedTopics.length === 0}
                               className="text-sm font-medium bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 disabled:opacity-40 transition-colors"
                             >
-                              {savingTopics ? 'Saving…' : `Add ${selectedTopics.length} topics`}
+                              {savingTopics ? 'Saving…' : `Add ${selectedTopics.length} chapters`}
                             </button>
                             <button
                               type="button"
@@ -1384,38 +1470,90 @@ export default function Subjects() {
                       {showAddTopic === subject.id && (
                         <div className="mt-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-[#262626] p-4">
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Topics</h3>
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-[#FFFFFF]">Chapters</h3>
                             <button
                               type="button"
                               onClick={closeAddTopicPanel}
                               className="text-gray-400 dark:text-[#A8A8A8] hover:text-gray-600 dark:text-[#A8A8A8] text-lg leading-none"
-                              aria-label="Close topics panel"
+                              aria-label="Close chapters panel"
                             >
                               ✕
                             </button>
                           </div>
 
-                          {classTopics.length > 0 ? (
-                            <ul className="space-y-1.5 mb-4">
-                              {classTopics.map((topic) => (
+                          {classChapters.length > 0 ? (
+                            <ul className="space-y-3 mb-4">
+                              {classChapters.map((chapter) => (
                                 <li
-                                  key={topic.id}
-                                  className="flex items-center justify-between gap-2 bg-white dark:bg-[#1C1C1C] border-2 border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2"
+                                  key={chapter.id}
+                                  className="bg-white dark:bg-[#1C1C1C] border-2 border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2"
                                 >
-                                  <span className="text-sm text-gray-800 dark:text-[#FFFFFF]">{topic.name}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteTopic(subject.id, topic.id)}
-                                    className="text-gray-400 dark:text-[#A8A8A8] hover:text-red-600 text-sm shrink-0"
-                                    aria-label={`Remove ${topic.name}`}
-                                  >
-                                    ✕
-                                  </button>
+                                  <div className="flex items-center justify-between gap-2">
+                                    <span className="text-sm font-medium text-gray-800 dark:text-[#FFFFFF]">{chapter.name}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteTopic(subject.id, chapter.id)}
+                                      className="text-gray-400 dark:text-[#A8A8A8] hover:text-red-600 text-sm shrink-0"
+                                      aria-label={`Remove ${chapter.name}`}
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+
+                                  {(getChapterTopics(chapter).length > 0) && (
+                                    <ul className="mt-2 ml-2 space-y-1 border-l-2 border-gray-200 dark:border-gray-600 pl-3">
+                                      {getChapterTopics(chapter).map((subTopic) => (
+                                        <li
+                                          key={subTopic.id}
+                                          className="flex items-center justify-between gap-2"
+                                        >
+                                          <span className="text-xs text-gray-700 dark:text-[#A8A8A8]">{subTopic.name}</span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleDeleteChapterTopic(subject.id, chapter.id, subTopic.id)}
+                                            className="text-gray-400 dark:text-[#A8A8A8] hover:text-red-600 text-xs shrink-0"
+                                            aria-label={`Remove ${subTopic.name}`}
+                                          >
+                                            ✕
+                                          </button>
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  )}
+
+                                  <div className="flex gap-2 mt-2">
+                                    <input
+                                      type="text"
+                                      value={chapterTopicInputs[chapter.id] ?? ''}
+                                      onChange={(e) =>
+                                        setChapterTopicInputs((prev) => ({
+                                          ...prev,
+                                          [chapter.id]: e.target.value,
+                                        }))
+                                      }
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          e.preventDefault()
+                                          handleAddChapterTopic(subject.id, chapter.id)
+                                        }
+                                      }}
+                                      placeholder="Add topic (optional)..."
+                                      className="flex-1 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-1.5 text-xs text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleAddChapterTopic(subject.id, chapter.id)}
+                                      disabled={chapterTopicSaving === chapter.id || !(chapterTopicInputs[chapter.id] ?? '').trim()}
+                                      className="bg-gray-700 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-800 disabled:opacity-40 shrink-0"
+                                    >
+                                      {chapterTopicSaving === chapter.id ? 'Adding…' : 'Add'}
+                                    </button>
+                                  </div>
                                 </li>
                               ))}
                             </ul>
                           ) : (
-                            <p className="text-sm text-gray-400 dark:text-[#A8A8A8] mb-4">No topics yet.</p>
+                            <p className="text-sm text-gray-400 dark:text-[#A8A8A8] mb-4">No chapters yet.</p>
                           )}
 
                           <div className="flex gap-2 mb-3">
@@ -1430,7 +1568,7 @@ export default function Subjects() {
                                   handleAddTopic(subject.id)
                                 }
                               }}
-                              placeholder="Enter topic name..."
+                              placeholder="Enter chapter name..."
                               className="flex-1 rounded-lg border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1C1C1C] px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] placeholder:text-gray-400 dark:placeholder-[#A8A8A8] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                             />
                             <button
