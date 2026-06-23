@@ -119,6 +119,7 @@ export default function Exams() {
   const [selectedQNums, setSelectedQNums] = useState([])
   const [questionMap, setQuestionMap] = useState({})
   const [showWrittenQuestionText, setShowWrittenQuestionText] = useState(false)
+  const [pendingQuestionLoad, setPendingQuestionLoad] = useState(null)
 
   const [showAIGenerator, setShowAIGenerator] = useState(false)
   const [aiExamId, setAiExamId] = useState(null)
@@ -719,6 +720,41 @@ export default function Exams() {
   }, [selectedGroupId, userRole, classes, classGroups])
 
   useEffect(() => {
+    if (!pendingQuestionLoad || !examSubjects.length || !activeSubjectId) return
+
+    const examId = pendingQuestionLoad
+
+    async function loadExistingQuestions() {
+      const { data: existingQuestions } = await supabase
+        .from('questions')
+        .select('question_number, chapter_id, topic_id, correct_answer, question_text, chapters(name), topics(name)')
+        .eq('exam_id', examId)
+
+      if (existingQuestions && existingQuestions.length > 0) {
+        const map = {}
+        existingQuestions.forEach((q) => {
+          map[q.question_number] = {
+            chapter_id: q.chapter_id,
+            chapter_name: q.chapters?.name ?? '',
+            topic_id: q.topic_id ?? null,
+            topic_name: q.topics?.name ?? '',
+            correct_answer: q.correct_answer,
+            question_text: q.question_text ?? '',
+          }
+        })
+        setQuestionMap(map)
+        setShowWrittenQuestionText(
+          existingQuestions.some((q) => q.question_text?.trim())
+        )
+      }
+
+      setPendingQuestionLoad(null)
+    }
+
+    loadExistingQuestions()
+  }, [examSubjects, activeSubjectId, pendingQuestionLoad])
+
+  useEffect(() => {
     if (userRole !== 'admin') return
 
     const intersection = computeSubjectIntersection(adminClassSubjects, selectedClassIds)
@@ -957,35 +993,11 @@ export default function Exams() {
 
     const { data, error: fetchError } = await chapterQuery.order('name')
     if (fetchError) { setError(fetchError.message); setChapters([]) }
-    else {
-      setChapters(data ?? [])
-      if (es.length > 0) {
-        setActiveSubjectId(es[0]?.subject_id ?? '')
-      }
-    }
+    else setChapters(data ?? [])
 
-    // Pre-populate questionMap with existing saved questions
-    const { data: existingQuestions } = await supabase
-      .from('questions')
-      .select('question_number, chapter_id, topic_id, correct_answer, question_text, chapters(name), topics(name)')
-      .eq('exam_id', exam.id)
-
-    if (existingQuestions && existingQuestions.length > 0) {
-      const map = {}
-      existingQuestions.forEach((q) => {
-        map[q.question_number] = {
-          chapter_id: q.chapter_id,
-          chapter_name: q.chapters?.name ?? '',
-          topic_id: q.topic_id ?? null,
-          topic_name: q.topics?.name ?? '',
-          correct_answer: q.correct_answer,
-          question_text: q.question_text ?? '',
-        }
-      })
-      setQuestionMap(map)
-      setShowWrittenQuestionText(
-        existingQuestions.some((q) => q.question_text?.trim())
-      )
+    if (es.length > 0) {
+      setActiveSubjectId(es[0]?.subject_id ?? '')
+      setPendingQuestionLoad(exam.id)
     }
 
     setTimeout(() => {
@@ -1004,6 +1016,7 @@ export default function Exams() {
     setSelectedQNums([])
     setQuestionMap({})
     setShowWrittenQuestionText(false)
+    setPendingQuestionLoad(null)
   }
 
   function getActiveSubjectRange() {
