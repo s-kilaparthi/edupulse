@@ -163,6 +163,28 @@ def _resolve_announcement_target_users(supabase_admin, institute_id, target_type
             )
             for row in result.data or []:
                 add_user_id(row.get('teacher_id'))
+    elif target_type == 'specific_class':
+        if ids:
+            students_result = (
+                supabase_admin
+                .from_('users')
+                .select('id, roll_number')
+                .eq('institute_id', institute_id)
+                .eq('role', 'student')
+                .in_('class_id', ids)
+                .execute()
+            )
+            teachers_result = (
+                supabase_admin
+                .from_('class_teachers')
+                .select('teacher_id')
+                .in_('class_id', ids)
+                .execute()
+            )
+            for user in students_result.data or []:
+                add_student(user)
+            for row in teachers_result.data or []:
+                add_user_id(row.get('teacher_id'))
     elif target_type == 'specific_student':
         if ids:
             result = (

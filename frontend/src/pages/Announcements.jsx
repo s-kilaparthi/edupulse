@@ -18,6 +18,8 @@ function getTargetLabel(announcement) {
       return '📚 Class Students'
     case 'class_teachers':
       return '🏫 Class Teachers'
+    case 'specific_class':
+      return `🏫 Specific Classes (${(announcement.target_ids ?? []).length} selected)`
     case 'subject_teachers':
       return '📖 Subject Teachers'
     case 'specific_teacher':
@@ -424,6 +426,7 @@ export default function Announcements() {
     const needsTargets = [
       'class_students',
       'class_teachers',
+      'specific_class',
       'subject_teachers',
       'specific_teacher',
       'specific_student',
@@ -436,6 +439,11 @@ export default function Announcements() {
     }
 
     if (userRole === 'teacher' && teacherAnnouncementTarget === 'class_students' && teacherTargetClassIds.length === 0) {
+      setError('Please select at least one class.')
+      return
+    }
+
+    if (userRole === 'teacher' && teacherAnnouncementTarget === 'specific_class' && teacherTargetClassIds.length === 0) {
       setError('Please select at least one class.')
       return
     }
@@ -468,6 +476,9 @@ export default function Announcements() {
             : teacherTargetClassIds
       } else if (teacherAnnouncementTarget === 'class_students') {
         finalTargetType = 'class_students'
+        finalTargetIds = teacherTargetClassIds
+      } else if (teacherAnnouncementTarget === 'specific_class') {
+        finalTargetType = 'specific_class'
         finalTargetIds = teacherTargetClassIds
       } else if (teacherAnnouncementTarget === 'specific_student') {
         finalTargetType = 'specific_student'
@@ -718,6 +729,20 @@ export default function Announcements() {
                 <button
                   type="button"
                   onClick={() => {
+                    setTeacherAnnouncementTarget('specific_class')
+                    setTeacherSelectedGroupId('')
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${
+                    teacherAnnouncementTarget === 'specific_class'
+                      ? 'border-blue-600 bg-blue-50 text-blue-700'
+                      : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-[#A8A8A8]'
+                  }`}
+                >
+                  Specific Class (Students + Teachers)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
                     setTeacherAnnouncementTarget('group')
                     setTeacherTargetClassIds([])
                   }}
@@ -766,7 +791,7 @@ export default function Announcements() {
                 </div>
               )}
 
-              {teacherAnnouncementTarget === 'class_students' && (
+              {(teacherAnnouncementTarget === 'class_students' || teacherAnnouncementTarget === 'specific_class') && (
                 <div className="flex flex-wrap gap-2">
                   {teacherClasses.map((c) => (
                     <label
@@ -841,6 +866,7 @@ export default function Announcements() {
                   { value: 'all_students', label: '👨‍🎓 All Students' },
                   { value: 'class_students', label: '📚 Specific Classes (Students)' },
                   { value: 'class_teachers', label: '🏫 Class Teachers' },
+                  { value: 'specific_class', label: '🏫 Specific Class (Students + Teachers)' },
                   { value: 'subject_teachers', label: '📖 Subject Teachers' },
                   { value: 'group_students', label: '👥 Group Students' },
                   { value: 'group_teachers', label: '👨‍🏫 Group Teachers' },
@@ -869,7 +895,7 @@ export default function Announcements() {
                 ))}
               </div>
 
-              {(targetType === 'class_students' || targetType === 'class_teachers') && (
+              {(targetType === 'class_students' || targetType === 'class_teachers' || targetType === 'specific_class') && (
                 <div className="flex flex-wrap gap-2 mb-2">
                   <p className="w-full text-xs text-gray-500 dark:text-[#A8A8A8] mb-1">Select classes:</p>
                   {classes.map((c) => (
