@@ -11,6 +11,28 @@ function topicStatus(pct) {
   return 'weak'
 }
 
+function topicScoreDisplayName(row) {
+  const chapterName = row.chapters?.name ?? 'Unknown Chapter'
+  const topicName = row.topics?.name ?? null
+  return topicName ? `${chapterName} → ${topicName}` : chapterName
+}
+
+function TopicDisplayName({ name }) {
+  const arrowIdx = name.indexOf(' → ')
+  if (arrowIdx === -1) {
+    return <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{name}</span>
+  }
+  const chapterName = name.slice(0, arrowIdx)
+  const topicName = name.slice(arrowIdx + 3)
+  return (
+    <span>
+      <span className="text-gray-500 dark:text-[#A8A8A8]">{chapterName}</span>
+      <span className="text-gray-500 dark:text-[#A8A8A8]"> → </span>
+      <span className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{topicName}</span>
+    </span>
+  )
+}
+
 const statusBarClass = {
   strong: 'bg-green-500',
   average: 'bg-yellow-400',
@@ -136,7 +158,7 @@ function TopicPerformance({ subject }) {
             <div key={t.name}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-[#FFFFFF]">{t.name}</p>
+                  <p className="text-gray-900 dark:text-[#FFFFFF]"><TopicDisplayName name={t.name} /></p>
                   <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">{t.score} / {t.total} questions</p>
                 </div>
                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${statusPillClass[status]}`}>
@@ -168,7 +190,7 @@ function TopicSummary({ subject }) {
           {strong.length === 0 && <li className="text-sm text-gray-500 dark:text-[#A8A8A8]">No topics at 80% or above yet.</li>}
           {strong.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
+              <TopicDisplayName name={t.name} />
               <span className="font-semibold text-green-700 dark:text-green-300">{t.percentage}%</span>
             </li>
           ))}
@@ -182,7 +204,7 @@ function TopicSummary({ subject }) {
           {average.length === 0 && <li className="text-sm text-gray-500 dark:text-[#A8A8A8]">No topics in the 60–79% range.</li>}
           {average.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
+              <TopicDisplayName name={t.name} />
               <span className="font-semibold text-yellow-700 dark:text-yellow-300">{t.percentage}%</span>
             </li>
           ))}
@@ -196,7 +218,7 @@ function TopicSummary({ subject }) {
           {weak.length === 0 && <li className="text-sm text-gray-500 dark:text-[#A8A8A8]">Great — nothing below 60%!</li>}
           {weak.map((t) => (
             <li key={t.name} className="flex items-center justify-between text-sm">
-              <span className="font-medium text-gray-900 dark:text-[#FFFFFF]">{t.name}</span>
+              <TopicDisplayName name={t.name} />
               <span className="font-semibold text-red-700 dark:text-red-300">{t.percentage}%</span>
             </li>
           ))}
@@ -257,7 +279,7 @@ function PerformanceTrend({ trendData, totalExams }) {
                     return (
                       <div key={topic.name} className="grid grid-cols-12 gap-2 px-4 py-3 bg-white dark:bg-[#1C1C1C] items-center">
                         <div className="col-span-4">
-                          <p className="text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">{topic.name}</p>
+                          <p className="text-sm text-gray-900 dark:text-[#FFFFFF]"><TopicDisplayName name={topic.name} /></p>
                           <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">{topic.examCount}/{totalExams} exams</p>
                         </div>
                         <div className="col-span-4">
@@ -909,7 +931,7 @@ function ClassHeatmap({ examId, exams, session, userRole, groupId }) {
     setLoading(true)
     supabase
       .from('topic_scores')
-      .select('student_id, topic_id, percentage, topics(name), users(name, roll_number, class_id)')
+      .select('student_id, topic_id, chapter_id, percentage, topics(name), chapters(name), users(name, roll_number, class_id)')
       .eq('exam_id', examId)
       .eq('subject_id', subjectId)
       .then(({ data }) => {
@@ -928,7 +950,9 @@ function ClassHeatmap({ examId, exams, session, userRole, groupId }) {
           if (!classId && scopeClassIds && !scopeClassIds.has(studentClassId)) continue
 
           const sid = row.student_id
-          const tname = row.topics?.name ?? 'Unknown'
+          const tname = row.topics?.name
+            ? `${row.chapters?.name ?? 'Unknown'} → ${row.topics.name}`
+            : (row.chapters?.name ?? 'Unknown')
           const sname = row.users?.name ?? 'Unknown'
           const roll = row.users?.roll_number ?? ''
 
@@ -2302,7 +2326,7 @@ export default function Results() {
 
       let query = supabase
         .from('topic_scores')
-        .select('topic_id, subject_id, score, total, percentage, topics(name), subjects(name)')
+        .select('topic_id, chapter_id, subject_id, score, total, percentage, topics(name), chapters(name), subjects(name)')
         .eq('exam_id', cardExamId)
         .eq('student_id', resultStudentId)
 
@@ -2314,7 +2338,12 @@ export default function Results() {
         if (!subjectMap[sid]) {
           subjectMap[sid] = { subject_id: sid, name: row.subjects?.name ?? 'General', score: 0, max: 0, percentage: 0, topics: [] }
         }
-        subjectMap[sid].topics.push({ name: row.topics?.name ?? 'Unknown', score: row.score, total: row.total, percentage: row.percentage })
+        subjectMap[sid].topics.push({
+          name: topicScoreDisplayName(row),
+          score: row.score,
+          total: row.total,
+          percentage: row.percentage,
+        })
         subjectMap[sid].score += row.score
         subjectMap[sid].max += row.total
       }
@@ -2444,7 +2473,7 @@ export default function Results() {
     setLoadingTrend(true)
     const query = supabase
       .from('topic_scores')
-      .select('exam_id, topic_id, subject_id, score, total, percentage, topics(name), subjects(name), exams(exam_date)')
+      .select('exam_id, topic_id, chapter_id, subject_id, score, total, percentage, topics(name), chapters(name), subjects(name), exams(exam_date)')
       .in('exam_id', cardExams.map((e) => e.id))
       .eq('student_id', cardStudentId)
 
@@ -2454,7 +2483,7 @@ export default function Results() {
         for (const row of data) {
           const sid = row.subject_id ?? 'unknown'
           const sname = row.subjects?.name ?? 'General'
-          const tname = row.topics?.name ?? 'Unknown'
+          const tname = topicScoreDisplayName(row)
           const examDate = row.exams?.exam_date ?? ''
           if (!subjectMap[sid]) subjectMap[sid] = { subject_id: sid, name: sname, topicMap: {}, appearances: [] }
           if (!subjectMap[sid].appearances.find((a) => a.examId === row.exam_id)) {
