@@ -596,7 +596,7 @@ export default function Scan() {
     try {
       const { data: questions, error: qErr } = await supabase
         .from('questions')
-        .select('id, question_number, correct_answer, topic_id, topics(subject_id)')
+        .select('id, question_number, correct_answer, topic_id, chapter_id, topics(subject_id), chapters(subject_id)')
         .eq('exam_id', selectedExam.id)
         .order('question_number')
 
@@ -620,42 +620,91 @@ export default function Scan() {
       if (insertErr) throw insertErr
 
       const topicMap = {}
+      const scoreAgg = {}
       for (const q of questions ?? []) {
         const tid = q.topic_id
-        const sid = q.topics?.subject_id ?? null
-        if (!topicMap[tid]) topicMap[tid] = { score: 0, total: 0,  subject_id: sid }
-        topicMap[tid].total += 1
-        const given = answers[q.question_number] ?? ''
-        if (given === String(q.correct_answer ?? '').toUpperCase()) {
-          topicMap[tid].score += 1
+        const cid = q.chapter_id
+        const sid = q.topics?.subject_id ?? q.chapters?.subject_id ?? null
+        if (!tid && !cid) continue
+
+        const aggKey = tid ? `topic:${tid}` : `chapter:${cid}`
+        if (!scoreAgg[aggKey]) {
+          scoreAgg[aggKey] = {
+            topic_id: tid ?? null,
+            chapter_id: cid ?? null,
+            subject_id: sid,
+            score: 0,
+            total: 0,
+          }
         }
+        if (tid && cid) scoreAgg[aggKey].chapter_id = cid
+
+        if (tid) {
+          if (!topicMap[tid]) topicMap[tid] = { score: 0, total: 0, subject_id: sid }
+          topicMap[tid].total += 1
+        }
+
+        scoreAgg[aggKey].total += 1
+        const given = answers[q.question_number] ?? ''
+        const isCorrect = given === String(q.correct_answer ?? '').toUpperCase()
+        if (isCorrect) scoreAgg[aggKey].score += 1
+        if (tid && isCorrect) topicMap[tid].score += 1
       }
 
-      const topicRows = await Promise.all(
-        Object.entries(topicMap).map(async ([topic_id, { score, total, subject_id }]) => {
+      for (const { topic_id, chapter_id, subject_id, score, total } of Object.values(scoreAgg)) {
+        const percentage = total > 0 ? Math.round((score / total) * 100) : 0
+        let resolvedChapterId = chapter_id
+
+        if (topic_id && !resolvedChapterId) {
           const { data: topicData } = await supabase
             .from('topics')
             .select('chapter_id')
             .eq('id', topic_id)
             .single()
-          const chapter_id = topicData?.chapter_id ?? null
-          return {
-            exam_id: selectedExam.id,
-            student_id: studentId,
-            topic_id,
-            chapter_id,
-            subject_id: subject_id ?? null,
-            score,
-            total,
-            percentage: total > 0 ? Math.round((score / total) * 100) : 0,
-          }
-        })
-      )
+          resolvedChapterId = topicData?.chapter_id ?? null
+        }
 
-      const { error: topicErr } = await supabase
-        .from('topic_scores')
-        .upsert(topicRows, { onConflict: 'exam_id,student_id,topic_id' })
-      if (topicErr) throw topicErr
+        const existingQuery = topic_id
+          ? supabase
+              .from('topic_scores')
+              .select('id')
+              .eq('exam_id', selectedExam.id)
+              .eq('student_id', studentId)
+              .eq('topic_id', topic_id)
+              .maybeSingle()
+          : supabase
+              .from('topic_scores')
+              .select('id, score, total')
+              .eq('exam_id', selectedExam.id)
+              .eq('student_id', studentId)
+              .eq('chapter_id', resolvedChapterId)
+              .is('topic_id', null)
+              .maybeSingle()
+
+        const { data: existingScore } = await existingQuery
+
+        if (existingScore) {
+          const { error: topicErr } = await supabase
+            .from('topic_scores')
+            .update({ score, total, percentage, chapter_id: resolvedChapterId })
+            .eq('id', existingScore.id)
+          if (topicErr) throw topicErr
+        } else {
+          const { error: topicErr } = await supabase
+            .from('topic_scores')
+            .insert({
+              exam_id: selectedExam.id,
+              student_id: studentId,
+              topic_id,
+              chapter_id: resolvedChapterId,
+              subject_id: subject_id ?? null,
+              score,
+              total,
+              percentage,
+            })
+          if (topicErr) throw topicErr
+        }
+      }
 
       const correctCount = omrRows.filter((r) => r.is_correct).length
       const pct = omrRows.length > 0 ? Math.round((correctCount / omrRows.length) * 100) : 0
@@ -843,7 +892,7 @@ export default function Scan() {
 
     const { data: questions, error: questionsErr } = await supabase
       .from('questions')
-      .select('id, question_number, topic_id, topics(subject_id, name)')
+      .select('id, question_number, topic_id, chapter_id, topics(subject_id, name), chapters(subject_id)')
       .eq('exam_id', writtenExamId)
       .order('question_number')
 
@@ -1064,18 +1113,29 @@ export default function Scan() {
     setWrittenError('')
 
     try {
-      const topicAgg = {}
+      const scoreAgg = {}
       const omrRows = []
 
       for (const q of writtenExamQuestions) {
         const isPoor = poorSet.has(q.question_number)
         const tid = q.topic_id
-        const sid = q.topics?.subject_id ?? null
+        const cid = q.chapter_id
+        const sid = q.topics?.subject_id ?? q.chapters?.subject_id ?? null
 
-        if (tid) {
-          if (!topicAgg[tid]) topicAgg[tid] = { score: 0, total: 0, subject_id: sid }
-          topicAgg[tid].total += 1
-          if (!isPoor) topicAgg[tid].score += 1
+        if (tid || cid) {
+          const aggKey = tid ? `topic:${tid}` : `chapter:${cid}`
+          if (!scoreAgg[aggKey]) {
+            scoreAgg[aggKey] = {
+              topic_id: tid ?? null,
+              chapter_id: cid ?? null,
+              subject_id: sid,
+              score: 0,
+              total: 0,
+            }
+          }
+          if (tid && cid) scoreAgg[aggKey].chapter_id = cid
+          scoreAgg[aggKey].total += 1
+          if (!isPoor) scoreAgg[aggKey].score += 1
         }
 
         omrRows.push({
@@ -1096,27 +1156,42 @@ export default function Scan() {
         .upsert(omrRows, { onConflict: 'exam_id,student_id,question_id' })
       if (omrErr) throw omrErr
 
-      for (const [topic_id, { score, total, subject_id }] of Object.entries(topicAgg)) {
-        const { data: topicData } = await supabase
-          .from('topics')
-          .select('chapter_id')
-          .eq('id', topic_id)
-          .single()
-        const chapter_id = topicData?.chapter_id ?? null
+      for (const { topic_id, chapter_id, subject_id, score, total } of Object.values(scoreAgg)) {
         const percentage = total > 0 ? Math.round((score / total) * 100) : 0
+        let resolvedChapterId = chapter_id
 
-        const { data: existingScore } = await supabase
-          .from('topic_scores')
-          .select('id')
-          .eq('exam_id', writtenExamId)
-          .eq('student_id', studentId)
-          .eq('topic_id', topic_id)
-          .maybeSingle()
+        if (topic_id && !resolvedChapterId) {
+          const { data: topicData } = await supabase
+            .from('topics')
+            .select('chapter_id')
+            .eq('id', topic_id)
+            .single()
+          resolvedChapterId = topicData?.chapter_id ?? null
+        }
+
+        const existingQuery = topic_id
+          ? supabase
+              .from('topic_scores')
+              .select('id')
+              .eq('exam_id', writtenExamId)
+              .eq('student_id', studentId)
+              .eq('topic_id', topic_id)
+              .maybeSingle()
+          : supabase
+              .from('topic_scores')
+              .select('id, score, total')
+              .eq('exam_id', writtenExamId)
+              .eq('student_id', studentId)
+              .eq('chapter_id', resolvedChapterId)
+              .is('topic_id', null)
+              .maybeSingle()
+
+        const { data: existingScore } = await existingQuery
 
         if (existingScore) {
           const { error: topicErr } = await supabase
             .from('topic_scores')
-            .update({ score, total, percentage, chapter_id })
+            .update({ score, total, percentage, chapter_id: resolvedChapterId })
             .eq('id', existingScore.id)
           if (topicErr) throw topicErr
         } else {
@@ -1126,7 +1201,7 @@ export default function Scan() {
               exam_id: writtenExamId,
               student_id: studentId,
               topic_id,
-              chapter_id,
+              chapter_id: resolvedChapterId,
               subject_id: subject_id ?? null,
               score,
               total,
