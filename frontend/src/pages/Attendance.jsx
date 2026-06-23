@@ -56,6 +56,7 @@ function isPastAttendanceReminderTime() {
 
 function getGroupDateBounds(range) {
   const today = todayStr()
+  if (range === 'all') return { from: null, to: null }
   if (range === 'today') return { from: today, to: today }
   if (range === 'week') {
     const d = new Date()
@@ -68,6 +69,13 @@ function getGroupDateBounds(range) {
   const d = new Date()
   const first = new Date(d.getFullYear(), d.getMonth(), 1)
   return { from: formatLocalDate(first), to: today }
+}
+
+function applyAttendanceDateFilter(query, from, to) {
+  if (from && to) {
+    return query.gte('date', from).lte('date', to)
+  }
+  return query
 }
 
 function getAttendancePctColor(pct) {
@@ -770,8 +778,7 @@ export default function Attendance() {
     }
 
     return Object.values(agg).map((row) => {
-      const counted = row.present + row.late
-      const pct = row.total > 0 ? Math.round((counted / row.total) * 100) : 0
+      const pct = row.total > 0 ? Math.round((row.present / row.total) * 100) : 0
       return { ...row, pct }
     })
   }
@@ -805,9 +812,8 @@ export default function Attendance() {
 
     return Object.values(statsByClass)
       .map((row) => {
-        const counted = row.present + row.late
-        const pct = row.total > 0 ? Math.round((counted / row.total) * 100) : 0
-        return { ...row, pct, presentTotal: counted }
+        const pct = row.total > 0 ? Math.round((row.present / row.total) * 100) : 0
+        return { ...row, pct }
       })
       .sort((a, b) => b.pct - a.pct)
   }
@@ -833,12 +839,14 @@ export default function Attendance() {
         .eq('role', 'student')
         .in('class_id', scopeClassIds)
         .order('roll_number'),
-      supabase
-        .from('attendance')
-        .select('student_id, class_id, status')
-        .in('class_id', scopeClassIds)
-        .gte('date', from)
-        .lte('date', to),
+      applyAttendanceDateFilter(
+        supabase
+          .from('attendance')
+          .select('student_id, class_id, status')
+          .in('class_id', scopeClassIds),
+        from,
+        to
+      ),
     ])
 
     const allStudents = studentsRes.data ?? []
@@ -846,7 +854,7 @@ export default function Attendance() {
 
     let groupPresent = 0
     for (const r of allRecords) {
-      if (r.status === 'present' || r.status === 'late') groupPresent += 1
+      if (r.status === 'present') groupPresent += 1
     }
 
     const groupPct = allRecords.length > 0
@@ -1230,6 +1238,7 @@ export default function Attendance() {
                   { value: 'today', label: 'Today' },
                   { value: 'week', label: 'This Week' },
                   { value: 'month', label: 'This Month' },
+                  { value: 'all', label: 'All Time' },
                 ].map((opt) => (
                   <button
                     key={opt.value}
@@ -1248,7 +1257,7 @@ export default function Attendance() {
             </div>
             <p className={`text-3xl font-bold ${summaryColors.text}`}>{groupSummary.pct}%</p>
             <p className="text-sm text-gray-600 dark:text-[#A8A8A8] mt-1">
-              {groupSummary.present} / {groupSummary.total} present
+              {groupSummary.present} / {groupSummary.total} periods present ({groupSummary.pct}%)
             </p>
           </div>
         )}
@@ -1265,7 +1274,7 @@ export default function Attendance() {
                   <p className="font-medium text-gray-900 dark:text-[#FFFFFF] text-sm mb-1">{section.name}</p>
                   <p className={`text-2xl font-bold ${colors.text}`}>{section.pct}%</p>
                   <p className="text-xs text-gray-600 dark:text-[#A8A8A8] mt-1">
-                    {section.presentTotal} / {section.total} present
+                    {section.present} / {section.total} periods present ({section.pct}%)
                   </p>
                 </div>
               )
