@@ -908,18 +908,18 @@ export default function Scan() {
   }
 
   async function upsertWrittenExamSummary(studentId, marks) {
-    const { error } = await supabase.from('omr_results').upsert(
-      {
-        exam_id: writtenExamId,
-        student_id: studentId,
-        question_id: null,
-        answer_given: null,
-        is_correct: null,
-        marks_obtained: marks,
-        total_marks: writtenTotalMarks,
-      },
-      { onConflict: 'exam_id,student_id,question_id' }
-    )
+    const { error } = await supabase
+      .from('omr_results')
+      .upsert(
+        {
+          exam_id: writtenExamId,
+          student_id: studentId,
+          question_id: null,
+          marks_obtained: marks,
+          total_marks: writtenTotalMarks,
+        },
+        { onConflict: 'exam_id,student_id', ignoreDuplicates: false }
+      )
     if (error) throw error
   }
 
