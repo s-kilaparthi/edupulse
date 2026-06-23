@@ -627,7 +627,7 @@ export default function Scan() {
         const sid = q.topics?.subject_id ?? q.chapters?.subject_id ?? null
         if (!tid && !cid) continue
 
-        const aggKey = tid ? `topic:${tid}` : `chapter:${cid}`
+        const aggKey = tid ?? `chapter_${cid}`
         if (!scoreAgg[aggKey]) {
           scoreAgg[aggKey] = {
             topic_id: tid ?? null,
@@ -637,7 +637,7 @@ export default function Scan() {
             total: 0,
           }
         }
-        if (tid && cid) scoreAgg[aggKey].chapter_id = cid
+        if (cid) scoreAgg[aggKey].chapter_id = cid
 
         if (tid) {
           if (!topicMap[tid]) topicMap[tid] = { score: 0, total: 0, subject_id: sid }
@@ -1123,7 +1123,7 @@ export default function Scan() {
         const sid = q.topics?.subject_id ?? q.chapters?.subject_id ?? null
 
         if (tid || cid) {
-          const aggKey = tid ? `topic:${tid}` : `chapter:${cid}`
+          const aggKey = tid ?? `chapter_${cid}`
           if (!scoreAgg[aggKey]) {
             scoreAgg[aggKey] = {
               topic_id: tid ?? null,
@@ -1133,7 +1133,7 @@ export default function Scan() {
               total: 0,
             }
           }
-          if (tid && cid) scoreAgg[aggKey].chapter_id = cid
+          if (cid) scoreAgg[aggKey].chapter_id = cid
           scoreAgg[aggKey].total += 1
           if (!isPoor) scoreAgg[aggKey].score += 1
         }
