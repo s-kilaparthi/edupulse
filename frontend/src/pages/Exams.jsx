@@ -957,7 +957,12 @@ export default function Exams() {
 
     const { data, error: fetchError } = await chapterQuery.order('name')
     if (fetchError) { setError(fetchError.message); setChapters([]) }
-    else setChapters(data ?? [])
+    else {
+      setChapters(data ?? [])
+      if (es.length > 0) {
+        setActiveSubjectId(es[0]?.subject_id ?? '')
+      }
+    }
 
     // Pre-populate questionMap with existing saved questions
     const { data: existingQuestions } = await supabase
