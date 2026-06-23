@@ -111,8 +111,10 @@ export default function Exams() {
   // Add questions panel
   const [activeExam, setActiveExam] = useState(null)
   const [examSubjects, setExamSubjects] = useState([])
-  const [topics, setTopics] = useState([])
+  const [chapters, setChapters] = useState([])
+  const [chapterTopics, setChapterTopics] = useState([])
   const [activeSubjectId, setActiveSubjectId] = useState('')
+  const [activeChapterId, setActiveChapterId] = useState('')
   const [activeTopicId, setActiveTopicId] = useState('')
   const [selectedQNums, setSelectedQNums] = useState([])
   const [questionMap, setQuestionMap] = useState({})
@@ -122,11 +124,12 @@ export default function Exams() {
   const [aiExamId, setAiExamId] = useState(null)
   const [aiExamSubjects, setAiExamSubjects] = useState([])
   const [aiTotalQuestions, setAiTotalQuestions] = useState('')
+  const [aiChapterAllocations, setAiChapterAllocations] = useState({})
+  const [aiSelectedChapters, setAiSelectedChapters] = useState({})
   const [aiTopicAllocations, setAiTopicAllocations] = useState({})
   const [aiSelectedTopics, setAiSelectedTopics] = useState({})
   const [aiBoard, setAiBoard] = useState('CBSE')
   const [aiClassLevel, setAiClassLevel] = useState('')
-  const [aiChapterNames, setAiChapterNames] = useState({})
   const [aiEasy, setAiEasy] = useState(30)
   const [aiMedium, setAiMedium] = useState(50)
   const [aiHard, setAiHard] = useState(20)
@@ -895,14 +898,28 @@ export default function Exams() {
     setSavingExam(false)
   }
 
-  function getTopicOptionLabel(topic) {
-    if (!topic.class_id) return `${topic.name} (General)`
+  function getChapterOptionLabel(chapter) {
+    if (!chapter.class_id) return `${chapter.name} (General)`
     const className = activeExam?.exam_classes?.find(
-      (ec) => ec.class_id === topic.class_id
+      (ec) => ec.class_id === chapter.class_id
     )?.classes?.name
     const classIds = activeExam?.exam_classes?.map((ec) => ec.class_id) ?? []
-    if (classIds.length > 1 && className) return `${topic.name} (${className})`
-    return topic.name
+    if (classIds.length > 1 && className) return `${chapter.name} (${className})`
+    return chapter.name
+  }
+
+  function formatQuestionAssignment(q) {
+    if (!q?.chapter_name) return `Q${q?.question_number ?? ''} — Unassigned`
+    let label = `Q${q.question_number} → ${q.chapter_name} (Chapter)`
+    if (q.topic_name) label += ` → ${q.topic_name} (Topic)`
+    return label
+  }
+
+  function formatQuestionMapLabel(num, q) {
+    if (!q?.chapter_name) return `Q${num} — Unassigned`
+    let label = `Q${num} → ${q.chapter_name} (Chapter)`
+    if (q.topic_name) label += ` → ${q.topic_name} (Topic)`
+    return label
   }
 
   async function openQuestionsPanel(exam) {
@@ -915,45 +932,49 @@ export default function Exams() {
     setSuccessMessage(null)
     setActiveExam(exam)
     setActiveSubjectId('')
+    setActiveChapterId('')
     setActiveTopicId('')
+    setChapterTopics([])
     setSelectedQNums([])
     setQuestionMap({})
     setShowWrittenQuestionText(false)
     const es = exam.exam_subjects ?? []
     setExamSubjects(es)
     const subjectIds = es.map((s) => s.subject_id)
-    if (subjectIds.length === 0) { setTopics([]); return }
+    if (subjectIds.length === 0) { setChapters([]); return }
 
     const classIds = exam.exam_classes?.map((ec) => ec.class_id) ?? []
     const primaryClassId = classIds[0] ?? null
 
-    let topicQuery = supabase
-      .from('topics')
+    let chapterQuery = supabase
+      .from('chapters')
       .select('id, name, subject_id, class_id, subjects(name)')
       .in('subject_id', subjectIds)
 
     if (primaryClassId) {
-      topicQuery = topicQuery.or(`class_id.eq.${primaryClassId},class_id.is.null`)
+      chapterQuery = chapterQuery.or(`class_id.eq.${primaryClassId},class_id.is.null`)
     }
 
-    const { data, error: fetchError } = await topicQuery.order('name')
-    if (fetchError) { setError(fetchError.message); setTopics([]) }
-    else setTopics(data ?? [])
+    const { data, error: fetchError } = await chapterQuery.order('name')
+    if (fetchError) { setError(fetchError.message); setChapters([]) }
+    else setChapters(data ?? [])
 
     // Pre-populate questionMap with existing saved questions
     const { data: existingQuestions } = await supabase
       .from('questions')
-      .select('question_number, topic_id, correct_answer, question_text, topics(name)')
+      .select('question_number, chapter_id, topic_id, correct_answer, question_text, chapters(name), topics(name)')
       .eq('exam_id', exam.id)
 
     if (existingQuestions && existingQuestions.length > 0) {
-      const allTopicIds = (data ?? []).map((t) => t.id)
+      const allChapterIds = (data ?? []).map((c) => c.id)
       const map = {}
       existingQuestions.forEach((q) => {
-        const idx = allTopicIds.indexOf(q.topic_id)
+        const idx = allChapterIds.indexOf(q.chapter_id)
         const color = TOPIC_COLORS[idx % TOPIC_COLORS.length]
         map[q.question_number] = {
-          topic_id: q.topic_id,
+          chapter_id: q.chapter_id,
+          chapter_name: q.chapters?.name ?? '',
+          topic_id: q.topic_id ?? null,
           topic_name: q.topics?.name ?? '',
           color,
           correct_answer: q.correct_answer,
@@ -974,8 +995,10 @@ export default function Exams() {
   function closeQuestionsPanel() {
     setActiveExam(null)
     setExamSubjects([])
-    setTopics([])
+    setChapters([])
+    setChapterTopics([])
     setActiveSubjectId('')
+    setActiveChapterId('')
     setActiveTopicId('')
     setSelectedQNums([])
     setQuestionMap({})
@@ -996,22 +1019,45 @@ export default function Exams() {
     )
   }
 
-  function getTopicColor(topic_id) {
-    const allTopicIds = topics.map((t) => t.id)
-    const idx = allTopicIds.indexOf(topic_id)
+  function getChapterColor(chapter_id) {
+    const allChapterIds = chapters.map((c) => c.id)
+    const idx = allChapterIds.indexOf(chapter_id)
     return TOPIC_COLORS[idx % TOPIC_COLORS.length]
   }
 
-  function assignTopicToSelected() {
-    if (!activeTopicId || selectedQNums.length === 0) return
-    const topic = topics.find((t) => t.id === activeTopicId)
-    const color = getTopicColor(activeTopicId)
+  async function loadChapterTopics(chapterId) {
+    if (!chapterId) {
+      setChapterTopics([])
+      return
+    }
+    const { data, error: fetchError } = await supabase
+      .from('topics')
+      .select('id, name, chapter_id')
+      .eq('chapter_id', chapterId)
+      .order('name')
+    if (fetchError) {
+      setError(fetchError.message)
+      setChapterTopics([])
+    } else {
+      setChapterTopics(data ?? [])
+    }
+  }
+
+  function assignChapterToSelected() {
+    if (!activeChapterId || selectedQNums.length === 0) return
+    const chapter = chapters.find((c) => c.id === activeChapterId)
+    const topic = activeTopicId
+      ? chapterTopics.find((t) => t.id === activeTopicId)
+      : null
+    const color = getChapterColor(activeChapterId)
     setQuestionMap((prev) => {
       const next = { ...prev }
       selectedQNums.forEach((num) => {
         next[num] = {
           ...next[num],
-          topic_id: activeTopicId,
+          chapter_id: activeChapterId,
+          chapter_name: chapter?.name ?? '',
+          topic_id: topic?.id ?? null,
           topic_name: topic?.name ?? '',
           color,
           correct_answer: next[num]?.correct_answer ?? '',
@@ -1046,7 +1092,7 @@ export default function Exams() {
   }
 
   function getUnassignedCount() {
-    return getAllQuestionNums().filter((n) => !questionMap[n]?.topic_id).length
+    return getAllQuestionNums().filter((n) => !questionMap[n]?.chapter_id).length
   }
 
   function getMissingAnswerCount() {
@@ -1061,9 +1107,9 @@ export default function Exams() {
     }
 
     const allNums = getAllQuestionNums()
-    const unassigned = allNums.filter((n) => !questionMap[n]?.topic_id)
+    const unassigned = allNums.filter((n) => !questionMap[n]?.chapter_id)
     if (unassigned.length > 0) {
-      setError(`${unassigned.length} question(s) still have no topic: Q${unassigned.join(', Q')}`)
+      setError(`${unassigned.length} question(s) still have no chapter: Q${unassigned.join(', Q')}`)
       return
     }
     const isWritten = activeExam.exam_type === 'written'
@@ -1082,7 +1128,8 @@ export default function Exams() {
       const row = {
         exam_id: activeExam.id,
         question_number: num,
-        topic_id: questionMap[num].topic_id,
+        chapter_id: questionMap[num].chapter_id,
+        topic_id: questionMap[num].topic_id ?? null,
       }
       if (isWritten) {
         row.correct_answer = null
@@ -1121,7 +1168,7 @@ export default function Exams() {
 
     const { data } = await supabase
       .from('questions')
-      .select('id, question_number, correct_answer, question_text, option_a, option_b, option_c, option_d, difficulty, topic_id, topics(name, subjects(name))')
+      .select('id, question_number, correct_answer, question_text, option_a, option_b, option_c, option_d, difficulty, chapter_id, topic_id, chapters(name, subjects(name)), topics(name)')
       .eq('exam_id', exam.id)
       .order('question_number')
 
@@ -1135,7 +1182,8 @@ export default function Exams() {
     setAiError(null)
     setAiTopicAllocations({})
     setAiSelectedTopics({})
-    setAiChapterNames({})
+    setAiChapterAllocations({})
+    setAiSelectedChapters({})
     setAiTotalQuestions(String(exam.total_questions ?? ''))
     setAiStep(2)
     setShowAIGenerator(true)
@@ -1145,13 +1193,20 @@ export default function Exams() {
 
     if (subjectIds.length === 0) return
 
-    const { data: topicsData } = await supabase
-      .from('topics')
-      .select('id, name, subject_id')
+    const classId = exam.exam_classes?.[0]?.class_id
+
+    let chapterQuery = supabase
+      .from('chapters')
+      .select('id, name, subject_id, topics(id, name)')
       .in('subject_id', subjectIds)
       .order('name')
 
-    const classId = exam.exam_classes?.[0]?.class_id
+    if (classId) {
+      chapterQuery = chapterQuery.or(`class_id.eq.${classId},class_id.is.null`)
+    }
+
+    const { data: chaptersData } = await chapterQuery
+
     if (classId) {
       const { data: classData } = await supabase
         .from('classes')
@@ -1168,7 +1223,7 @@ export default function Exams() {
       subject_name: es.subjects?.name ?? '',
       range_from: es.question_from,
       range_to: es.question_to,
-      topics: topicsData?.filter((t) => t.subject_id === es.subject_id) ?? [],
+      chapters: chaptersData?.filter((c) => c.subject_id === es.subject_id) ?? [],
     }))
 
     setAiExamSubjects(subjects)
@@ -1182,19 +1237,46 @@ export default function Exams() {
       const allQuestions = []
 
       for (const subject of aiExamSubjects) {
-        const selectedTopics = subject.topics.filter(
-          (t) => aiSelectedTopics[t.id] && aiTopicAllocations[t.id] > 0
-        )
-        if (selectedTopics.length === 0) continue
+        const allocations = []
 
-        const chapterInput = aiChapterNames[subject.subject_id]?.trim()
-        const topicNames = selectedTopics.map((t) => t.name)
-        const chapterContext = chapterInput || topicNames.join(', ')
+        for (const chapter of subject.chapters) {
+          const chapterTopicsSelected = (chapter.topics ?? []).filter(
+            (t) => aiSelectedTopics[t.id] && aiTopicAllocations[t.id] > 0
+          )
 
-        const topicAllocList = selectedTopics.map((t) => ({
-          topic_id: t.id,
-          topic_name: t.name,
-          count: aiTopicAllocations[t.id] ?? 1,
+          if (chapterTopicsSelected.length > 0) {
+            chapterTopicsSelected.forEach((t) => {
+              allocations.push({
+                chapter_id: chapter.id,
+                chapter_name: chapter.name,
+                topic_id: t.id,
+                topic_name: t.name,
+                count: aiTopicAllocations[t.id] ?? 1,
+              })
+            })
+          } else if (aiSelectedChapters[chapter.id] && aiChapterAllocations[chapter.id] > 0) {
+            allocations.push({
+              chapter_id: chapter.id,
+              chapter_name: chapter.name,
+              topic_id: null,
+              topic_name: chapter.name,
+              count: aiChapterAllocations[chapter.id] ?? 1,
+            })
+          }
+        }
+
+        if (allocations.length === 0) continue
+
+        const chapterContext = allocations
+          .map((a) => a.chapter_name)
+          .filter((name, i, arr) => arr.indexOf(name) === i)
+          .join(', ')
+
+        const topicAllocList = allocations.map((a) => ({
+          chapter_id: a.chapter_id,
+          topic_id: a.topic_id,
+          topic_name: a.topic_name,
+          count: a.count,
         }))
 
         const response = await fetch(
@@ -1248,7 +1330,8 @@ export default function Exams() {
       const rows = generatedQuestions.map((q, i) => ({
         exam_id: aiExamId,
         question_number: startNum + i,
-        topic_id: q.topic_id,
+        chapter_id: q.chapter_id,
+        topic_id: q.topic_id ?? null,
         correct_answer: q.correct_answer,
         question_text: q.question_text,
         option_a: q.option_a,
@@ -1271,7 +1354,7 @@ export default function Exams() {
       if (activeProfileExamId === aiExamId) {
         const { data: refreshed } = await supabase
           .from('questions')
-          .select('id, question_number, correct_answer, question_text, option_a, option_b, option_c, option_d, difficulty, topic_id, topics(name, subjects(name))')
+          .select('id, question_number, correct_answer, question_text, option_a, option_b, option_c, option_d, difficulty, chapter_id, topic_id, chapters(name, subjects(name)), topics(name)')
           .eq('exam_id', aiExamId)
           .order('question_number')
         setExamProfile(refreshed ?? [])
@@ -1285,7 +1368,7 @@ export default function Exams() {
 
   const primaryClassName = activeExam?.exam_classes?.[0]?.classes?.name
   const examClassCount = activeExam?.exam_classes?.length ?? 0
-  const activeSubjectTopics = topics.filter((t) => t.subject_id === activeSubjectId)
+  const activeSubjectChapters = chapters.filter((c) => c.subject_id === activeSubjectId)
   const gridNums = getActiveSubjectRange()
   const allNums = activeExam ? getAllQuestionNums() : []
   const unassignedCount = activeExam ? getUnassignedCount() : 0
@@ -2424,17 +2507,16 @@ export default function Exams() {
                               className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4"
                             >
                               <div className="flex flex-wrap items-center gap-2 mb-2">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="text-xs font-bold text-gray-700 dark:text-[#A8A8A8]">
-                                    Q{q.question_number}
-                                  </span>
-                                  {exam.exam_type === 'written' && q.question_text && (
-                                    <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">{q.question_text}</p>
-                                  )}
-                                </div>
-                                <span className="text-xs text-blue-600">
-                                  {q.topics?.subjects?.name ?? 'Subject'} — {q.topics?.name ?? 'Topic'}
+                                <span className="text-xs text-blue-600 font-medium">
+                                  {formatQuestionAssignment({
+                                    question_number: q.question_number,
+                                    chapter_name: q.chapters?.name,
+                                    topic_name: q.topics?.name,
+                                  })}
                                 </span>
+                                {exam.exam_type === 'written' && q.question_text && (
+                                  <p className="text-xs text-gray-500 dark:text-[#A8A8A8] w-full">{q.question_text}</p>
+                                )}
                                 {q.difficulty && (
                                   <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] capitalize">
                                     {q.difficulty}
@@ -2492,12 +2574,12 @@ export default function Exams() {
                     </h2>
                     {primaryClassName && (
                       <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mb-4">
-                        Topics for {primaryClassName}
+                        Chapters for {primaryClassName}
                         {examClassCount > 1 && ' (first linked class)'}
                       </p>
                     )}
                     {!primaryClassName && activeExam.scope !== 'institute' && (
-                      <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mb-4">No class linked — showing all topics.</p>
+                      <p className="text-xs text-gray-500 dark:text-[#A8A8A8] mb-4">No class linked — showing all chapters.</p>
                     )}
 
                     {examSubjects.length === 0 && (
@@ -2511,7 +2593,13 @@ export default function Exams() {
                             <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">Subject</label>
                             <select
                               value={activeSubjectId}
-                              onChange={(e) => { setActiveSubjectId(e.target.value); setActiveTopicId(''); setSelectedQNums([]) }}
+                              onChange={(e) => {
+                                setActiveSubjectId(e.target.value)
+                                setActiveChapterId('')
+                                setActiveTopicId('')
+                                setChapterTopics([])
+                                setSelectedQNums([])
+                              }}
                               className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                             >
                               <option value="">Select subject</option>
@@ -2525,15 +2613,37 @@ export default function Exams() {
 
                           {activeSubjectId && (
                             <div>
-                              <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">Topic</label>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">Select Chapter</label>
+                              <select
+                                value={activeChapterId}
+                                onChange={(e) => {
+                                  const chapterId = e.target.value
+                                  setActiveChapterId(chapterId)
+                                  setActiveTopicId('')
+                                  setSelectedQNums([])
+                                  loadChapterTopics(chapterId)
+                                }}
+                                className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
+                              >
+                                <option value="">Select chapter</option>
+                                {activeSubjectChapters.map((c) => (
+                                  <option key={c.id} value={c.id}>{getChapterOptionLabel(c)}</option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+
+                          {activeChapterId && (
+                            <div>
+                              <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">Topic (optional)</label>
                               <select
                                 value={activeTopicId}
                                 onChange={(e) => { setActiveTopicId(e.target.value); setSelectedQNums([]) }}
                                 className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-2 text-sm text-gray-900 dark:text-[#FFFFFF] focus:border-blue-500 dark:focus:border-blue-400 focus:outline-none dark:bg-[#262626]"
                               >
-                                <option value="">Select topic</option>
-                                {activeSubjectTopics.map((t) => (
-                                  <option key={t.id} value={t.id}>{getTopicOptionLabel(t)}</option>
+                                <option value="">Chapter level only (no topic)</option>
+                                {chapterTopics.map((t) => (
+                                  <option key={t.id} value={t.id}>{t.name}</option>
                                 ))}
                               </select>
                             </div>
@@ -2560,11 +2670,11 @@ export default function Exams() {
                                     className={`w-10 h-10 rounded-lg border-2 text-xs font-medium transition-all ${
                                       isSelected
                                         ? 'border-blue-600 bg-blue-600 text-white scale-110'
-                                        : assigned?.topic_id
+                                        : assigned?.chapter_id
                                         ? `${assigned.color} border-current`
                                         : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-[#262626] text-gray-600 dark:text-[#A8A8A8] hover:border-gray-400'
                                     }`}
-                                    title={assigned?.topic_name ?? 'Unassigned'}
+                                    title={assigned?.chapter_name ? formatQuestionMapLabel(num, assigned) : 'Unassigned'}
                                   >
                                     {num}
                                   </button>
@@ -2572,16 +2682,16 @@ export default function Exams() {
                               })}
                             </div>
 
-                            {activeSubjectTopics.some((t) =>
-                              Object.values(questionMap).some((q) => q.topic_id === t.id)
+                            {activeSubjectChapters.some((c) =>
+                              Object.values(questionMap).some((q) => q.chapter_id === c.id)
                             ) && (
                               <div className="flex flex-wrap gap-2 mb-3">
-                                {activeSubjectTopics.map((t) => {
-                                  const count = gridNums.filter((n) => questionMap[n]?.topic_id === t.id).length
+                                {activeSubjectChapters.map((c) => {
+                                  const count = gridNums.filter((n) => questionMap[n]?.chapter_id === c.id).length
                                   if (count === 0) return null
                                   return (
-                                    <span key={t.id} className={`text-xs px-2 py-1 rounded-full border ${getTopicColor(t.id)}`}>
-                                      {getTopicOptionLabel(t)} ({count})
+                                    <span key={c.id} className={`text-xs px-2 py-1 rounded-full border ${getChapterColor(c.id)}`}>
+                                      {getChapterOptionLabel(c)} ({count})
                                     </span>
                                   )
                                 })}
@@ -2590,12 +2700,27 @@ export default function Exams() {
 
                             <button
                               type="button"
-                              onClick={assignTopicToSelected}
-                              disabled={!activeTopicId || selectedQNums.length === 0}
+                              onClick={assignChapterToSelected}
+                              disabled={!activeChapterId || selectedQNums.length === 0}
                               className="mb-4 bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-lg shadow-sm hover:shadow-md transition-shadow hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                             >
-                              Assign {selectedQNums.length > 0 ? `${selectedQNums.length} questions` : 'selected'} to topic
+                              Assign {selectedQNums.length > 0 ? `${selectedQNums.length} questions` : 'selected'} to chapter
                             </button>
+
+                            {gridNums.some((n) => questionMap[n]?.chapter_id) && (
+                              <div className="mb-4 border-t-2 border-gray-200 dark:border-gray-700 pt-3">
+                                <p className="text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-2">Assigned questions</p>
+                                <ul className="space-y-1 max-h-40 overflow-y-auto">
+                                  {gridNums
+                                    .filter((n) => questionMap[n]?.chapter_id)
+                                    .map((num) => (
+                                      <li key={num} className="text-xs text-gray-700 dark:text-[#A8A8A8]">
+                                        {formatQuestionMapLabel(num, questionMap[num])}
+                                      </li>
+                                    ))}
+                                </ul>
+                              </div>
+                            )}
                           </>
                         )}
 
@@ -2628,15 +2753,18 @@ export default function Exams() {
                                       <div
                                         key={num}
                                         className={`p-3 rounded-lg border ${
-                                          !q?.topic_id
+                                          !q?.chapter_id
                                             ? 'border-orange-200 bg-orange-50'
                                             : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C]'
                                         }`}
                                       >
-                                        <div className="flex items-center gap-2 mb-2">
+                                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                                           <span className="text-xs font-medium text-gray-700 dark:text-[#A8A8A8]">Q{num}</span>
-                                          {q?.topic_name && (
-                                            <span className="text-xs text-blue-600">{q.topic_name}</span>
+                                          {q?.chapter_name && (
+                                            <span className="text-xs text-blue-600">
+                                              {q.chapter_name} (Chapter)
+                                              {q.topic_name ? ` — ${q.topic_name} (Topic)` : ''}
+                                            </span>
                                           )}
                                         </div>
                                         <input
@@ -2678,10 +2806,18 @@ export default function Exams() {
                                   <div
                                     key={num}
                                     className={`flex items-center gap-2 p-2 rounded-lg border text-sm ${
-                                      !q?.topic_id ? 'border-orange-200 bg-orange-50' : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C]'
+                                      !q?.chapter_id ? 'border-orange-200 bg-orange-50' : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-[#1C1C1C]'
                                     }`}
                                   >
-                                    <span className="text-xs font-medium text-gray-500 dark:text-[#A8A8A8] w-6 shrink-0">Q{num}</span>
+                                    <div className="flex flex-col gap-0.5 shrink-0">
+                                      <span className="text-xs font-medium text-gray-500 dark:text-[#A8A8A8] w-6">Q{num}</span>
+                                      {q?.chapter_name && (
+                                        <span className="text-[10px] text-blue-600 max-w-[80px] leading-tight">
+                                          {q.chapter_name}
+                                          {q.topic_name ? ` / ${q.topic_name}` : ''}
+                                        </span>
+                                      )}
+                                    </div>
                                     <select
                                       value={q?.correct_answer ?? ''}
                                       onChange={(e) => updateAnswer(num, e.target.value)}
@@ -2718,7 +2854,7 @@ export default function Exams() {
                           {savingQuestions
                             ? 'Saving…'
                             : unassignedCount > 0
-                            ? `${unassignedCount} questions need topics`
+                            ? `${unassignedCount} questions need chapters`
                             : !isWrittenExam && missingAnswerCount > 0
                             ? `${missingAnswerCount} questions need answers`
                             : 'Save All Questions'}
@@ -2749,7 +2885,7 @@ export default function Exams() {
                     </div>
 
                     <div className="flex gap-1 overflow-x-auto scrollbar-hide pb-1 mb-4">
-                      {['Topics', 'Settings', 'Review'].map((s, i) => {
+                      {['Chapters', 'Settings', 'Review'].map((s, i) => {
                         const stepNum = i + 2
                         return (
                         <div key={s} className="flex items-center gap-1 shrink-0">
@@ -2781,9 +2917,16 @@ export default function Exams() {
                       <div className="space-y-5">
                         {aiExamSubjects.map((subject) => {
                           const subjectTotal = subject.range_to - subject.range_from + 1
-                          const subjectAllocated = subject.topics
-                            .filter((t) => aiSelectedTopics[t.id])
-                            .reduce((sum, t) => sum + (aiTopicAllocations[t.id] ?? 0), 0)
+                          const subjectAllocated = subject.chapters.reduce((sum, chapter) => {
+                            const topicSum = (chapter.topics ?? [])
+                              .filter((t) => aiSelectedTopics[t.id])
+                              .reduce((tSum, t) => tSum + (aiTopicAllocations[t.id] ?? 0), 0)
+                            if (topicSum > 0) return sum + topicSum
+                            if (aiSelectedChapters[chapter.id]) {
+                              return sum + (aiChapterAllocations[chapter.id] ?? 0)
+                            }
+                            return sum
+                          }, 0)
                           const subjectRemaining = subjectTotal - subjectAllocated
 
                           return (
@@ -2819,55 +2962,127 @@ export default function Exams() {
                                 </div>
                               </div>
 
-                              <div className="space-y-2">
-                                {subject.topics.map((topic) => (
-                                  <div key={topic.id} className="flex items-center gap-2 flex-wrap">
-                                    <input
-                                      type="checkbox"
-                                      checked={!!aiSelectedTopics[topic.id]}
-                                      onChange={(e) => {
-                                        setAiSelectedTopics((prev) => ({
-                                          ...prev,
-                                          [topic.id]: e.target.checked,
-                                        }))
-                                        if (!e.target.checked) {
-                                          setAiTopicAllocations((prev) => ({
-                                            ...prev,
-                                            [topic.id]: 0,
-                                          }))
-                                        }
-                                      }}
-                                      className="rounded border-gray-300 dark:border-gray-600 text-purple-600 shrink-0"
-                                    />
-                                    <span className="flex-1 min-w-[120px] text-sm text-gray-900 dark:text-[#FFFFFF]">{topic.name}</span>
-                                    {aiSelectedTopics[topic.id] && (
-                                      <input
-                                        type="number"
-                                        min={1}
-                                        max={subjectTotal}
-                                        value={aiTopicAllocations[topic.id] ?? ''}
-                                        onChange={(e) =>
-                                          setAiTopicAllocations((prev) => ({
-                                            ...prev,
-                                            [topic.id]: Number(e.target.value),
-                                          }))
-                                        }
-                                        placeholder="Q count"
-                                        className="w-20 shrink-0 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-center dark:bg-[#262626]"
-                                      />
-                                    )}
-                                  </div>
-                                ))}
+                              <div className="space-y-3">
+                                {subject.chapters.length === 0 ? (
+                                  <p className="text-xs text-gray-400 dark:text-[#A8A8A8]">No chapters for this subject.</p>
+                                ) : (
+                                  subject.chapters.map((chapter) => {
+                                    const hasTopicAllocations = (chapter.topics ?? []).some(
+                                      (t) => aiSelectedTopics[t.id] && aiTopicAllocations[t.id] > 0
+                                    )
+
+                                    return (
+                                      <div
+                                        key={chapter.id}
+                                        className="border border-gray-200 dark:border-gray-600 rounded-lg p-3"
+                                      >
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <input
+                                            type="checkbox"
+                                            checked={!!aiSelectedChapters[chapter.id]}
+                                            disabled={hasTopicAllocations}
+                                            onChange={(e) => {
+                                              setAiSelectedChapters((prev) => ({
+                                                ...prev,
+                                                [chapter.id]: e.target.checked,
+                                              }))
+                                              if (!e.target.checked) {
+                                                setAiChapterAllocations((prev) => ({
+                                                  ...prev,
+                                                  [chapter.id]: 0,
+                                                }))
+                                              }
+                                            }}
+                                            className="rounded border-gray-300 dark:border-gray-600 text-purple-600 shrink-0"
+                                          />
+                                          <span className="flex-1 min-w-[120px] text-sm font-medium text-gray-900 dark:text-[#FFFFFF]">
+                                            {chapter.name}
+                                          </span>
+                                          {aiSelectedChapters[chapter.id] && !hasTopicAllocations && (
+                                            <input
+                                              type="number"
+                                              min={1}
+                                              max={subjectTotal}
+                                              value={aiChapterAllocations[chapter.id] ?? ''}
+                                              onChange={(e) =>
+                                                setAiChapterAllocations((prev) => ({
+                                                  ...prev,
+                                                  [chapter.id]: Number(e.target.value),
+                                                }))
+                                              }
+                                              placeholder="Q count"
+                                              className="w-20 shrink-0 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-center dark:bg-[#262626]"
+                                            />
+                                          )}
+                                        </div>
+
+                                        {(chapter.topics ?? []).length > 0 && (
+                                          <div className="mt-2 ml-6 space-y-2 border-l-2 border-gray-200 dark:border-gray-600 pl-3">
+                                            <p className="text-xs text-gray-500 dark:text-[#A8A8A8]">Optional topics</p>
+                                            {(chapter.topics ?? []).map((topic) => (
+                                              <div key={topic.id} className="flex items-center gap-2 flex-wrap">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={!!aiSelectedTopics[topic.id]}
+                                                  onChange={(e) => {
+                                                    setAiSelectedTopics((prev) => ({
+                                                      ...prev,
+                                                      [topic.id]: e.target.checked,
+                                                    }))
+                                                    if (!e.target.checked) {
+                                                      setAiTopicAllocations((prev) => ({
+                                                        ...prev,
+                                                        [topic.id]: 0,
+                                                      }))
+                                                    } else {
+                                                      setAiSelectedChapters((prev) => ({
+                                                        ...prev,
+                                                        [chapter.id]: false,
+                                                      }))
+                                                      setAiChapterAllocations((prev) => ({
+                                                        ...prev,
+                                                        [chapter.id]: 0,
+                                                      }))
+                                                    }
+                                                  }}
+                                                  className="rounded border-gray-300 dark:border-gray-600 text-purple-600 shrink-0"
+                                                />
+                                                <span className="flex-1 min-w-[100px] text-sm text-gray-800 dark:text-[#FFFFFF]">
+                                                  {topic.name}
+                                                </span>
+                                                {aiSelectedTopics[topic.id] && (
+                                                  <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={subjectTotal}
+                                                    value={aiTopicAllocations[topic.id] ?? ''}
+                                                    onChange={(e) =>
+                                                      setAiTopicAllocations((prev) => ({
+                                                        ...prev,
+                                                        [topic.id]: Number(e.target.value),
+                                                      }))
+                                                    }
+                                                    placeholder="Q count"
+                                                    className="w-20 shrink-0 rounded-lg border border-gray-200 dark:border-gray-600 px-2 py-1 text-sm text-center dark:bg-[#262626]"
+                                                  />
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })
+                                )}
                               </div>
                             </div>
                           )
                         })}
 
                         {(() => {
-                          const totalAllocated = Object.values(aiTopicAllocations).reduce(
-                            (sum, v) => sum + (v || 0),
-                            0
-                          )
+                          const totalAllocated =
+                            Object.values(aiChapterAllocations).reduce((sum, v) => sum + (v || 0), 0) +
+                            Object.values(aiTopicAllocations).reduce((sum, v) => sum + (v || 0), 0)
                           const target = Number(aiTotalQuestions)
                           return (
                             <div
@@ -2889,8 +3104,10 @@ export default function Exams() {
                           <button
                             type="button"
                             disabled={
-                              Object.values(aiSelectedTopics).filter(Boolean).length === 0 ||
-                              Object.values(aiTopicAllocations).reduce((s, v) => s + (v || 0), 0) !==
+                              (Object.values(aiSelectedChapters).filter(Boolean).length === 0 &&
+                                Object.values(aiSelectedTopics).filter(Boolean).length === 0) ||
+                              (Object.values(aiChapterAllocations).reduce((s, v) => s + (v || 0), 0) +
+                                Object.values(aiTopicAllocations).reduce((s, v) => s + (v || 0), 0)) !==
                                 Number(aiTotalQuestions)
                             }
                             onClick={() => setAiStep(3)}
@@ -2990,32 +3207,26 @@ export default function Exams() {
 
                         <div className="space-y-2">
                           {aiExamSubjects
-                            .filter((s) => s.topics.some((t) => aiSelectedTopics[t.id]))
+                            .filter((s) =>
+                              s.chapters.some(
+                                (c) =>
+                                  aiSelectedChapters[c.id] ||
+                                  (c.topics ?? []).some((t) => aiSelectedTopics[t.id])
+                              )
+                            )
                             .map((subject) => {
-                              const selectedTopicNames = subject.topics
-                                .filter((t) => aiSelectedTopics[t.id])
-                                .map((t) => t.name)
-                                .join(', ')
+                              const selectedLabels = subject.chapters.flatMap((chapter) => {
+                                const topicLabels = (chapter.topics ?? [])
+                                  .filter((t) => aiSelectedTopics[t.id])
+                                  .map((t) => `${chapter.name} → ${t.name}`)
+                                if (topicLabels.length > 0) return topicLabels
+                                if (aiSelectedChapters[chapter.id]) return [chapter.name]
+                                return []
+                              })
                               return (
-                                <div key={subject.subject_id}>
-                                  <label className="block text-xs font-medium text-gray-600 dark:text-[#A8A8A8] mb-1">
-                                    {subject.subject_name} — Chapter/Topic context (optional)
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={aiChapterNames[subject.subject_id] ?? ''}
-                                    onChange={(e) =>
-                                      setAiChapterNames((prev) => ({
-                                        ...prev,
-                                        [subject.subject_id]: e.target.value,
-                                      }))
-                                    }
-                                    placeholder={selectedTopicNames}
-                                    className="w-full rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-sm dark:bg-[#262626]"
-                                  />
-                                  <p className="text-xs text-gray-400 dark:text-[#A8A8A8] mt-0.5">
-                                    Leave empty to use topic names: {selectedTopicNames}
-                                  </p>
+                                <div key={subject.subject_id} className="text-xs text-gray-600 dark:text-[#A8A8A8]">
+                                  <span className="font-medium">{subject.subject_name}:</span>{' '}
+                                  {selectedLabels.join(', ')}
                                 </div>
                               )
                             })}
@@ -3054,7 +3265,8 @@ export default function Exams() {
                             <div key={index} className="border-2 border-gray-200 dark:border-gray-700 rounded-xl p-4">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-xs text-purple-600 font-medium">
-                                  {q.topic_name}
+                                  {q.chapter_name ?? 'Chapter'}
+                                  {q.topic_name && q.topic_name !== q.chapter_name ? ` → ${q.topic_name}` : ''}
                                 </span>
                                 <div className="flex items-center gap-2">
                                   <span

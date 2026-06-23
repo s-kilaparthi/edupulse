@@ -477,11 +477,21 @@ Return ONLY a JSON array, no explanation:
         clean = text.replace('```json', '').replace('```', '').strip()
         questions = json.loads(clean)
 
-        name_to_id = {t['topic_name']: t['topic_id'] for t in topic_allocations}
+        name_to_chapter = {t['topic_name']: t.get('chapter_id') for t in topic_allocations}
+        name_to_topic = {
+            t['topic_name']: t.get('topic_id')
+            for t in topic_allocations
+            if t.get('topic_id')
+        }
         for q in questions:
-            q['topic_id'] = name_to_id.get(
-                q.get('topic_name'),
-                topic_allocations[0]['topic_id'],
+            topic_name = q.get('topic_name')
+            q['chapter_id'] = name_to_chapter.get(
+                topic_name,
+                topic_allocations[0].get('chapter_id'),
+            )
+            q['topic_id'] = name_to_topic.get(
+                topic_name,
+                topic_allocations[0].get('topic_id'),
             )
 
         return {"questions": questions}
