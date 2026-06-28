@@ -280,9 +280,16 @@ async def verify_institute_admin_or_teacher(request: Request, institute_id: str)
     return user_id
 
 
+_default_allowed_origins = "https://edupulse.vercel.app,http://localhost:5173"
+allowed_origins = [
+    origin.strip()
+    for origin in os.environ.get("ALLOWED_ORIGINS", _default_allowed_origins).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -578,6 +585,8 @@ async def create_student(request: Request):
         if not all([password, name, roll_number, institute_id]):
             raise HTTPException(status_code=400, detail="Missing required fields")
 
+        await verify_institute_admin_or_teacher(request, institute_id)
+
         supabase_admin = create_client(
             os.environ.get('SUPABASE_URL'),
             os.environ.get('SUPABASE_SERVICE_KEY')
@@ -650,6 +659,8 @@ async def create_teacher(request: Request):
         if not all([email, password, name, institute_id]):
             raise HTTPException(status_code=400, detail="Missing required fields")
 
+        await verify_institute_admin_or_teacher(request, institute_id)
+
         supabase_admin = create_client(
             os.environ.get('SUPABASE_URL'),
             os.environ.get('SUPABASE_SERVICE_KEY')
@@ -682,20 +693,20 @@ async def create_teacher(request: Request):
 
 
 @app.delete("/delete-user/{user_id}")
-async def delete_user(user_id: str):
+async def delete_user(user_id: str, request: Request):
     try:
-        supabase_admin = create_client(
-            os.environ.get('SUPABASE_URL'),
-            os.environ.get('SUPABASE_SERVICE_KEY')
-        )
-
-        student_roll_number = None
-        student_institute_id = None
+        supabase_admin = _supabase_admin()
 
         user_result = supabase_admin.from_('users').select('id, roll_number, institute_id').eq('id', user_id).limit(1).execute()
-        if user_result.data:
-            student_roll_number = user_result.data[0].get('roll_number')
-            student_institute_id = user_result.data[0].get('institute_id')
+        if not user_result.data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        student_roll_number = user_result.data[0].get('roll_number')
+        student_institute_id = user_result.data[0].get('institute_id')
+        if not student_institute_id:
+            raise HTTPException(status_code=400, detail="User has no institute")
+
+        await verify_institute_admin_or_teacher(request, student_institute_id)
 
         try:
             supabase_admin.auth.admin.delete_user(user_id)
@@ -724,6 +735,8 @@ async def delete_user(user_id: str):
 
         return {"success": True}
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         print("Delete user error:", traceback.format_exc())

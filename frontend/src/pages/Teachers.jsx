@@ -165,11 +165,17 @@ export default function Teachers() {
     setSuccessMessage(null)
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/create-teacher`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
           body: JSON.stringify({
             name,
             email,
@@ -243,9 +249,18 @@ export default function Teachers() {
   async function handleDeleteTeacher(teacherId, teacherName) {
     if (!window.confirm(`Delete teacher "${teacherName}"?`)) return
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/delete-user/${teacherId}`,
-        { method: 'DELETE' }
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
       )
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Failed')

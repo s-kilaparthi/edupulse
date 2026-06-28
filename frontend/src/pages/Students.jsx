@@ -203,6 +203,9 @@ export default function Students() {
     setSuccessMessage(null)
 
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
       const { data: userData } = await supabase
         .from('users')
         .select('institute_id')
@@ -217,7 +220,10 @@ export default function Students() {
         `${import.meta.env.VITE_API_URL}/create-student`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
           body: JSON.stringify({
             email: autoEmail,
             password: autoPassword,
@@ -271,9 +277,18 @@ export default function Students() {
   async function handleDeleteStudent(studentId) {
     if (!window.confirm('Delete this student?')) return
     try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) throw new Error('Not authenticated')
+
       const response = await fetch(
         `${import.meta.env.VITE_API_URL}/delete-user/${studentId}`,
-        { method: 'DELETE' }
+        {
+          method: 'DELETE',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+        }
       )
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Failed')
